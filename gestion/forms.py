@@ -836,25 +836,59 @@ class PolizaForm(BaseModelForm):
                 self.fields['tipo'].widget.attrs['readonly'] = 'readonly'
                 self.fields['tipo'].widget.attrs['class'] = 'form-control form-control-enhanced'
             else:
-                # En creación: filtrar opciones según el contrato
+                # En creación: filtrar opciones según el contrato considerando OtroSí vigentes
                 tipos_disponibles = []
                 polizas_existentes = Poliza.objects.filter(contrato=self.contrato).values_list('tipo', flat=True)
                 
-                # Mapeo de requisitos del contrato a tipos de póliza
-                if self.contrato.exige_poliza_cumplimiento and 'Cumplimiento' not in polizas_existentes:
+                # Obtener requisitos considerando OtroSí vigentes (incluyendo futuros)
+                # Para registrar pólizas, necesitamos considerar OtroSí aprobados aunque tengan fechas futuras
+                from gestion.utils_otrosi import get_polizas_requeridas_contrato
+                from datetime import date
+                
+                # Obtener directamente las pólizas requeridas considerando OtroSí aprobados con fechas futuras
+                # Esto asegura que se muestren pólizas agregadas por OtroSí aunque aún no estén vigentes
+                polizas_requeridas = get_polizas_requeridas_contrato(self.contrato, date.today(), permitir_fuera_vigencia=True)
+                
+                # Construir estructura de requisitos para el formulario
+                requisitos_contrato = {
+                    'rce': {'exigida': False},
+                    'cumplimiento': {'exigida': False},
+                    'arrendamiento': {'exigida': False},
+                    'todo_riesgo': {'exigida': False},
+                    'otra': {'exigida': False, 'nombre': None}
+                }
+                
+                # Mapear pólizas requeridas a la estructura de requisitos
+                mapeo_polizas = {
+                    'RCE - Responsabilidad Civil': 'rce',
+                    'Cumplimiento': 'cumplimiento',
+                    'Poliza de Arrendamiento': 'arrendamiento',
+                    'Arrendamiento': 'todo_riesgo',
+                    'Otra': 'otra'
+                }
+                
+                for tipo_poliza, clave in mapeo_polizas.items():
+                    if tipo_poliza in polizas_requeridas:
+                        requisitos_contrato[clave]['exigida'] = True
+                        if tipo_poliza == 'Otra':
+                            pol_data = polizas_requeridas[tipo_poliza]
+                            requisitos_contrato[clave]['nombre'] = pol_data.get('nombre') or self.contrato.nombre_poliza_otra_1 or 'Otra'
+                
+                # Mapeo de requisitos del contrato (considerando OtroSí) a tipos de póliza
+                if requisitos_contrato['cumplimiento']['exigida'] and 'Cumplimiento' not in polizas_existentes:
                     tipos_disponibles.append(('Cumplimiento', 'Cumplimiento'))
                 
-                if self.contrato.exige_poliza_rce and 'RCE - Responsabilidad Civil' not in polizas_existentes:
+                if requisitos_contrato['rce']['exigida'] and 'RCE - Responsabilidad Civil' not in polizas_existentes:
                     tipos_disponibles.append(('RCE - Responsabilidad Civil', 'RCE - Responsabilidad Civil'))
                 
-                if self.contrato.exige_poliza_arrendamiento and 'Poliza de Arrendamiento' not in polizas_existentes:
+                if requisitos_contrato['arrendamiento']['exigida'] and 'Poliza de Arrendamiento' not in polizas_existentes:
                     tipos_disponibles.append(('Poliza de Arrendamiento', 'Póliza de Arrendamiento'))
                 
-                if self.contrato.exige_poliza_todo_riesgo and 'Arrendamiento' not in polizas_existentes:
+                if requisitos_contrato['todo_riesgo']['exigida'] and 'Arrendamiento' not in polizas_existentes:
                     tipos_disponibles.append(('Arrendamiento', 'Arrendamiento'))
                 
-                if self.contrato.exige_poliza_otra_1 and 'Otra' not in polizas_existentes:
-                    nombre_otra = self.contrato.nombre_poliza_otra_1 or 'Otra'
+                if requisitos_contrato['otra']['exigida'] and 'Otra' not in polizas_existentes:
+                    nombre_otra = requisitos_contrato['otra'].get('nombre') or self.contrato.nombre_poliza_otra_1 or 'Otra'
                     tipos_disponibles.append(('Otra', nombre_otra))
                 
                 # Actualizar las opciones del campo
@@ -864,6 +898,8 @@ class PolizaForm(BaseModelForm):
                 if not tipos_disponibles:
                     self.fields['tipo'].disabled = True
                     self.fields['tipo'].help_text = 'Todas las pólizas requeridas ya han sido registradas'
+                else:
+                    self.fields['tipo'].help_text = 'Solo se muestran las pólizas requeridas que aún no han sido registradas'
         
         # Mostrar/ocultar campos según tipo de contrato
         if self.contrato:
