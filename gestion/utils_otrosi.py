@@ -207,15 +207,18 @@ def get_ultimo_otrosi_que_modifico_campo_hasta_fecha(contrato, campo_nombre, fec
     
     # Combinar eventos
     # Para pólizas, incluimos todos los eventos que hayan iniciado antes o en la fecha de referencia
+    # Si permitir_futuros es True, también incluimos eventos con fechas futuras
     # Esto asegura que si un Otro Sí venció pero fue el último que modificó los campos, lo consideremos
     for otrosi in otrosis_aprobados:
-        # Incluir si inició antes o en la fecha de referencia
-        # No importa si ya venció, queremos el último que modificó los campos
-        if otrosi.effective_from <= fecha_referencia:
+        # Si permitir_futuros es True, incluir todos los OtroSí aprobados (incluso con fechas futuras)
+        # Si no, solo incluir los que iniciaron antes o en la fecha de referencia
+        if permitir_futuros or otrosi.effective_from <= fecha_referencia:
             eventos.append(('otrosi', otrosi))
     
     for renovacion in renovaciones_aprobadas:
-        if renovacion.effective_from <= fecha_referencia:
+        # Si permitir_futuros es True, incluir todas las renovaciones aprobadas (incluso con fechas futuras)
+        # Si no, solo incluir las que iniciaron antes o en la fecha de referencia
+        if permitir_futuros or renovacion.effective_from <= fecha_referencia:
             eventos.append(('renovacion', renovacion))
     
     # Ordenar por effective_from descendente (más reciente primero), luego por fecha_aprobacion descendente
@@ -574,9 +577,9 @@ def get_polizas_requeridas_contrato(contrato, fecha_referencia=None, permitir_fu
     if not permitir_fuera_vigencia and es_fecha_fuera_vigencia_contrato(contrato, fecha_referencia):
         return {}
     
-    # Si permitir_fuera_vigencia es True y el contrato aún no ha iniciado,
-    # considerar también Otros Sí futuros para poder gestionar pólizas anticipadamente
-    considerar_futuros = permitir_fuera_vigencia and es_fecha_fuera_vigencia_contrato(contrato, fecha_referencia)
+    # Si permitir_fuera_vigencia es True, considerar también Otros Sí aprobados con fechas futuras
+    # Esto permite gestionar pólizas que serán requeridas por OtroSí que aún no están vigentes
+    considerar_futuros = permitir_fuera_vigencia
     
     # Función auxiliar para obtener valor con efecto cadena y el Otro Sí modificador
     def obtener_valor_y_otrosi(campo_otrosi, campo_contrato):
