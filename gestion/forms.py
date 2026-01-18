@@ -1580,7 +1580,7 @@ class IPCHistoricoForm(BaseModelForm):
             if not valor_str:
                 raise ValidationError('Ingrese un valor válido para el IPC')
             
-            # Limpiar el valor numérico
+            # Limpiar el valor numérico (retorna float)
             valor_limpio = limpiar_valor_numerico(valor_str, 'Valor IPC')
             
             # Si después de limpiar es None, el valor original era inválido
@@ -1590,7 +1590,12 @@ class IPCHistoricoForm(BaseModelForm):
             if valor_limpio < 0:
                 raise ValidationError('El valor del IPC debe ser positivo')
             
-            return valor_limpio
+            # Convertir a Decimal y redondear a máximo 2 decimales
+            from decimal import ROUND_HALF_UP
+            valor_decimal = Decimal(str(valor_limpio))
+            valor_decimal = valor_decimal.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+            
+            return valor_decimal
         except ValueError as e:
             raise ValidationError(str(e))
 
