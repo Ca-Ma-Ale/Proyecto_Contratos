@@ -1,0 +1,149 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}{{ titulo }} - Gestión de Contratos{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="display-6">
+                    <i class="fas fa-file-alt text-success"></i> {{ titulo }}
+                </h1>
+                <div>
+                    {% if user.is_staff %}
+                    <a href="{% url 'gestion:editar_calculo_salario_minimo' calculo.id %}" class="btn btn-warning">
+                        <i class="fas fa-edit"></i> Editar
+                    </a>
+                    <a href="{% url 'gestion:eliminar_calculo_salario_minimo' calculo.id %}" class="btn btn-danger">
+                        <i class="fas fa-trash"></i> Eliminar
+                    </a>
+                    {% endif %}
+                    <a href="{% url 'gestion:lista_calculos_salario_minimo' %}" class="btn btn-info">
+                        <i class="fas fa-list"></i> Ver Todos
+                    </a>
+                    <a href="{% url 'gestion:dashboard' %}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-10 offset-md-1">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-info-circle"></i> Información del Cálculo
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Contrato:</strong> 
+                                <a href="{% url 'gestion:detalle_contrato' calculo.contrato.id %}">
+                                    {{ calculo.contrato.num_contrato }}
+                                </a>
+                            </p>
+                            <p><strong>Fecha de Aplicación:</strong> {{ calculo.fecha_aplicacion|date:"d/m/Y" }}</p>
+                            <p><strong>Salario Mínimo Histórico:</strong> {{ calculo.salario_minimo_historico.año }} - ${{ calculo.salario_minimo_historico.valor_salario_minimo|floatformat:0|intcomma }} <small class="text-muted">(aplicado el {{ calculo.fecha_aplicacion|date:"d/m/Y" }})</small></p>
+                            <p><strong>Estado:</strong> 
+                                <span class="badge bg-{% if calculo.estado == 'APLICADO' %}success{% elif calculo.estado == 'ANULADO' %}danger{% else %}warning{% endif %}">
+                                    {{ calculo.get_estado_display }}
+                                </span>
+                            </p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Periodicidad:</strong> {{ calculo.get_periodicidad_contrato_display|default:"-" }}</p>
+                            <p><strong>Fecha de Aumento:</strong> 
+                                {% if calculo.fecha_aumento_contrato %}
+                                    {{ calculo.fecha_aumento_contrato|date:"d/m/Y" }}
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </p>
+                            <p><strong>Calculado Por:</strong> {{ calculo.calculado_por|default:"-" }}</p>
+                            <p><strong>Fecha de Cálculo:</strong> {{ calculo.fecha_calculo|date:"d/m/Y H:i" }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-calculator"></i> Desglose del Cálculo
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h6>Canon Anterior</h6>
+                                    <h4>${{ calculo.canon_anterior|floatformat:2|intcomma }}</h4>
+                                    <small class="text-muted">
+                                        Fuente: {{ calculo.fuente_canon_anterior|default:"Automático" }}
+                                        {% if calculo.canon_anterior_manual %}
+                                            <span class="badge bg-warning">Manual</span>
+                                        {% endif %}
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h6>Porcentaje Total a Aplicar</h6>
+                                    <h4>{{ calculo.porcentaje_total_aplicar }}%</h4>
+                                    <small class="text-muted">
+                                        Porcentaje SMLV: {{ calculo.porcentaje_salario_minimo }}% + 
+                                        Puntos: {{ calculo.puntos_adicionales }}%
+                                        <span class="badge bg-info ms-2" title="Fuente de los puntos adicionales">
+                                            {{ fuente_puntos.fuente }}
+                                        </span>
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card bg-info text-white">
+                                <div class="card-body text-center">
+                                    <h6>Incremento</h6>
+                                    <h3>${{ calculo.valor_incremento|floatformat:2|intcomma }}</h3>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card bg-success text-white">
+                                <div class="card-body text-center">
+                                    <h6>Nuevo Canon</h6>
+                                    <h3>${{ calculo.nuevo_canon|floatformat:2|intcomma }}</h3>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {% if calculo.observaciones %}
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-comment"></i> Observaciones
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p>{{ calculo.observaciones }}</p>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+

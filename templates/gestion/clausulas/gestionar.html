@@ -1,0 +1,175 @@
+{% extends 'base.html' %}
+
+{% block title %}Gestionar Cláusulas - Gestión de Contratos{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="display-6">
+                    <i class="fas fa-file-contract text-primary"></i> Gestionar Cláusulas
+                </h1>
+                <div>
+                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalCrearClausula">
+                        <i class="fas fa-plus"></i> Nueva Cláusula
+                    </button>
+                    <a href="{% url 'gestion:parametrizar_clausulas' %}" class="btn btn-info">
+                        <i class="fas fa-cog"></i> Parametrizar Cláusulas
+                    </a>
+                    <a href="{% url 'gestion:dashboard' %}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm border-0">
+                <div class="card-header" style="background: linear-gradient(135deg, var(--avenida-cyan) 0%, var(--avenida-blue) 100%); color: white;">
+                    <h5 class="mb-0">
+                        <i class="fas fa-list"></i> Cláusulas Disponibles
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if clausulas %}
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th style="width: 5%;">Orden</th>
+                                        <th>Título</th>
+                                        <th class="text-center">Estado</th>
+                                        <th class="text-center">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for clausula in clausulas %}
+                                    <tr>
+                                        <td>{{ clausula.orden }}</td>
+                                        <td><strong>{{ clausula.titulo }}</strong></td>
+                                        <td class="text-center">
+                                            {% if clausula.activa %}
+                                                <span class="badge bg-success">Activa</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">Inactiva</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-center">
+                                            <div class="btn-group" role="group">
+                                                <button type="button" class="btn btn-sm btn-outline-warning" 
+                                                        onclick="editarClausula({{ clausula.id }}, '{{ clausula.titulo|escapejs }}', {{ clausula.orden }}, {{ clausula.activa|yesno:"true,false" }})"
+                                                        title="Editar">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                                {% if user.is_staff %}
+                                                <form method="post" action="{% url 'gestion:eliminar_clausula' clausula.id %}" style="display: inline;">
+                                                    {% csrf_token %}
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger" 
+                                                            onclick="return confirm('¿Está seguro de que desea desactivar la cláusula {{ clausula.titulo }}?')"
+                                                            title="Desactivar">
+                                                        <i class="fas fa-trash-alt"></i>
+                                                    </button>
+                                                </form>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-file-contract fa-3x text-muted mb-3"></i>
+                            <h4 class="text-muted">No hay cláusulas registradas</h4>
+                            <p class="text-muted">Crea cláusulas para usarlas en los contratos.</p>
+                            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalCrearClausula">
+                                <i class="fas fa-plus"></i> Crear Cláusula
+                            </button>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Crear Cláusula -->
+<div class="modal fade" id="modalCrearClausula" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" action="{% url 'gestion:crear_clausula' %}">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-plus"></i> Nueva Cláusula</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="titulo" class="form-label">Título <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="titulo" name="titulo" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="orden" class="form-label">Orden</label>
+                        <input type="number" class="form-control" id="orden" name="orden" value="0">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Crear</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Editar Cláusula -->
+<div class="modal fade" id="modalEditarClausula" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" action="" id="formEditarClausula">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-edit"></i> Editar Cláusula</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="titulo_edit" class="form-label">Título <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="titulo_edit" name="titulo" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="orden_edit" class="form-label">Orden</label>
+                        <input type="number" class="form-control" id="orden_edit" name="orden" value="0">
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="activa_edit" name="activa">
+                            <label class="form-check-label" for="activa_edit">
+                                Activa
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function editarClausula(id, titulo, orden, activa) {
+    document.getElementById('formEditarClausula').action = `/gestion/clausulas/${id}/editar/`;
+    document.getElementById('titulo_edit').value = titulo;
+    document.getElementById('orden_edit').value = orden;
+    document.getElementById('activa_edit').checked = activa;
+    new bootstrap.Modal(document.getElementById('modalEditarClausula')).show();
+}
+</script>
+{% endblock %}

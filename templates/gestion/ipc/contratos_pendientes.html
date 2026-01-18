@@ -1,0 +1,113 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ titulo }} - Gestión de Contratos{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="display-6">
+                    <i class="fas fa-exclamation-triangle text-warning"></i> {{ titulo }}
+                </h1>
+                <div>
+                    <a href="{% url 'gestion:calcular_ipc' %}" class="btn btn-primary">
+                        <i class="fas fa-calculator"></i> Calcular IPC
+                    </a>
+                    <a href="{% url 'gestion:dashboard' %}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-warning">
+                    <h5 class="mb-0">
+                        <i class="fas fa-list"></i> Contratos que Requieren Ajuste por IPC
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if contratos %}
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i> 
+                            Estos contratos tienen configurado ajuste por IPC y requieren cálculo según su periodicidad.
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Contrato</th>
+                                        <th>Arrendatario</th>
+                                        <th>Periodicidad</th>
+                                        <th>Mes Aumento</th>
+                                        <th>Puntos Adicionales</th>
+                                        <th>Último Cálculo</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for contrato in contratos %}
+                                        <tr>
+                                            <td>
+                                                <a href="{% url 'gestion:detalle_contrato' contrato.id %}">
+                                                    {{ contrato.num_contrato }}
+                                                </a>
+                                            </td>
+                                            <td>{{ contrato.arrendatario.razon_social }}</td>
+                                            <td>
+                                                <span class="badge bg-info">
+                                                    {{ contrato.get_periodicidad_ipc_display|default:"-" }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                {% if contrato.fecha_aumento_ipc %}
+                                                    {{ contrato.fecha_aumento_ipc|date:"d/m/Y" }}
+                                                {% else %}
+                                                    -
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if contrato.puntos_adicionales_ipc %}
+                                                    <span class="badge bg-secondary">
+                                                        {{ contrato.puntos_adicionales_ipc }}%
+                                                    </span>
+                                                {% else %}
+                                                    <span class="text-muted">-</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% with ultimo_calculo=contrato.calculos_ipc.first %}
+                                                    {% if ultimo_calculo %}
+                                                        <small>{{ ultimo_calculo.fecha_aplicacion|date:"d/m/Y" }}</small>
+                                                    {% else %}
+                                                        <span class="text-muted">Nunca</span>
+                                                    {% endif %}
+                                                {% endwith %}
+                                            </td>
+                                            <td>
+                                                <a href="{% url 'gestion:calcular_ipc' %}?contrato={{ contrato.id }}" class="btn btn-sm btn-primary" title="Calcular IPC">
+                                                    <i class="fas fa-calculator"></i> Calcular
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-success">
+                            <i class="fas fa-check-circle"></i> 
+                            No hay contratos pendientes de ajuste por IPC en este momento.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

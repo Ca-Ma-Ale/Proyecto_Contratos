@@ -1,0 +1,165 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ titulo }} - Gestión de Contratos{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="display-6">
+                    <i class="fas fa-trash-alt text-danger"></i> {{ titulo }}
+                </h1>
+                <a href="{% url 'gestion:lista_arrendatarios' %}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Volver a Lista
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-exclamation-triangle"></i> Confirmar Eliminación
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-danger">
+                        <h6><i class="fas fa-warning"></i> ¡ATENCIÓN!</h6>
+                        <p class="mb-0">
+                            Está a punto de eliminar permanentemente el arrendatario <strong>{{ arrendatario.razon_social }}</strong>. 
+                            Esta acción no se puede deshacer.
+                        </p>
+                    </div>
+
+                    <!-- Información del arrendatario -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <h6>Información del Arrendatario</h6>
+                            <table class="table table-sm">
+                                <tr>
+                                    <td><strong>NIT:</strong></td>
+                                    <td>{{ arrendatario.nit }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Razón Social:</strong></td>
+                                    <td>{{ arrendatario.razon_social }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Representante Legal:</strong></td>
+                                    <td>{{ arrendatario.nombre_rep_legal }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Supervisor Operativo:</strong></td>
+                                    <td>
+                                        {% if arrendatario.nombre_supervisor_op %}
+                                            {{ arrendatario.nombre_supervisor_op }}
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Advertencias</h6>
+                            <div class="alert alert-warning">
+                                <strong>Importante:</strong> No se puede eliminar un arrendatario que tenga contratos asociados. 
+                                Si este arrendatario tiene contratos activos, la eliminación será bloqueada.
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Formulario de confirmación -->
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="confirmar" required>
+                                    <label class="form-check-label" for="confirmar">
+                                        <strong>Confirmo que deseo eliminar permanentemente este arrendatario.</strong>
+                                    </label>
+                                </div>
+                                
+                                <div class="d-flex gap-2">
+                                    <button type="submit" class="btn btn-danger" id="btn-eliminar" disabled>
+                                        <i class="fas fa-trash-alt"></i> Eliminar Arrendatario
+                                    </button>
+                                    <a href="{% url 'gestion:lista_arrendatarios' %}" class="btn btn-secondary">
+                                        <i class="fas fa-times"></i> Cancelar
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Panel de información adicional -->
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header" style="background-color: var(--avenida-dark); color: white;">
+                    <h6 class="mb-0">
+                        <i class="fas fa-info-circle"></i> Información Adicional
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <p class="mb-3">
+                        <strong>¿Por qué eliminar un arrendatario?</strong><br>
+                        Los arrendatarios se eliminan cuando:
+                    </p>
+                    <ul class="small">
+                        <li>Se creó por error</li>
+                        <li>Ya no opera en el centro comercial</li>
+                        <li>Se consolidó información duplicada</li>
+                        <li>Datos incorrectos que deben eliminarse</li>
+                    </ul>
+                    
+                    <div class="alert alert-info">
+                        <h6><i class="fas fa-lightbulb"></i> Alternativas</h6>
+                        <p class="mb-0 small">
+                            Antes de eliminar, verifique que no tenga contratos asociados. 
+                            Si tiene contratos activos, no será posible eliminarlo.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mt-3">
+                <div class="card-header" style="background-color: var(--avenida-orange); color: white;">
+                    <h6 class="mb-0">
+                        <i class="fas fa-shield-alt"></i> Seguridad
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <p class="mb-0 small">
+                        Esta acción está protegida por confirmación para evitar eliminaciones accidentales. 
+                        Una vez confirmada, la eliminación es irreversible.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Habilitar/deshabilitar botón de eliminación
+document.getElementById('confirmar').addEventListener('change', function() {
+    const btnEliminar = document.getElementById('btn-eliminar');
+    btnEliminar.disabled = !this.checked;
+    
+    if (this.checked) {
+        btnEliminar.classList.remove('btn-secondary');
+        btnEliminar.classList.add('btn-danger');
+    } else {
+        btnEliminar.classList.remove('btn-danger');
+        btnEliminar.classList.add('btn-secondary');
+    }
+});
+</script>
+{% endblock %}
+

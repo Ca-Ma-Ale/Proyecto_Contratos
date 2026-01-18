@@ -1,0 +1,257 @@
+{% extends 'base.html' %}
+
+{% block title %}Auditoría de Cláusulas - Contrato {{ contrato.num_contrato }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-lg border-0">
+                <div class="card-header" style="background: linear-gradient(135deg, var(--avenida-orange) 0%, var(--avenida-magenta) 100%); color: white;">
+                    <h4 class="mb-0">
+                        <i class="fas fa-clipboard-check"></i> Auditoría de Cláusulas - Contrato {{ contrato.num_contrato }}
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>Instrucciones:</strong> Marque las cláusulas que tiene el contrato. 
+                        El sistema verificará si faltan cláusulas obligatorias según la parametrización.
+                    </div>
+
+                    {% if clausulas_faltantes %}
+                    <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                        <h5><i class="fas fa-exclamation-triangle"></i> Cláusulas Obligatorias Faltantes</h5>
+                        <p>El siguiente contrato requiere las siguientes cláusulas obligatorias que aún no están marcadas:</p>
+                        <ul class="mb-0">
+                            {% for clausula in clausulas_faltantes %}
+                            <li><strong>{{ clausula.titulo }}</strong></li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endif %}
+
+                    <form id="formAuditoria" method="post" action="{% url 'gestion:guardar_clausulas_contrato' contrato.id %}">
+                        {% csrf_token %}
+                        
+                        <div class="mb-4">
+                            <h5 class="mb-3">
+                                <i class="fas fa-list-check"></i> Cláusulas Disponibles
+                            </h5>
+                            
+                            {% if clausulas_disponibles %}
+                                <div class="row">
+                                    {% for clausula in clausulas_disponibles %}
+                                    <div class="col-md-6 mb-3">
+                                        <div class="card {% if clausula.id in clausulas_obligatorias_ids %}border-warning{% endif %}">
+                                            <div class="card-body">
+                                                <div class="form-check">
+                                                    <input class="form-check-input clausula-checkbox" 
+                                                           type="checkbox" 
+                                                           name="clausulas[]" 
+                                                           value="{{ clausula.id }}" 
+                                                           id="clausula_{{ clausula.id }}"
+                                                           {% if clausula.id in clausulas_contrato %}checked{% endif %}
+                                                           {% if clausula.id in clausulas_obligatorias_ids %}data-obligatoria="true"{% endif %}>
+                                                    <label class="form-check-label w-100" for="clausula_{{ clausula.id }}">
+                                                        <strong>
+                                                            {{ clausula.titulo }}
+                                                            {% if clausula.id in clausulas_obligatorias_ids %}
+                                                                <span class="badge bg-warning text-dark ms-2">Obligatoria</span>
+                                                            {% endif %}
+                                                        </strong>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                <div class="alert alert-warning">
+                                    <i class="fas fa-exclamation-triangle"></i> 
+                                    No hay cláusulas disponibles en el sistema.
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top">
+                            <div>
+                                <a href="{% url 'gestion:detalle_contrato' contrato.id %}" class="btn btn-secondary">
+                                    <i class="fas fa-arrow-left"></i> Volver al Contrato
+                                </a>
+                            </div>
+                            <div>
+                                <button type="button" class="btn btn-warning" id="btnContinuarSinCompletar" style="display: none;">
+                                    <i class="fas fa-exclamation-triangle"></i> Continuar Sin Completar
+                                </button>
+                                <button type="submit" class="btn btn-primary" id="btnGuardar">
+                                    <i class="fas fa-save"></i> Guardar Cláusulas
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('formAuditoria');
+    const btnContinuarSinCompletar = document.getElementById('btnContinuarSinCompletar');
+    const checkboxes = document.querySelectorAll('.clausula-checkbox');
+    
+    function verificarClausulasObligatorias() {
+        const obligatorias = document.querySelectorAll('.clausula-checkbox[data-obligatoria="true"]');
+        const faltantes = [];
+        
+        obligatorias.forEach(function(checkbox) {
+            if (!checkbox.checked) {
+                faltantes.push(checkbox.closest('.card'));
+            }
+        });
+        
+        if (faltantes.length > 0) {
+            btnContinuarSinCompletar.style.display = 'inline-block';
+            faltantes.forEach(function(card) {
+                card.classList.add('border-danger');
+            });
+            return false;
+        } else {
+            btnContinuarSinCompletar.style.display = 'none';
+            document.querySelectorAll('.card').forEach(function(card) {
+                card.classList.remove('border-danger');
+            });
+            return true;
+        }
+    }
+    
+    checkboxes.forEach(function(checkbox) {
+        checkbox.addEventListener('change', verificarClausulasObligatorias);
+    });
+    
+    verificarClausulasObligatorias();
+    
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(form);
+        const btnGuardar = document.getElementById('btnGuardar');
+        btnGuardar.disabled = true;
+        btnGuardar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
+        
+        fetch(form.action, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': formData.get('csrfmiddlewaretoken')
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                if (data.tiene_advertencias && !formData.get('continuar_sin_completar')) {
+                    let mensaje = 'Faltan las siguientes cláusulas obligatorias:\n\n';
+                    data.clausulas_faltantes.forEach(function(c) {
+                        mensaje += '• ' + c.titulo + '\n';
+                    });
+                    mensaje += '\n¿Desea continuar de todas formas?';
+                    
+                    if (confirm(mensaje)) {
+                        formData.append('continuar_sin_completar', 'true');
+                        fetch(form.action, {
+                            method: 'POST',
+                            body: formData,
+                            headers: {
+                                'X-CSRFToken': formData.get('csrfmiddlewaretoken')
+                            }
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                let redirectUrl = data.redirect_url || '{% url "gestion:detalle_contrato" contrato.id %}';
+                                if (!redirectUrl.startsWith('http') && !redirectUrl.startsWith('/')) {
+                                    redirectUrl = '/' + redirectUrl;
+                                }
+('Redirigiendo a:', redirectUrl);
+                                window.location.replace(redirectUrl);
+                            } else {
+                                alert('Error: ' + (data.error || 'Error desconocido'));
+                                btnGuardar.disabled = false;
+                                btnGuardar.innerHTML = '<i class="fas fa-save"></i> Guardar Cláusulas';
+                            }
+                        });
+                    } else {
+                        btnGuardar.disabled = false;
+                        btnGuardar.innerHTML = '<i class="fas fa-save"></i> Guardar Cláusulas';
+                    }
+                } else {
+                    let redirectUrl = data.redirect_url || '{% url "gestion:detalle_contrato" contrato.id %}';
+                    if (!redirectUrl.startsWith('http') && !redirectUrl.startsWith('/')) {
+                        redirectUrl = '/' + redirectUrl;
+                    }
+                    window.location.replace(redirectUrl);
+                }
+            } else {
+                alert('Error: ' + (data.error || 'Error desconocido'));
+                btnGuardar.disabled = false;
+                btnGuardar.innerHTML = '<i class="fas fa-save"></i> Guardar Cláusulas';
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error al guardar las cláusulas. Por favor, intente nuevamente.');
+            btnGuardar.disabled = false;
+            btnGuardar.innerHTML = '<i class="fas fa-save"></i> Guardar Cláusulas';
+        });
+    });
+    
+    btnContinuarSinCompletar.addEventListener('click', function() {
+        const formData = new FormData(form);
+        formData.append('continuar_sin_completar', 'true');
+        
+        const btn = this;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
+        
+        fetch(form.action, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': formData.get('csrfmiddlewaretoken')
+            }
+        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                let redirectUrl = data.redirect_url || '{% url "gestion:detalle_contrato" contrato.id %}';
+                                if (!redirectUrl.startsWith('http') && !redirectUrl.startsWith('/')) {
+                                    redirectUrl = '/' + redirectUrl;
+                                }
+('Redirigiendo a:', redirectUrl);
+                                window.location.replace(redirectUrl);
+                            } else {
+                                alert('Error: ' + (data.error || 'Error desconocido'));
+                                btn.disabled = false;
+                                btn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Continuar Sin Completar';
+                            }
+                        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error al guardar las cláusulas. Por favor, intente nuevamente.');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Continuar Sin Completar';
+        });
+    });
+});
+</script>
+
+<style>
+.card.border-danger {
+    border-width: 2px !important;
+    background-color: #fff5f5;
+}
+</style>
+{% endblock %}

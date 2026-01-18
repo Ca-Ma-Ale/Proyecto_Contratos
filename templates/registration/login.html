@@ -1,0 +1,205 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iniciar Sesión - {% if empresa_config %}{{ empresa_config.nombre_empresa }}{% else %}Sistema de Contratos{% endif %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --avenida-green: #8BC34A;
+            --avenida-orange: #FF9800;
+            --avenida-cyan: #00BCD4;
+            --avenida-magenta: #E91E63;
+            --avenida-dark: #2C3E50;
+        }
+        
+        body {
+            background: linear-gradient(135deg, var(--avenida-dark) 0%, #34495e 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .login-container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            overflow: hidden;
+            max-width: 900px;
+            width: 100%;
+        }
+        
+        .login-left {
+            background: linear-gradient(135deg, var(--avenida-orange) 0%, var(--avenida-magenta) 100%);
+            padding: 3rem;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+        
+        .login-logo {
+            margin-bottom: 2rem;
+        }
+        
+        .login-logo h2 {
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            hyphens: auto;
+            line-height: 1.3;
+            font-size: 1.75rem;
+        }
+        
+        .logo-squares {
+            display: inline-block;
+            margin-bottom: 1rem;
+        }
+        
+        .square-color {
+            width: 40px;
+            height: 40px;
+            margin: 3px;
+            border-radius: 5px;
+            display: inline-block;
+        }
+        
+        .login-right {
+            padding: 3rem;
+        }
+        
+        .btn-login {
+            background: linear-gradient(135deg, var(--avenida-orange) 0%, var(--avenida-magenta) 100%);
+            border: none;
+            color: white;
+            padding: 0.75rem;
+            font-weight: bold;
+            border-radius: 8px;
+            transition: transform 0.2s;
+        }
+        
+        .btn-login:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 152, 0, 0.4);
+            color: white;
+        }
+        
+        .form-control:focus {
+            border-color: var(--avenida-orange);
+            box-shadow: 0 0 0 0.2rem rgba(255, 152, 0, 0.25);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="login-container">
+            <div class="row g-0">
+                <!-- Lado Izquierdo - Branding -->
+                <div class="col-md-5 login-left">
+                    <div class="login-logo">
+                        <div class="logo-squares">
+                            <div class="square-color" style="background-color: var(--avenida-green);"></div>
+                            <div class="square-color" style="background-color: var(--avenida-orange);"></div>
+                            <br>
+                            <div class="square-color" style="background-color: var(--avenida-cyan);"></div>
+                            <div class="square-color" style="background-color: var(--avenida-magenta);"></div>
+                        </div>
+                        <h2 class="mb-3">{% if empresa_config %}{{ empresa_config.nombre_empresa }}{% else %}Centro Comercial<br>Avenida de Chile{% endif %}</h2>
+                        <p class="mb-1">NIT: {% if empresa_config %}{{ empresa_config.nit_empresa }}{% else %}860.509.249-3{% endif %}</p>
+                        {% if empresa_config and empresa_config.representante_legal %}
+                        <p>{{ empresa_config.representante_legal }}</p>
+                        {% else %}
+                        <p>Propiedad Horizontal</p>
+                        {% endif %}
+                    </div>
+                    <div>
+                        <i class="fas fa-file-contract fa-4x mb-3"></i>
+                        <h4>Sistema de Gestión de Contratos</h4>
+                        <p>Control y seguimiento de contratos de arrendamiento</p>
+                    </div>
+                </div>
+                
+                <!-- Lado Derecho - Formulario -->
+                <div class="col-md-7 login-right">
+                    <h3 class="mb-4">
+                        <i class="fas fa-sign-in-alt text-primary"></i> Iniciar Sesión
+                    </h3>
+                    
+                    {% include 'components/messages.html' with wrapper_class='mb-4' %}
+                    
+                    {% if form.errors %}
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <i class="fas fa-exclamation-circle"></i> 
+                            Usuario o contraseña incorrectos. Por favor, inténtelo de nuevo.
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% endif %}
+                    
+                    <form method="post" action="{% url 'login' %}">
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label for="id_username" class="form-label">
+                                <i class="fas fa-user"></i> Usuario
+                            </label>
+                            <input type="text" name="username" class="form-control form-control-lg" 
+                                   id="id_username" placeholder="Ingrese su usuario" 
+                                   required autofocus>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label for="id_password" class="form-label">
+                                <i class="fas fa-lock"></i> Contraseña
+                            </label>
+                            <input type="password" name="password" class="form-control form-control-lg" 
+                                   id="id_password" placeholder="Ingrese su contraseña" 
+                                   required>
+                        </div>
+                        
+                        <input type="hidden" name="next" value="{{ next }}">
+                        
+                        <button type="submit" class="btn btn-login btn-lg w-100 mb-3">
+                            <i class="fas fa-sign-in-alt"></i> Ingresar al Sistema
+                        </button>
+                        
+                        <div class="text-center text-muted">
+                            <small>
+                                <i class="fas fa-shield-alt"></i> 
+                                Acceso seguro y protegido
+                            </small>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="text-center mt-4 text-white">
+            <small>
+                © 2025 Carlos Muñoz - Desarrollador. Todos los derechos reservados.<br>
+                Software con licencia de uso para {% if empresa_config %}{{ empresa_config.nombre_empresa }}{% else %}Centro Comercial Avenida de Chile - PH{% endif %}
+            </small>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Auto-cerrar alertas después del tiempo especificado
+        document.addEventListener('DOMContentLoaded', function() {
+            const alerts = document.querySelectorAll('.alert.alert-dismissible');
+            alerts.forEach(function(alert) {
+                const dismissTime = 5000;
+                setTimeout(function() {
+                    const bsAlert = new bootstrap.Alert(alert);
+                    bsAlert.close();
+                }, dismissTime);
+            });
+        });
+    </script>
+</body>
+</html>
+

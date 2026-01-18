@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+
+{% block title %}Marcar como Entregado - Gestión de Contratos{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-6 offset-md-3">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-check-circle text-success"></i> Marcar Informe como Entregado
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p>¿Desea marcar como entregado el siguiente informe?</p>
+                    <ul class="list-unstyled">
+                        <li><strong>Contrato:</strong> {{ informe.contrato.num_contrato }}</li>
+                        <li><strong>Arrendatario:</strong> {{ informe.contrato.arrendatario.razon_social }}</li>
+                        <li><strong>Mes/Año:</strong> {{ informe.get_mes_display }}/{{ informe.año }}</li>
+                    </ul>
+
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="fecha_entrega" class="form-label">Fecha de Entrega</label>
+                            <input type="date" class="form-control" id="fecha_entrega" name="fecha_entrega" 
+                                   value="{% if informe.fecha_entrega %}{{ informe.fecha_entrega|date:'Y-m-d' }}{% else %}{{ 'now'|date:'Y-m-d' }}{% endif %}">
+                        </div>
+
+                        {% if puede_calcular %}
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="calcular_desde_marcar" name="calcular_desde_marcar" value="true" checked>
+                                <label class="form-check-label" for="calcular_desde_marcar">
+                                    <i class="fas fa-calculator"></i> Calcular facturación después de marcar como entregado
+                                </label>
+                            </div>
+                            <small class="form-text text-muted">
+                                Al marcar como entregado, se abrirá automáticamente el formulario de cálculo de facturación.
+                            </small>
+                        </div>
+                        {% endif %}
+
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'gestion:lista_informes_ventas' %}" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-check"></i> Marcar como Entregado
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

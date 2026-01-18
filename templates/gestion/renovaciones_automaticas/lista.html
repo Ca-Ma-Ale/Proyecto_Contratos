@@ -1,0 +1,397 @@
+{% extends 'base.html' %}
+
+{% block title %}Gestión de Renovaciones Automáticas - Gestión de Contratos{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="display-6">
+                    <i class="fas fa-sync-alt text-primary"></i> Gestión de Renovaciones Automáticas
+                </h1>
+                <div>
+                    <a href="{% url 'gestion:dashboard' %}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i>
+                <strong>Información:</strong> Esta sección muestra los contratos con prórroga automática que están vencidos o próximos a vencer. 
+                Puede autorizar la renovación automática para cada contrato, la cual se realizará por el mismo tiempo inicial del contrato o por un período personalizado.
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-filter"></i> Filtros
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="get">
+                        <div class="row">
+                            <div class="col-md-3">
+                                {{ filtro_form.tipo_contrato_cliente_proveedor.label_tag }}
+                                {{ filtro_form.tipo_contrato_cliente_proveedor }}
+                            </div>
+                            <div class="col-md-3" id="tipo-contrato-cliente-field">
+                                {{ filtro_form.tipo_contrato.label_tag }}
+                                {{ filtro_form.tipo_contrato }}
+                            </div>
+                            <div class="col-md-3" id="tipo-servicio-proveedor-field" style="display: none;">
+                                {{ filtro_form.tipo_servicio.label_tag }}
+                                {{ filtro_form.tipo_servicio }}
+                            </div>
+                            <div class="col-md-3">
+                                {{ filtro_form.buscar.label_tag }}
+                                {{ filtro_form.buscar }}
+                            </div>
+                        </div>
+                        <div class="row mt-3">
+                            <div class="col-12">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-search"></i> Buscar
+                                </button>
+                                <a href="{% url 'gestion:gestion_renovaciones_automaticas' %}" class="btn btn-secondary">
+                                    <i class="fas fa-times"></i> Limpiar
+                                </a>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header" style="background-color: var(--avenida-orange); color: white;">
+                    <h5 class="mb-0">
+                        <i class="fas fa-sync-alt"></i> 
+                        Contratos con Renovación Automática Pendiente
+                        <span class="badge bg-light text-dark ms-2">{{ total_alertas }}</span>
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if alertas_con_dias_abs %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Tipo</th>
+                                        <th>Contrato</th>
+                                        <th>Razón Social</th>
+                                        <th>Local / Tipo de Servicio</th>
+                                        <th>Fecha Final Actual</th>
+                                        <th>Días Restantes</th>
+                                        <th>Duración Inicial</th>
+                                        <th>Total Renovaciones</th>
+                                        <th>Última Renovación</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in alertas_con_dias_abs %}
+                                    {% with alerta=item.alerta %}
+                                    {% if alerta.contrato %}
+                                    {% with contrato=alerta.contrato %}
+                                    <tr class="{% if alerta.dias_restantes < 0 %}table-danger{% elif alerta.dias_restantes <= 7 %}table-warning{% endif %}">
+                                        <td>
+                                            {% if contrato.tipo_contrato_cliente_proveedor == 'CLIENTE' %}
+                                                <span class="badge bg-primary">Cliente</span>
+                                            {% elif contrato.tipo_contrato_cliente_proveedor == 'PROVEEDOR' %}
+                                                <span class="badge bg-success">Proveedor</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">{{ contrato.get_tipo_contrato_cliente_proveedor_display|default:"N/A" }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <strong>{{ contrato.num_contrato }}</strong>
+                                            {% if alerta.otrosi_modificador %}
+                                                <br><small class="text-info" title="Modificado por Otrosí">
+                                                    <i class="fas fa-file-signature"></i> {{ alerta.otrosi_modificador }}
+                                                </small>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if contrato.tipo_contrato_cliente_proveedor == 'CLIENTE' %}
+                                                {% if contrato.arrendatario %}{{ contrato.arrendatario.razon_social }}{% else %}<span class="text-muted">N/A</span>{% endif %}
+                                            {% elif contrato.tipo_contrato_cliente_proveedor == 'PROVEEDOR' %}
+                                                {% if contrato.proveedor %}{{ contrato.proveedor.razon_social }}{% else %}<span class="text-muted">N/A</span>{% endif %}
+                                            {% else %}
+                                                <span class="text-muted">N/A</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if contrato.tipo_contrato_cliente_proveedor == 'CLIENTE' %}
+                                                {% if contrato.local %}{{ contrato.local.nombre_comercial_stand }}{% else %}<span class="text-muted">N/A</span>{% endif %}
+                                            {% elif contrato.tipo_contrato_cliente_proveedor == 'PROVEEDOR' %}
+                                                {% if contrato.tipo_servicio %}{{ contrato.tipo_servicio.nombre }}{% else %}<span class="text-muted">N/A</span>{% endif %}
+                                            {% else %}
+                                                <span class="text-muted">N/A</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ alerta.fecha_final_actualizada|date:"d \d\e F \d\e Y" }}</td>
+                                        <td>
+                                            {% if alerta.dias_restantes < 0 %}
+                                                <span class="badge bg-danger">
+                                                    <i class="fas fa-exclamation-circle"></i> Vencido hace {{ item.dias_abs }} días
+                                                </span>
+                                            {% elif alerta.dias_restantes == 0 %}
+                                                <span class="badge bg-danger">
+                                                    <i class="fas fa-exclamation-circle"></i> Vence hoy
+                                                </span>
+                                            {% elif alerta.dias_restantes <= 7 %}
+                                                <span class="badge bg-warning">
+                                                    <i class="fas fa-exclamation-triangle"></i> {{ alerta.dias_restantes }} días
+                                                </span>
+                                            {% else %}
+                                                <span class="badge bg-info">
+                                                    {{ alerta.dias_restantes }} días
+                                                </span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-secondary">{{ alerta.duracion_inicial_meses }} meses</span>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-primary">{{ contrato.total_renovaciones_automaticas }}</span>
+                                        </td>
+                                        <td>
+                                            {% if contrato.fecha_ultima_renovacion_automatica %}
+                                                {{ contrato.fecha_ultima_renovacion_automatica|date:"d/m/Y" }}
+                                                <br><small class="text-muted">
+                                                    Por: {{ contrato.ultima_renovacion_automatica_por }}
+                                                </small>
+                                            {% else %}
+                                                <span class="text-muted">Nunca</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if contrato.id %}
+                                            <a href="{% url 'gestion:autorizar_renovacion_automatica' contrato.id %}" 
+                                               class="btn btn-sm btn-primary" 
+                                               title="Autorizar renovación automática">
+                                                <i class="fas fa-check-circle"></i> Autorizar Renovación
+                                            </a>
+                                            <a href="{% url 'gestion:detalle_contrato' contrato.id %}" 
+                                               class="btn btn-sm btn-outline-secondary" 
+                                               title="Ver detalle del contrato">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            {% else %}
+                                            <span class="text-muted">N/A</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endwith %}
+                                    {% endif %}
+                                    {% endwith %}
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                            <h4 class="text-muted">No hay renovaciones automáticas pendientes</h4>
+                            <p class="text-muted">Todos los contratos con prórroga automática están al día</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header" style="background-color: var(--avenida-red); color: white;">
+                    <h5 class="mb-0">
+                        <i class="fas fa-history"></i> 
+                        Historial de Renovaciones Automáticas
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if renovaciones_existentes %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Tipo</th>
+                                        <th>Número</th>
+                                        <th>Contrato</th>
+                                        <th>Razón Social</th>
+                                        <th>Local / Tipo de Servicio</th>
+                                        <th>Estado</th>
+                                        <th>Fecha Renovación</th>
+                                        <th>Vigencia Desde</th>
+                                        <th>Vigencia Hasta</th>
+                                        <th>Meses</th>
+                                        <th>Aprobado Por</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for renovacion in renovaciones_existentes %}
+                                    {% with contrato=renovacion.contrato %}
+                                    <tr class="{% if renovacion.estado == 'ANULADO' %}table-secondary{% elif renovacion.estado == 'APROBADO' %}table-success{% endif %}">
+                                        <td>
+                                            {% if contrato.tipo_contrato_cliente_proveedor == 'CLIENTE' %}
+                                                <span class="badge bg-primary">Cliente</span>
+                                            {% elif contrato.tipo_contrato_cliente_proveedor == 'PROVEEDOR' %}
+                                                <span class="badge bg-success">Proveedor</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">{{ contrato.get_tipo_contrato_cliente_proveedor_display|default:"N/A" }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <strong>{{ renovacion.numero_renovacion }}</strong>
+                                            <br><small class="text-muted">v{{ renovacion.version }}</small>
+                                        </td>
+                                        <td>
+                                            <a href="{% url 'gestion:detalle_contrato' contrato.pk %}">
+                                                {{ contrato.num_contrato }}
+                                            </a>
+                                        </td>
+                                        <td>
+                                            {% if contrato.tipo_contrato_cliente_proveedor == 'CLIENTE' %}
+                                                {% if contrato.arrendatario %}{{ contrato.arrendatario.razon_social }}{% else %}<span class="text-muted">N/A</span>{% endif %}
+                                            {% elif contrato.tipo_contrato_cliente_proveedor == 'PROVEEDOR' %}
+                                                {% if contrato.proveedor %}{{ contrato.proveedor.razon_social }}{% else %}<span class="text-muted">N/A</span>{% endif %}
+                                            {% else %}
+                                                <span class="text-muted">N/A</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if contrato.tipo_contrato_cliente_proveedor == 'CLIENTE' %}
+                                                {% if contrato.local %}{{ contrato.local.nombre_comercial_stand }}{% else %}<span class="text-muted">N/A</span>{% endif %}
+                                            {% elif contrato.tipo_contrato_cliente_proveedor == 'PROVEEDOR' %}
+                                                {% if contrato.tipo_servicio %}{{ contrato.tipo_servicio.nombre }}{% else %}<span class="text-muted">N/A</span>{% endif %}
+                                            {% else %}
+                                                <span class="text-muted">N/A</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if renovacion.estado == 'APROBADO' %}
+                                                <span class="badge bg-success">{{ renovacion.get_estado_display }}</span>
+                                            {% elif renovacion.estado == 'ANULADO' %}
+                                                <span class="badge bg-secondary">{{ renovacion.get_estado_display }}</span>
+                                            {% elif renovacion.estado == 'BORRADOR' %}
+                                                <span class="badge bg-secondary">{{ renovacion.get_estado_display }}</span>
+                                            {% elif renovacion.estado == 'EN_REVISION' %}
+                                                <span class="badge bg-warning">{{ renovacion.get_estado_display }}</span>
+                                            {% elif renovacion.estado == 'RECHAZADO' %}
+                                                <span class="badge bg-danger">{{ renovacion.get_estado_display }}</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">{{ renovacion.estado }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ renovacion.fecha_renovacion|date:"d/m/Y" }}</td>
+                                        <td>{{ renovacion.effective_from|date:"d/m/Y" }}</td>
+                                        <td>
+                                            {% if renovacion.effective_to %}
+                                                {{ renovacion.effective_to|date:"d/m/Y" }}
+                                            {% else %}
+                                                <span class="text-muted">Sin límite</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-info">{{ renovacion.meses_renovacion }} meses</span>
+                                        </td>
+                                        <td>
+                                            {% if renovacion.aprobado_por %}
+                                                {{ renovacion.aprobado_por }}
+                                                <br><small class="text-muted">
+                                                    {{ renovacion.fecha_aprobacion|date:"d/m/Y H:i" }}
+                                                </small>
+                                            {% else %}
+                                                <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="btn-group" role="group">
+                                                <a href="{% url 'gestion:editar_renovacion_automatica' renovacion.id %}" 
+                                                   class="btn btn-sm btn-warning" 
+                                                   title="Editar renovación automática">
+                                                    <i class="fas fa-edit"></i>
+                                                </a>
+                                                <a href="{% url 'gestion:anular_renovacion_automatica' renovacion.id %}" 
+                                                   class="btn btn-sm btn-danger" 
+                                                   title="Eliminar renovación automática">
+                                                    <i class="fas fa-trash-alt"></i>
+                                                </a>
+                                                <a href="{% url 'gestion:detalle_contrato' contrato.pk %}" 
+                                                   class="btn btn-sm btn-outline-secondary" 
+                                                   title="Ver contrato">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endwith %}
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-history fa-3x text-muted mb-3"></i>
+                            <h4 class="text-muted">No hay renovaciones automáticas registradas</h4>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const tipoContratoField = document.querySelector('#id_tipo_contrato_cliente_proveedor');
+    const tipoContratoClienteField = document.getElementById('tipo-contrato-cliente-field');
+    const tipoServicioProveedorField = document.getElementById('tipo-servicio-proveedor-field');
+    
+    function toggleTipoFields() {
+        const valor = tipoContratoField ? tipoContratoField.value : '';
+        
+        if (valor === 'CLIENTE') {
+            tipoContratoClienteField.style.display = 'block';
+            tipoServicioProveedorField.style.display = 'none';
+            const servicioSelect = tipoServicioProveedorField.querySelector('select');
+            if (servicioSelect) servicioSelect.value = '';
+        } else if (valor === 'PROVEEDOR') {
+            tipoContratoClienteField.style.display = 'none';
+            tipoServicioProveedorField.style.display = 'block';
+            const contratoSelect = tipoContratoClienteField.querySelector('select');
+            if (contratoSelect) contratoSelect.value = '';
+        } else {
+            tipoContratoClienteField.style.display = 'none';
+            tipoServicioProveedorField.style.display = 'none';
+            const contratoSelect = tipoContratoClienteField.querySelector('select');
+            const servicioSelect = tipoServicioProveedorField.querySelector('select');
+            if (contratoSelect) contratoSelect.value = '';
+            if (servicioSelect) servicioSelect.value = '';
+        }
+    }
+    
+    if (tipoContratoField) {
+        tipoContratoField.addEventListener('change', toggleTipoFields);
+        toggleTipoFields(); // Ejecutar al cargar la página
+    }
+});
+</script>
+{% endblock %}
+

@@ -1,0 +1,233 @@
+{% extends 'base.html' %}
+
+{% block title %}Informes de Ventas - Gestión de Contratos{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="display-6">
+                    <i class="fas fa-chart-line text-primary"></i> Informes de Ventas
+                </h1>
+                <div>
+                    <a href="{% url 'gestion:lista_informes_ventas' %}" class="btn btn-primary">
+                        <i class="fas fa-list"></i> Ver Contratos
+                    </a>
+                    <a href="{% url 'gestion:exportar_informes_excel' %}?{{ request.GET.urlencode }}" 
+                       class="btn btn-success" 
+                       id="btn-exportar-excel"
+                       data-total-registros="{{ total_informes }}"
+                       title="Exportar los informes filtrados a Excel">
+                        <i class="fas fa-file-excel"></i> Exportar Excel
+                    </a>
+                    <a href="{% url 'gestion:dashboard' %}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Estadísticas -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card stat-card">
+                <div class="card-body text-center">
+                    <h3>{{ total_informes }}</h3>
+                    <p class="mb-0">Total Informes (Filtrados)</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stat-card">
+                <div class="card-body text-center">
+                    <h3 class="text-success">{{ total_entregados }}</h3>
+                    <p class="mb-0">Entregados</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stat-card">
+                <div class="card-body text-center">
+                    <h3 class="text-warning">{{ total_pendientes }}</h3>
+                    <p class="mb-0">Pendientes</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-filter"></i> Filtros
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="get">
+                        <div class="row">
+                            <div class="col-md-3">
+                                {{ filtro_form.tipo_contrato_cliente_proveedor.label_tag }}
+                                {{ filtro_form.tipo_contrato_cliente_proveedor }}
+                            </div>
+                            <div class="col-md-3">
+                                {{ filtro_form.tipo_contrato.label_tag }}
+                                {{ filtro_form.tipo_contrato }}
+                            </div>
+                            <div class="col-md-2">
+                                {{ filtro_form.mes.label_tag }}
+                                {{ filtro_form.mes }}
+                            </div>
+                            <div class="col-md-2">
+                                {{ filtro_form.año.label_tag }}
+                                {{ filtro_form.año }}
+                            </div>
+                            <div class="col-md-2">
+                                {{ filtro_form.estado.label_tag }}
+                                {{ filtro_form.estado }}
+                            </div>
+                        </div>
+                        <div class="row mt-3">
+                            <div class="col-md-4">
+                                {{ filtro_form.buscar.label_tag }}
+                                {{ filtro_form.buscar }}
+                            </div>
+                        </div>
+                        <div class="row mt-3">
+                            <div class="col-12">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-search"></i> Buscar
+                                </button>
+                                <a href="{% url 'gestion:lista_informes_entregados' %}" class="btn btn-secondary">
+                                    <i class="fas fa-times"></i> Limpiar
+                                </a>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lista de Informes -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-list"></i> Lista de Informes
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if informes %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Contrato</th>
+                                        <th>Arrendatario</th>
+                                        <th>Local</th>
+                                        <th>Mes/Año</th>
+                                        <th>Estado</th>
+                                        <th>Fecha Entrega</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for informe in informes %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ informe.contrato.num_contrato }}</strong>
+                                        </td>
+                                        <td>{{ informe.contrato.arrendatario.razon_social }}</td>
+                                        <td>{{ informe.contrato.local.nombre_comercial_stand }}</td>
+                                        <td>
+                                            <strong>{{ informe.get_mes_display }}/{{ informe.año }}</strong>
+                                        </td>
+                                        <td>
+                                            {% if informe.estado == 'ENTREGADO' %}
+                                                <span class="badge bg-success">{{ informe.get_estado_display }}</span>
+                                            {% else %}
+                                                <span class="badge bg-warning">{{ informe.get_estado_display }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if informe.fecha_entrega %}
+                                                {{ informe.fecha_entrega|date:"d/m/Y" }}
+                                            {% else %}
+                                                <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="btn-group" role="group">
+                                                <a href="{% url 'gestion:editar_informe_ventas' informe.id %}" 
+                                                   class="btn btn-sm btn-outline-primary" title="Editar">
+                                                    <i class="fas fa-edit"></i>
+                                                </a>
+                                                <a href="{% url 'gestion:eliminar_informe_ventas' informe.id %}" 
+                                                   class="btn btn-sm btn-outline-danger" title="Eliminar"
+                                                   onclick="return confirm('¿Está seguro de que desea eliminar este informe?')">
+                                                    <i class="fas fa-trash-alt"></i>
+                                                </a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i> No se encontraron informes con los filtros aplicados.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const btnExportar = document.getElementById('btn-exportar-excel');
+    if (btnExportar) {
+        btnExportar.addEventListener('click', function(event) {
+            const totalRegistros = parseInt(btnExportar.getAttribute('data-total-registros')) || 0;
+            
+            // Verificar si hay filtros aplicados
+            const urlParams = new URLSearchParams(window.location.search);
+            const tieneFiltros = urlParams.toString().length > 0;
+            
+            let mensaje = '⚠️ ATENCIÓN: Exportación de Informes\n\n';
+            
+            if (tieneFiltros) {
+                mensaje += 'Se exportarán únicamente los informes que se encuentran en el segmento/filtro actual.\n\n';
+                mensaje += `Total de registros a exportar: ${totalRegistros}\n\n`;
+                mensaje += 'Si desea exportar todos los informes o ajustar los filtros, puede:\n';
+                mensaje += '• Limpiar los filtros para exportar todos los informes\n';
+                mensaje += '• Ajustar los filtros antes de exportar\n\n';
+            } else {
+                mensaje += 'Se exportarán TODOS los informes de ventas registrados.\n\n';
+                mensaje += `Total de registros a exportar: ${totalRegistros}\n\n`;
+                mensaje += 'Si desea exportar solo un segmento específico, puede aplicar filtros antes de exportar.\n\n';
+            }
+            
+            mensaje += '¿Desea continuar con la exportación?';
+            
+            const confirmar = confirm(mensaje);
+            
+            if (!confirmar) {
+                event.preventDefault();
+                return false;
+            }
+            
+            return true;
+        });
+    }
+});
+</script>
+{% endblock %}
+

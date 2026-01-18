@@ -1,0 +1,49 @@
+# Configuración para Producción
+# Copia este archivo a .env y configura tus valores reales
+
+# Django Settings
+SECRET_KEY=tu-clave-secreta-super-segura-aqui-cambiar-en-produccion
+DEBUG=False
+ALLOWED_HOSTS=tu-usuario.pythonanywhere.com,localhost,127.0.0.1
+
+# Encriptación de Datos Sensibles
+# IMPORTANTE: Genera una clave única para encriptar contraseñas de email
+# Generar clave: python -c "from gestion.utils_encryption import generate_encryption_key; print(generate_encryption_key())"
+# ENCRYPTION_KEY=tu-clave-de-encriptacion-generada-aqui
+
+# Database Configuration
+# IMPORTANTE: SQLite es GRATIS y ADECUADA para proyectos pequeños-medianos (< 50 usuarios simultáneos)
+# MySQL requiere plan de pago ($5/mes mínimo) en PythonAnywhere
+# Ver docs/deployment/BASES_DATOS_PYTHONANYWHERE.md para más información
+
+# SQLite (GRATIS - Recomendado para tu proyecto)
+# Ya está configurado por defecto en settings_production.py
+# No requiere configuración adicional
+
+# MySQL (Requiere plan Hacker $5/mes o superior)
+# Descomentar y configurar si migras a MySQL:
+# DATABASE_NAME=tu_usuario$nombre_db
+# DATABASE_USER=tu_usuario
+# DATABASE_PASSWORD=tu_password_mysql
+# DATABASE_HOST=tu_usuario.mysql.pythonanywhere-services.com
+# DATABASE_PORT=3306
+
+# Configuración de Seguridad
+CSRF_TRUSTED_ORIGINS=https://tu-usuario.pythonanywhere.com
+
+# Configuración de Email (opcional, para notificaciones)
+EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_USE_TLS=True
+EMAIL_HOST_USER=tu-email@gmail.com
+EMAIL_HOST_PASSWORD=tu-password-de-aplicacion
+
+# Configuración de Backups Remotos (opcional)
+# Ver backup_config_example.env para configuración detallada
+BACKUP_REMOTE_ENABLED=False
+BACKUP_REMOTE_DESTINATION=onedrive
+BACKUP_ONEDRIVE_PATH=C:\Users\Usuario\OneDrive
+BACKUP_EMAIL_NOTIFICATIONS=False
+BACKUP_EMAIL_RECIPIENTS=admin@empresa.com
+

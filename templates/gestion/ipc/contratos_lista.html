@@ -1,0 +1,186 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Gestión de IPC - Contratos{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1 class="display-6 mb-0">
+                        <i class="fas fa-calculator text-primary"></i> Gestión de IPC
+                    </h1>
+                    <small class="text-muted">Calcular ajustes de canon por IPC para contratos</small>
+                </div>
+                <div>
+                    <a href="{% url 'gestion:lista_calculos_ipc' %}" class="btn btn-info">
+                        <i class="fas fa-list"></i> Ver Cálculos
+                    </a>
+                    <a href="{% url 'gestion:historico_ipc_valores' %}" class="btn btn-secondary">
+                        <i class="fas fa-chart-line"></i> Histórico IPC
+                    </a>
+                    <a href="{% url 'gestion:historico_salario_minimo_valores' %}" class="btn btn-success">
+                        <i class="fas fa-dollar-sign"></i> Histórico SMLV
+                    </a>
+                    <a href="{% url 'gestion:dashboard' %}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm border-0">
+                <div class="card-header" style="background: linear-gradient(135deg, var(--avenida-cyan) 0%, var(--avenida-blue) 100%); color: white;">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="fas fa-file-contract"></i> Contratos Activos
+                        </h5>
+                        <div class="btn-group btn-group-sm" role="group">
+                            {% url 'gestion:lista_ipc_historico' as base_url %}
+                            <a href="{{ base_url }}" class="btn {% if not tipo_filtro_activo %}btn-info text-white fw-bold{% else %}btn-light{% endif %}">Todos</a>
+                            <a href="{{ base_url }}?tipo_contrato_cliente_proveedor=CLIENTE" class="btn {% if tipo_filtro_activo == 'CLIENTE' %}btn-info text-white fw-bold{% else %}btn-light{% endif %}">Clientes</a>
+                            <a href="{{ base_url }}?tipo_contrato_cliente_proveedor=PROVEEDOR" class="btn {% if tipo_filtro_activo == 'PROVEEDOR' %}btn-info text-white fw-bold{% else %}btn-light{% endif %}">Proveedores</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if contratos_info %}
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Contrato</th>
+                                        <th>Tipo</th>
+                                        <th>Tercero</th>
+                                        <th>Local</th>
+                                        <th>Fecha Final</th>
+                                        <th>Fecha Aumento IPC</th>
+                                        <th>Tipo IPC</th>
+                                        <th>Periodicidad</th>
+                                        <th>Último Cálculo</th>
+                                        <th class="text-center">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for info in contratos_info %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ info.contrato.num_contrato }}</strong>
+                                            <br>
+                                            <small class="text-muted">
+                                                {% if info.contrato.tipo_contrato %}
+                                                    {{ info.contrato.tipo_contrato.nombre }}
+                                                {% elif info.contrato.tipo_servicio %}
+                                                    {{ info.contrato.tipo_servicio.nombre }}
+                                                {% else %}
+                                                    -
+                                                {% endif %}
+                                            </small>
+                                        </td>
+                                        <td>
+                                            {% if info.contrato.tipo_contrato_cliente_proveedor == 'PROVEEDOR' %}
+                                                <span class="badge bg-success">Proveedor</span>
+                                            {% else %}
+                                                <span class="badge bg-primary">Cliente</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if info.contrato.obtener_tercero %}
+                                                {{ info.contrato.obtener_nombre_tercero }}
+                                            {% else %}
+                                                <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if info.contrato.tipo_contrato_cliente_proveedor == 'PROVEEDOR' %}
+                                                {% if info.contrato.tipo_servicio %}
+                                                    {{ info.contrato.tipo_servicio.nombre }}
+                                                {% else %}
+                                                    <span class="text-muted">-</span>
+                                                {% endif %}
+                                            {% else %}
+                                                {% if info.contrato.local %}
+                                                    {{ info.contrato.local.nombre_comercial_stand }}
+                                                {% else %}
+                                                    <span class="text-muted">-</span>
+                                                {% endif %}
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if info.fecha_final %}
+                                                {{ info.fecha_final|date:"d/m/Y" }}
+                                            {% else %}
+                                                <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if info.fecha_aumento_ipc %}
+                                                {{ info.fecha_aumento_ipc|date:"d/m/Y" }}
+                                            {% else %}
+                                                <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if info.contrato.tipo_condicion_ipc %}
+                                                <span class="badge bg-primary">
+                                                    {{ info.contrato.get_tipo_condicion_ipc_display }}
+                                                </span>
+                                            {% else %}
+                                                <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if info.contrato.periodicidad_ipc %}
+                                                <span class="badge bg-info">
+                                                    {{ info.contrato.get_periodicidad_ipc_display }}
+                                                </span>
+                                            {% else %}
+                                                <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if info.ultimo_calculo %}
+                                                <small>
+                                                    <strong>{{ info.ultimo_calculo.año_aplicacion }}</strong>
+                                                    <br>
+                                                    {{ info.ultimo_calculo.fecha_calculo|date:"d/m/Y" }}
+                                                    <br>
+                                                    <span class="text-success">
+                                                        ${{ info.ultimo_calculo.nuevo_canon|floatformat:0|intcomma }}
+                                                    </span>
+                                                </small>
+                                            {% else %}
+                                                <span class="text-muted">Sin cálculos</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-center">
+                                            <a href="{% url 'gestion:calcular_ipc' %}?contrato={{ info.contrato.id }}" 
+                                               class="btn btn-sm btn-success" 
+                                               title="Calcular IPC">
+                                                <i class="fas fa-calculator"></i> Calcular
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-info text-center">
+                            <i class="fas fa-info-circle fa-2x mb-3"></i>
+                            <h4>No hay contratos activos</h4>
+                            <p class="text-muted">No se encontraron contratos activos para calcular IPC.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

@@ -1,0 +1,157 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load humanize %}
+
+{% block title %}{{ titulo }} - Gestión de Contratos{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/formatMiles.js' %}"></script>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="display-6">
+                    <i class="fas fa-edit text-warning"></i> {{ titulo }}
+                </h1>
+                <div>
+                    <a href="{% url 'gestion:detalle_calculo_salario_minimo' calculo.id %}" class="btn btn-info">
+                        <i class="fas fa-eye"></i> Ver Detalle
+                    </a>
+                    <a href="{% url 'gestion:lista_calculos_salario_minimo' %}" class="btn btn-secondary">
+                        <i class="fas fa-list"></i> Ver Todos
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-10 offset-md-1">
+            <div class="card">
+                <div class="card-header bg-warning">
+                    <h5 class="mb-0">
+                        <i class="fas fa-edit"></i> Editar Cálculo de Salario Mínimo
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" id="editar-calculo-form" onsubmit="if(typeof cleanFormValues === 'function') cleanFormValues(); return true;">
+                        {% csrf_token %}
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Contrato</label>
+                                <input type="text" class="form-control" value="{{ calculo.contrato.num_contrato }}" readonly>
+                                <small class="form-text text-muted">Este campo no se puede modificar</small>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Fecha de Aplicación</label>
+                                <input type="date" class="form-control" value="{{ calculo.fecha_aplicacion|date:'Y-m-d' }}" readonly>
+                                <small class="form-text text-muted">Este campo no se puede modificar</small>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            {{ form.salario_minimo_historico.label_tag }}
+                            {{ form.salario_minimo_historico }}
+                            {% if form.salario_minimo_historico.help_text %}
+                                <small class="form-text text-muted">{{ form.salario_minimo_historico.help_text }}</small>
+                            {% endif %}
+                            {% if form.salario_minimo_historico.errors %}
+                                <div class="text-danger">{{ form.salario_minimo_historico.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            {{ form.canon_anterior.label_tag }}
+                            {{ form.canon_anterior }}
+                            {% if form.canon_anterior.help_text %}
+                                <small class="form-text text-muted">{{ form.canon_anterior.help_text }}</small>
+                            {% endif %}
+                            {% if form.canon_anterior.errors %}
+                                <div class="text-danger">{{ form.canon_anterior.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            {{ form.porcentaje_salario_minimo.label_tag }}
+                            {{ form.porcentaje_salario_minimo }}
+                            {% if form.porcentaje_salario_minimo.help_text %}
+                                <small class="form-text text-muted">{{ form.porcentaje_salario_minimo.help_text }}</small>
+                            {% endif %}
+                            {% if form.porcentaje_salario_minimo.errors %}
+                                <div class="text-danger">{{ form.porcentaje_salario_minimo.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            {{ form.puntos_adicionales.label_tag }}
+                            {{ form.puntos_adicionales }}
+                            {% if form.puntos_adicionales.help_text %}
+                                <small class="form-text text-muted">{{ form.puntos_adicionales.help_text }}</small>
+                            {% endif %}
+                            {% if form.puntos_adicionales.errors %}
+                                <div class="text-danger">{{ form.puntos_adicionales.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            {{ form.observaciones.label_tag }}
+                            {{ form.observaciones }}
+                            {% if form.observaciones.help_text %}
+                                <small class="form-text text-muted">{{ form.observaciones.help_text }}</small>
+                            {% endif %}
+                            {% if form.observaciones.errors %}
+                                <div class="text-danger">{{ form.observaciones.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            {{ form.estado.label_tag }}
+                            {{ form.estado }}
+                            {% if form.estado.help_text %}
+                                <small class="form-text text-muted">{{ form.estado.help_text }}</small>
+                            {% endif %}
+                            {% if form.estado.errors %}
+                                <div class="text-danger">{{ form.estado.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i>
+                            <strong>Nota:</strong> Al modificar los valores, el cálculo se recalculará automáticamente.
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'gestion:detalle_calculo_salario_minimo' calculo.id %}" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Guardar Cambios
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(function() {
+        if (typeof initMoneyFormatter === 'function') {
+            initMoneyFormatter('.money-input');
+        }
+        if (typeof initPercentageFormatter === 'function') {
+            initPercentageFormatter('.percentage-input');
+        }
+    }, 100);
+});
+</script>
+{% endblock %}
+

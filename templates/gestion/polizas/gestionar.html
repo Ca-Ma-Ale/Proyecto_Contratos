@@ -1,0 +1,686 @@
+{% extends 'base.html' %}
+{% load formato_filters %}
+
+{% block title %}{{ titulo }} - Gestión de Contratos{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="display-6">
+                    <i class="fas fa-shield-alt text-primary"></i> {{ titulo }}
+                </h1>
+                <div>
+                    <a href="{% url 'gestion:nueva_poliza' contrato.id %}" class="btn btn-success">
+                        <i class="fas fa-plus"></i> Nueva Póliza
+                    </a>
+                    <a href="{% url 'gestion:detalle_contrato' contrato.id %}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Volver al Contrato
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Información del Contrato -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header" style="background-color: var(--avenida-dark); color: white;">
+                    <h6 class="mb-0">
+                        <i class="fas fa-file-contract"></i> Información del Contrato
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-3">
+                            <strong>Número:</strong> {{ contrato.num_contrato }}
+                        </div>
+                        {% if contrato.tipo_contrato_cliente_proveedor == 'CLIENTE' %}
+                        <div class="col-md-3">
+                            <strong>Arrendatario:</strong> {% if contrato.arrendatario %}{{ contrato.arrendatario.razon_social }}{% else %}N/A{% endif %}
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Local:</strong> {% if contrato.local %}{{ contrato.local.nombre_comercial_stand }}{% else %}N/A{% endif %}
+                        </div>
+                        {% elif contrato.tipo_contrato_cliente_proveedor == 'PROVEEDOR' %}
+                        <div class="col-md-3">
+                            <strong>Proveedor:</strong> {% if contrato.proveedor %}{{ contrato.proveedor.razon_social }}{% else %}N/A{% endif %}
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Tipo de Servicio:</strong> {% if contrato.tipo_servicio %}{{ contrato.tipo_servicio.nombre }}{% else %}N/A{% endif %}
+                        </div>
+                        {% endif %}
+                        <div class="col-md-3">
+                            <strong>Vigencia Actual:</strong> {{ vista_vigente.fecha_final_mostrar|date:"d/m/Y" }}
+                        </div>
+                    </div>
+                    {% if contrato_no_iniciado %}
+                    <div class="alert alert-warning mt-3 mb-0" style="border-left: 4px solid #ffc107; background: #fff3cd;">
+                        <i class="fas fa-calendar-alt text-warning"></i>
+                        <strong>Nota:</strong> Este contrato aún no ha iniciado (inicia el {{ contrato.fecha_inicial_contrato|date:"d/m/Y" }}). 
+                        Puede gestionar las pólizas ahora para tener todo documentado antes del inicio del contrato.
+                        {% if otrosi_futuro_polizas %}
+                        <br><i class="fas fa-info-circle"></i> 
+                        <strong>Otro Sí futuro detectado:</strong> Se detectó un Otro Sí aprobado ({{ otrosi_futuro_polizas.numero_otrosi }}) 
+                        que modificará los requisitos de pólizas a partir del {{ otrosi_futuro_polizas.effective_from|date:"d/m/Y" }}. 
+                        Los requisitos mostrados ya consideran este Otro Sí.
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                    {% if vista_vigente.otrosi_vigente %}
+                    <div class="alert alert-info mt-3 mb-0" style="border-left: 4px solid var(--avenida-orange); background: #f0f7ff;">
+                        <i class="fas fa-file-signature text-primary"></i>
+                        Otro Sí vigente: {{ vista_vigente.otrosi_vigente.numero_otrosi }} (v{{ vista_vigente.otrosi_vigente.version }}) desde {{ vista_vigente.otrosi_vigente.effective_from|date:"d/m/Y" }}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Requisitos de Pólizas del Contrato -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header" style="background-color: var(--avenida-orange); color: white;">
+                    <h6 class="mb-0">
+                        <i class="fas fa-clipboard-check"></i> Requisitos de Pólizas del Contrato
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        {% if requisitos_contrato.cumplimiento.exigida %}
+                        <div class="col-md-6">
+                            <div class="alert alert-info">
+                                <h6 class="d-flex justify-content-between align-items-center">
+                                    <span><i class="fas fa-check-circle"></i> Póliza de Cumplimiento Requerida</span>
+                                    {% if requisitos_contrato.cumplimiento.fuente == 'otrosi' %}
+                                    <span class="badge bg-primary text-white"><i class="fas fa-sync-alt"></i> Actualizado por {% if requisitos_contrato.cumplimiento.otrosi_modificador %}{{ requisitos_contrato.cumplimiento.otrosi_modificador }}{% else %}Otro Sí{% endif %}</span>
+                                    {% endif %}
+                                </h6>
+                                <p class="mb-1"><strong>Valor Asegurado:</strong> ${{ requisitos_contrato.cumplimiento.valor|formato_moneda }}</p>
+                                {% if contrato.tipo_contrato_cliente_proveedor == 'CLIENTE' %}
+                                {% with detalles=requisitos_contrato.cumplimiento.detalles %}
+                                <p class="mb-1"><strong>Remuneraciones Mensuales:</strong> ${{ detalles.remuneraciones|default:0|formato_moneda }}</p>
+                                <p class="mb-1"><strong>Servicios Públicos:</strong> ${{ detalles.servicios_publicos|default:0|formato_moneda }}</p>
+                                <p class="mb-1"><strong>IVA:</strong> ${{ detalles.iva|default:0|formato_moneda }}</p>
+                                <p class="mb-1"><strong>Cuota de administración:</strong> ${{ detalles.cuota_admon|default:0|formato_moneda }}</p>
+                                {% endwith %}
+                                {% elif contrato.tipo_contrato_cliente_proveedor == 'PROVEEDOR' %}
+                                {% with detalles=requisitos_contrato.cumplimiento.detalles %}
+                                <div class="mt-2 pt-2 border-top">
+                                    <h6 class="mb-2" style="color: var(--avenida-green); font-weight: 600;">
+                                        <i class="fas fa-shield-alt me-2"></i> Amparos de Cumplimiento
+                                    </h6>
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            {% if detalles.cumplimiento_contrato %}<p class="mb-1"><strong>Cumplimiento del contrato:</strong> ${{ detalles.cumplimiento_contrato|formato_moneda }}</p>{% endif %}
+                                            {% if detalles.buen_manejo_anticipo %}<p class="mb-1"><strong>Buen manejo anticipo:</strong> ${{ detalles.buen_manejo_anticipo|formato_moneda }}</p>{% endif %}
+                                            {% if detalles.amortizacion_anticipo %}<p class="mb-1"><strong>Amortización anticipo:</strong> ${{ detalles.amortizacion_anticipo|formato_moneda }}</p>{% endif %}
+                                            {% if detalles.salarios_prestaciones %}<p class="mb-1"><strong>Salarios y prestaciones:</strong> ${{ detalles.salarios_prestaciones|formato_moneda }}</p>{% endif %}
+                                            {% if detalles.aportes_seguridad_social %}<p class="mb-1"><strong>Aportes seguridad social:</strong> ${{ detalles.aportes_seguridad_social|formato_moneda }}</p>{% endif %}
+                                            {% if detalles.calidad_servicio %}<p class="mb-1"><strong>Calidad del servicio:</strong> ${{ detalles.calidad_servicio|formato_moneda }}</p>{% endif %}
+                                        </div>
+                                        <div class="col-md-6">
+                                            {% if detalles.estabilidad_obra %}<p class="mb-1"><strong>Estabilidad de la obra:</strong> ${{ detalles.estabilidad_obra|formato_moneda }}</p>{% endif %}
+                                            {% if detalles.calidad_bienes %}<p class="mb-1"><strong>Calidad de bienes:</strong> ${{ detalles.calidad_bienes|formato_moneda }}</p>{% endif %}
+                                            {% if detalles.multas %}<p class="mb-1"><strong>Multas:</strong> ${{ detalles.multas|formato_moneda }}</p>{% endif %}
+                                            {% if detalles.clausula_penal %}<p class="mb-1"><strong>Cláusula penal:</strong> ${{ detalles.clausula_penal|formato_moneda }}</p>{% endif %}
+                                            {% if detalles.sanciones_incumplimiento %}<p class="mb-1"><strong>Sanciones incumplimiento:</strong> ${{ detalles.sanciones_incumplimiento|formato_moneda }}</p>{% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endwith %}
+                                {% endif %}
+                                {% if requisitos_contrato.cumplimiento.vigencia %}
+                                <p class="mb-1"><strong>Vigencia Requerida:</strong> {{ requisitos_contrato.cumplimiento.vigencia }} meses</p>
+                                {% endif %}
+                                {% if requisitos_contrato.cumplimiento.fecha_fin %}
+                                <p class="mb-0"><strong>Vigente hasta:</strong> {{ requisitos_contrato.cumplimiento.fecha_fin|date:"d/m/Y" }}</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        {% if requisitos_contrato.arrendamiento.exigida %}
+                        <div class="col-md-6">
+                            <div class="alert alert-primary">
+                                <h6 class="d-flex justify-content-between align-items-center">
+                                    <span><i class="fas fa-home"></i> Póliza de Arrendamiento Requerida</span>
+                                    {% if requisitos_contrato.arrendamiento.fuente == 'otrosi' %}
+                                    <span class="badge bg-primary text-white"><i class="fas fa-sync-alt"></i> Actualizado por {% if requisitos_contrato.arrendamiento.otrosi_modificador %}{{ requisitos_contrato.arrendamiento.otrosi_modificador }}{% else %}Otro Sí{% endif %}</span>
+                                    {% endif %}
+                                </h6>
+                                <p class="mb-1"><strong>Valor Asegurado:</strong> ${{ requisitos_contrato.arrendamiento.valor|formato_moneda }}</p>
+                                {% if contrato.tipo_contrato_cliente_proveedor == 'CLIENTE' %}
+                                {% with detalles=requisitos_contrato.arrendamiento.detalles %}
+                                <p class="mb-1"><strong>Remuneraciones Mensuales:</strong> ${{ detalles.remuneraciones|default:0|formato_moneda }}</p>
+                                <p class="mb-1"><strong>Servicios Públicos:</strong> ${{ detalles.servicios_publicos|default:0|formato_moneda }}</p>
+                                <p class="mb-1"><strong>IVA:</strong> ${{ detalles.iva|default:0|formato_moneda }}</p>
+                                <p class="mb-1"><strong>Cuota de administración:</strong> ${{ detalles.cuota_admon|default:0|formato_moneda }}</p>
+                                {% endwith %}
+                                {% endif %}
+                                {% if requisitos_contrato.arrendamiento.vigencia %}
+                                <p class="mb-1"><strong>Vigencia Requerida:</strong> {{ requisitos_contrato.arrendamiento.vigencia }} meses</p>
+                                {% endif %}
+                                {% if requisitos_contrato.arrendamiento.fecha_fin %}
+                                <p class="mb-0"><strong>Vigente hasta:</strong> {{ requisitos_contrato.arrendamiento.fecha_fin|date:"d/m/Y" }}</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        {% if requisitos_contrato.rce.exigida %}
+                        <div class="col-md-6">
+                            <div class="alert alert-warning">
+                                <h6 class="d-flex justify-content-between align-items-center">
+                                    <span><i class="fas fa-shield-alt"></i> Póliza RCE Requerida</span>
+                                    {% if requisitos_contrato.rce.fuente == 'otrosi' %}
+                                    <span class="badge bg-primary text-white"><i class="fas fa-sync-alt"></i> Actualizado por {% if requisitos_contrato.rce.otrosi_modificador %}{{ requisitos_contrato.rce.otrosi_modificador }}{% else %}Otro Sí{% endif %}</span>
+                                    {% endif %}
+                                </h6>
+                                <p class="mb-1"><strong>Valor Asegurado:</strong> ${{ requisitos_contrato.rce.valor|formato_moneda }}</p>
+                                {% if contrato.tipo_contrato_cliente_proveedor == 'CLIENTE' %}
+                                {% with detalles=requisitos_contrato.rce.detalles %}
+                                <p class="mb-1"><strong>PLO (Propietario, Locatario y Ocupante):</strong> ${{ detalles.plo|default:0|formato_moneda }}</p>
+                                <p class="mb-1"><strong>Patronal:</strong> ${{ detalles.patronal|default:0|formato_moneda }}</p>
+                                <p class="mb-1"><strong>Gastos Médicos de Terceros:</strong> ${{ detalles.gastos_medicos|default:0|formato_moneda }}</p>
+                                <p class="mb-1"><strong>Vehículos Propios y No Propios:</strong> ${{ detalles.vehiculos|default:0|formato_moneda }}</p>
+                                <p class="mb-1"><strong>Contratistas y Subcontratistas:</strong> ${{ detalles.contratistas|default:0|formato_moneda }}</p>
+                                <p class="mb-1"><strong>Perjuicios Extrapatrimoniales:</strong> ${{ detalles.perjuicios|default:0|formato_moneda }}</p>
+                                <p class="mb-1"><strong>Daño Moral:</strong> ${{ detalles.dano_moral|default:0|formato_moneda }}</p>
+                                <p class="mb-1"><strong>Lucro Cesante:</strong> ${{ detalles.lucro_cesante|default:0|formato_moneda }}</p>
+                                {% endwith %}
+                                {% elif contrato.tipo_contrato_cliente_proveedor == 'PROVEEDOR' %}
+                                {% with detalles=requisitos_contrato.rce.detalles %}
+                                <div class="mt-2 pt-2 border-top">
+                                    <h6 class="mb-2" style="color: var(--avenida-orange); font-weight: 600;">
+                                        <i class="fas fa-shield-alt me-2"></i> Coberturas RCE
+                                    </h6>
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            {% if detalles.danos_materiales %}<p class="mb-1"><strong>Daños materiales a terceros:</strong> ${{ detalles.danos_materiales|formato_moneda }}</p>{% endif %}
+                                            {% if detalles.lesiones_personales %}<p class="mb-1"><strong>Lesiones personales a terceros:</strong> ${{ detalles.lesiones_personales|formato_moneda }}</p>{% endif %}
+                                            {% if detalles.muerte_terceros %}<p class="mb-1"><strong>Muerte de terceros:</strong> ${{ detalles.muerte_terceros|formato_moneda }}</p>{% endif %}
+                                            {% if detalles.danos_bienes_terceros %}<p class="mb-1"><strong>Daños a bienes de terceros:</strong> ${{ detalles.danos_bienes_terceros|formato_moneda }}</p>{% endif %}
+                                            {% if detalles.responsabilidad_patronal %}<p class="mb-1"><strong>Responsabilidad patronal:</strong> ${{ detalles.responsabilidad_patronal|formato_moneda }}</p>{% endif %}
+                                            {% if detalles.responsabilidad_cruzada %}<p class="mb-1"><strong>Responsabilidad cruzada:</strong> ${{ detalles.responsabilidad_cruzada|formato_moneda }}</p>{% endif %}
+                                        </div>
+                                        <div class="col-md-6">
+                                            {% if detalles.danos_contratistas %}<p class="mb-1"><strong>Daños por contratistas:</strong> ${{ detalles.danos_contratistas|formato_moneda }}</p>{% endif %}
+                                            {% if detalles.danos_ejecucion_contrato %}<p class="mb-1"><strong>Daños durante ejecución:</strong> ${{ detalles.danos_ejecucion_contrato|formato_moneda }}</p>{% endif %}
+                                            {% if detalles.danos_predios_vecinos %}<p class="mb-1"><strong>Daños en predios vecinos:</strong> ${{ detalles.danos_predios_vecinos|formato_moneda }}</p>{% endif %}
+                                            {% if detalles.gastos_medicos_cobertura %}<p class="mb-1"><strong>Gastos médicos:</strong> ${{ detalles.gastos_medicos_cobertura|formato_moneda }}</p>{% endif %}
+                                            {% if detalles.gastos_defensa %}<p class="mb-1"><strong>Gastos de defensa:</strong> ${{ detalles.gastos_defensa|formato_moneda }}</p>{% endif %}
+                                            {% if detalles.perjuicios_patrimoniales %}<p class="mb-1"><strong>Perjuicios patrimoniales:</strong> ${{ detalles.perjuicios_patrimoniales|formato_moneda }}</p>{% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endwith %}
+                                {% endif %}
+                                {% if requisitos_contrato.rce.vigencia %}
+                                <p class="mb-1"><strong>Vigencia Requerida:</strong> {{ requisitos_contrato.rce.vigencia }} meses</p>
+                                {% endif %}
+                                {% if requisitos_contrato.rce.fecha_fin %}
+                                <p class="mb-0"><strong>Vigente hasta:</strong> {{ requisitos_contrato.rce.fecha_fin|date:"d/m/Y" }}</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        {% if requisitos_contrato.todo_riesgo.exigida %}
+                        <div class="col-md-6">
+                            <div class="alert alert-success">
+                                <h6 class="d-flex justify-content-between align-items-center">
+                                    <span><i class="fas fa-shield-alt"></i> Póliza Todo Riesgo Requerida</span>
+                                    {% if requisitos_contrato.todo_riesgo.fuente == 'otrosi' %}
+                                    <span class="badge bg-primary text-white"><i class="fas fa-sync-alt"></i> Actualizado por {% if requisitos_contrato.todo_riesgo.otrosi_modificador %}{{ requisitos_contrato.todo_riesgo.otrosi_modificador }}{% else %}Otro Sí{% endif %}</span>
+                                    {% endif %}
+                                </h6>
+                                <p class="mb-1"><strong>Valor Asegurado:</strong> ${{ requisitos_contrato.todo_riesgo.valor|formato_moneda }}</p>
+                                {% if requisitos_contrato.todo_riesgo.vigencia %}
+                                <p class="mb-1"><strong>Vigencia Requerida:</strong> {{ requisitos_contrato.todo_riesgo.vigencia }} meses</p>
+                                {% endif %}
+                                {% if requisitos_contrato.todo_riesgo.fecha_fin %}
+                                <p class="mb-0"><strong>Vigente hasta:</strong> {{ requisitos_contrato.todo_riesgo.fecha_fin|date:"d/m/Y" }}</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        {% if requisitos_contrato.otra.exigida %}
+                        <div class="col-md-6">
+                            <div class="alert alert-secondary">
+                                <h6 class="d-flex justify-content-between align-items-center">
+                                    <span><i class="fas fa-shield-alt"></i> {{ requisitos_contrato.otra.nombre|default:"Otra Póliza" }} Requerida</span>
+                                    {% if requisitos_contrato.otra.fuente == 'otrosi' %}
+                                    <span class="badge bg-primary text-white"><i class="fas fa-sync-alt"></i> Actualizado por {% if requisitos_contrato.otra.otrosi_modificador %}{{ requisitos_contrato.otra.otrosi_modificador }}{% else %}Otro Sí{% endif %}</span>
+                                    {% endif %}
+                                </h6>
+                                <p class="mb-1"><strong>Valor Asegurado:</strong> ${{ requisitos_contrato.otra.valor|formato_moneda }}</p>
+                                {% if requisitos_contrato.otra.vigencia %}
+                                <p class="mb-1"><strong>Vigencia Requerida:</strong> {{ requisitos_contrato.otra.vigencia }} meses</p>
+                                {% endif %}
+                                {% if requisitos_contrato.otra.fecha_fin %}
+                                <p class="mb-0"><strong>Vigente hasta:</strong> {{ requisitos_contrato.otra.fecha_fin|date:"d/m/Y" }}</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        {% if not requisitos_contrato.cumplimiento.exigida and not requisitos_contrato.arrendamiento.exigida and not requisitos_contrato.rce.exigida and not requisitos_contrato.todo_riesgo.exigida and not requisitos_contrato.otra.exigida %}
+                        <div class="col-12">
+                            <div class="alert alert-secondary">
+                                <i class="fas fa-info-circle"></i> Este contrato no requiere pólizas específicas.
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Estado de Cumplimiento -->
+    {% if pólizas_faltantes %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-warning">
+                <div class="card-header bg-warning text-dark">
+                    <h6 class="mb-0">
+                        <i class="fas fa-exclamation-triangle"></i> Pólizas Faltantes
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-warning">
+                        <strong>⚠️ Atención:</strong> Faltan las siguientes pólizas requeridas por el contrato:
+                        <ul class="mb-0 mt-2">
+                            {% for tipo in pólizas_faltantes %}
+                            <li>{{ tipo }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Seguimiento de Pólizas -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-clipboard-list"></i> Seguimiento de Pólizas
+                    </h6>
+                </div>
+                <div class="card-body">
+                    {% if seguimientos_poliza_generales %}
+                        <div class="mb-4">
+                            <h6 class="text-uppercase text-muted fw-semibold mb-3">
+                                <i class="fas fa-list-alt me-2"></i>Notas generales por tipo de póliza
+                            </h6>
+                            <div class="list-group list-group-flush">
+                                {% for seguimiento in seguimientos_poliza_generales %}
+                                    <div class="list-group-item px-0">
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <div class="flex-grow-1">
+                                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                                    <span class="fw-semibold text-primary">{{ seguimiento.get_poliza_tipo_display }}</span>
+                                                    <small class="text-muted">
+                                                        <i class="fas fa-clock me-1"></i>{{ seguimiento.fecha_registro|date:"d/m/Y H:i" }}
+                                                    </small>
+                                                </div>
+                                                <p class="mb-1 text-muted">{{ seguimiento.detalle|linebreaksbr }}</p>
+                                                {% if seguimiento.registrado_por %}
+                                                    <small class="text-muted"><i class="fas fa-user-edit me-1"></i>{{ seguimiento.registrado_por }}</small>
+                                                {% endif %}
+                                            </div>
+                                            {% if user.is_staff %}
+                                            <div class="ms-2">
+                                                <div class="btn-group btn-group-sm" role="group">
+                                                    <a href="{% url 'gestion:editar_seguimiento_poliza' seguimiento.id %}" class="btn btn-outline-primary" title="Editar seguimiento">
+                                                        <i class="fas fa-edit"></i>
+                                                    </a>
+                                                    <a href="{% url 'gestion:eliminar_seguimiento_poliza' seguimiento.id %}" class="btn btn-outline-danger" title="Eliminar seguimiento">
+                                                        <i class="fas fa-trash-alt"></i>
+                                                    </a>
+                                                </div>
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% endif %}
+                    {% if polizas_con_seguimiento %}
+                        {% for poliza in polizas_con_seguimiento %}
+                            {% with seguimientos=poliza.seguimientos.all %}
+                                {% if seguimientos %}
+                                    <div class="mb-4">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <h6 class="fw-semibold text-primary mb-0">
+                                                <i class="fas fa-shield-alt me-2"></i>{{ poliza.numero_poliza }} - {{ poliza.get_tipo_display }}
+                                            </h6>
+                                        </div>
+                                        <ul class="list-group list-group-flush">
+                                            {% for seguimiento in seguimientos %}
+                                                <li class="list-group-item px-0">
+                                                    <div class="d-flex justify-content-between align-items-start">
+                                                        <div class="flex-grow-1">
+                                                            <div class="d-flex justify-content-between mb-2">
+                                                                <span class="fw-semibold">{{ seguimiento.registrado_por|default:"Registro" }}</span>
+                                                                <small class="text-muted">
+                                                                    <i class="fas fa-clock me-1"></i>{{ seguimiento.fecha_registro|date:"d/m/Y H:i" }}
+                                                                </small>
+                                                            </div>
+                                                            <p class="mb-0 text-muted">{{ seguimiento.detalle|linebreaksbr }}</p>
+                                                        </div>
+                                                        {% if user.is_staff %}
+                                                        <div class="ms-2">
+                                                            <div class="btn-group btn-group-sm" role="group">
+                                                                <a href="{% url 'gestion:editar_seguimiento_poliza' seguimiento.id %}" class="btn btn-outline-primary" title="Editar seguimiento">
+                                                                    <i class="fas fa-edit"></i>
+                                                                </a>
+                                                                <a href="{% url 'gestion:eliminar_seguimiento_poliza' seguimiento.id %}" class="btn btn-outline-danger" title="Eliminar seguimiento">
+                                                                    <i class="fas fa-trash-alt"></i>
+                                                                </a>
+                                                            </div>
+                                                        </div>
+                                                        {% endif %}
+                                                    </div>
+                                                </li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                {% endif %}
+                            {% endwith %}
+                        {% endfor %}
+                    {% endif %}
+                    {% if not seguimientos_poliza_generales and not polizas_con_seguimiento %}
+                        <p class="mb-0 text-muted">Sin seguimientos registrados para las pólizas.</p>
+                    {% endif %}
+                    <hr>
+                    <div class="mt-3">
+                        <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalAgregarSeguimiento">
+                            <i class="fas fa-plus"></i> Agregar Seguimiento
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lista de Pólizas -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-list"></i> Pólizas Registradas
+                    </h6>
+                </div>
+                <div class="card-body">
+                    {% if polizas %}
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Tipo</th>
+                                        <th>Número</th>
+                                        <th>Aseguradora</th>
+                                        <th>Valor Asegurado</th>
+                                        <th>Vencimiento</th>
+                                        <th>Estado</th>
+                                        <th>Tipo de Entrega</th>
+                                        <th>Cumple Requisitos</th>
+                                        <th>Archivo</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for poliza in polizas %}
+                                    <tr>
+                                        <td>
+                                            <span class="badge bg-primary">{{ poliza.tipo }}</span>
+                                        </td>
+                                        <td>{{ poliza.numero_poliza }}</td>
+                                        <td>{{ poliza.aseguradora|default:"No especificada" }}</td>
+                                        <td>${{ poliza.valor_asegurado|formato_moneda }}</td>
+                                        <td>{{ poliza.fecha_vencimiento }}</td>
+                                        <td>
+                                            {% if poliza.obtener_estado_vigencia == 'Vencida' %}
+                                                <span class="badge bg-danger">
+                                                    <i class="fas fa-times-circle"></i> {{ poliza.obtener_estado_legible }}
+                                                </span>
+                                            {% elif poliza.obtener_dias_para_vencer <= 30 %}
+                                                <span class="badge bg-warning">
+                                                    <i class="fas fa-exclamation-triangle"></i> {{ poliza.obtener_estado_legible }}
+                                                </span>
+                                            {% else %}
+                                                <span class="badge bg-success">
+                                                    <i class="fas fa-check-circle"></i> {{ poliza.obtener_estado_legible }}
+                                                </span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if poliza.estado_aportado == 'Aporte inicial' %}
+                                                <span class="badge bg-primary">{{ poliza.estado_aportado }}</span>
+                                            {% elif poliza.estado_aportado == 'Actualización' %}
+                                                <span class="badge bg-info">{{ poliza.estado_aportado }}</span>
+                                            {% elif poliza.estado_aportado == 'Prórroga' %}
+                                                <span class="badge bg-warning text-dark">{{ poliza.estado_aportado }}</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">{{ poliza.estado_aportado }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% for auditoria in auditoria_polizas %}
+                                                {% if auditoria.poliza.id == poliza.id %}
+                                                    {% if auditoria.validacion.cumple %}
+                                                        <span class="badge bg-success">
+                                                            <i class="fas fa-check"></i> Cumple
+                                                        </span>
+                                                    {% else %}
+                                                        {% with observaciones=auditoria.validacion.observaciones %}
+                                                        {% with total_obs=observaciones|length %}
+                                                        <span 
+                                                            class="badge bg-warning badge-no-cumple" 
+                                                            data-bs-toggle="modal" 
+                                                            data-bs-target="#modalObservaciones{{ poliza.id }}"
+                                                            data-bs-placement="top"
+                                                            data-poliza-id="{{ poliza.id }}"
+                                                            title="Click para ver {{ total_obs }} motivo{{ total_obs|pluralize }} de incumplimiento"
+                                                            style="cursor: pointer;"
+                                                        >
+                                                            <i class="fas fa-exclamation-triangle"></i> No Cumple
+                                                            {% if total_obs > 1 %}
+                                                            <span class="badge bg-danger ms-1">{{ total_obs }}</span>
+                                                            {% endif %}
+                                                        </span>
+                                                        {% endwith %}
+                                                        {% endwith %}
+                                                    {% endif %}
+                                                {% endif %}
+                                            {% endfor %}
+                                        </td>
+                                        <td>
+                                            {% if poliza.url_archivo %}
+                                                <a href="{{ poliza.url_archivo }}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-info" title="Ver archivo">
+                                                    <i class="fas fa-external-link-alt"></i> Ver
+                                                </a>
+                                            {% else %}
+                                                <span class="text-muted">N/A</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="btn-group" role="group">
+                                                <a href="{% url 'gestion:editar_poliza' poliza.id %}" class="btn btn-sm btn-outline-primary">
+                                                    <i class="fas fa-edit"></i> Editar
+                                                </a>
+                                                {% if user.is_staff %}
+                                                <a href="{% url 'gestion:eliminar_poliza' poliza.id %}" class="btn btn-sm btn-outline-danger">
+                                                    <i class="fas fa-trash-alt"></i> Eliminar
+                                                </a>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-shield-alt fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">No hay pólizas registradas</h5>
+                            <p class="text-muted">Agregue la primera póliza para este contrato.</p>
+                            <a href="{% url 'gestion:nueva_poliza' contrato.id %}" class="btn btn-primary">
+                                <i class="fas fa-plus"></i> Agregar Póliza
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modales para Observaciones de Pólizas -->
+{% for poliza in polizas %}
+    {% for auditoria in auditoria_polizas %}
+        {% if auditoria.poliza.id == poliza.id and not auditoria.validacion.cumple %}
+        <div class="modal fade" id="modalObservaciones{{ poliza.id }}" tabindex="-1" aria-labelledby="modalObservacionesLabel{{ poliza.id }}" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header bg-warning text-dark">
+                        <h5 class="modal-title" id="modalObservacionesLabel{{ poliza.id }}">
+                            <i class="fas fa-exclamation-triangle"></i> Observaciones de Cumplimiento
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <h6 class="text-primary">
+                                <i class="fas fa-shield-alt"></i> Póliza: {{ poliza.tipo }}
+                            </h6>
+                            <p class="mb-1"><strong>Número:</strong> {{ poliza.numero_poliza }}</p>
+                            <p class="mb-0"><strong>Aseguradora:</strong> {{ poliza.aseguradora|default:"No especificada" }}</p>
+                        </div>
+                        <hr>
+                        <div>
+                            <h6 class="text-warning mb-3">
+                                <i class="fas fa-list-ul"></i> Motivos por los que no cumple los requisitos:
+                            </h6>
+                            <ul class="list-group">
+                                {% for obs in auditoria.validacion.observaciones %}
+                                <li class="list-group-item">
+                                    <i class="fas fa-times-circle text-danger me-2"></i>
+                                    {{ obs }}
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                            <i class="fas fa-times"></i> Cerrar
+                        </button>
+                        <a href="{% url 'gestion:editar_poliza' poliza.id %}" class="btn btn-primary">
+                            <i class="fas fa-edit"></i> Editar Póliza
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    {% endfor %}
+{% endfor %}
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('.badge-no-cumple'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl, {
+            placement: 'top',
+            trigger: 'hover',
+            delay: { show: 300, hide: 100 }
+        });
+    });
+    
+    document.querySelectorAll('.badge-no-cumple').forEach(function(badge) {
+        badge.addEventListener('click', function() {
+            var tooltipInstance = bootstrap.Tooltip.getInstance(this);
+            if (tooltipInstance) {
+                tooltipInstance.hide();
+            }
+        });
+        
+        badge.addEventListener('mouseenter', function() {
+            this.style.transform = 'scale(1.05)';
+            this.style.transition = 'transform 0.2s';
+        });
+        
+        badge.addEventListener('mouseleave', function() {
+            this.style.transform = 'scale(1)';
+        });
+    });
+});
+</script>
+
+<!-- Modal para Agregar Seguimiento de Póliza -->
+<div class="modal fade" id="modalAgregarSeguimiento" tabindex="-1" aria-labelledby="modalAgregarSeguimientoLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalAgregarSeguimientoLabel">
+                    <i class="fas fa-plus"></i> Agregar Seguimiento de Póliza
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="{% url 'gestion:agregar_seguimiento_poliza' contrato.id %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="poliza_id" class="form-label">Póliza (opcional)</label>
+                        <select class="form-select" id="poliza_id" name="poliza_id">
+                            <option value="">Nota general (sin póliza específica)</option>
+                            {% for poliza in polizas %}
+                                <option value="{{ poliza.id }}">{{ poliza.numero_poliza }} - {{ poliza.get_tipo_display }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="poliza_tipo" class="form-label">Tipo de Póliza (si es nota general)</label>
+                        <select class="form-select" id="poliza_tipo" name="poliza_tipo">
+                            <option value="">Seleccione un tipo</option>
+                            <option value="RCE - Responsabilidad Civil">RCE - Responsabilidad Civil</option>
+                            <option value="Cumplimiento">Cumplimiento</option>
+                            <option value="Poliza de Arrendamiento">Póliza de Arrendamiento</option>
+                            <option value="Arrendamiento">Arrendamiento</option>
+                            <option value="Otra">Otra</option>
+                        </select>
+                        <small class="form-text text-muted">Solo necesario si no selecciona una póliza específica</small>
+                    </div>
+                    <div class="mb-3">
+                        <label for="detalle" class="form-label">Detalle del Seguimiento</label>
+                        <textarea class="form-control" id="detalle" name="detalle" rows="4" required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times"></i> Cancelar
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Guardar Seguimiento
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ titulo }} - Gestión de Contratos{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="display-6">
+                    <i class="fas fa-trash-alt text-danger"></i> {{ titulo }}
+                </h1>
+                {% if contrato %}
+                <a href="{% url 'gestion:vista_vigente_contrato' contrato.id %}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Volver
+                </a>
+                {% else %}
+                <a href="{% url 'gestion:gestionar_polizas' seguimiento.poliza.contrato.id %}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Volver
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-exclamation-triangle"></i> Confirmar Eliminación
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <strong>¿Está seguro de que desea eliminar este seguimiento de póliza?</strong>
+                        <p class="mb-0 mt-2">Esta acción no se puede deshacer.</p>
+                    </div>
+                    
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <h6 class="card-title">Detalle del Seguimiento:</h6>
+                            <p class="card-text">{{ seguimiento.detalle|linebreaksbr }}</p>
+                            <small class="text-muted">
+                                <i class="fas fa-user-edit"></i> {{ seguimiento.registrado_por|default:"Sistema" }} 
+                                <i class="fas fa-clock ms-2"></i> {{ seguimiento.fecha_registro|date:"d/m/Y H:i" }}
+                                {% if seguimiento.poliza_tipo %}
+                                    <br><i class="fas fa-shield-alt"></i> Tipo: {{ seguimiento.get_poliza_tipo_display }}
+                                {% endif %}
+                                {% if seguimiento.poliza %}
+                                    <br><i class="fas fa-file-alt"></i> Póliza: {{ seguimiento.poliza.numero_poliza }}
+                                {% endif %}
+                            </small>
+                        </div>
+                    </div>
+
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="d-flex justify-content-between">
+                            {% if contrato %}
+                            <a href="{% url 'gestion:vista_vigente_contrato' contrato.id %}" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Cancelar
+                            </a>
+                            {% else %}
+                            <a href="{% url 'gestion:gestionar_polizas' seguimiento.poliza.contrato.id %}" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Cancelar
+                            </a>
+                            {% endif %}
+                            <button type="submit" name="accion" value="confirmar" class="btn btn-danger">
+                                <i class="fas fa-trash-alt"></i> Eliminar Seguimiento
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

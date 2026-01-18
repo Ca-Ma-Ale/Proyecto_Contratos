@@ -1,0 +1,2612 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load formato_filters %}
+
+{% block extra_js %}
+<script src="{% static 'js/formatMiles.js' %}"></script>
+<script src="{% static 'js/auto_format_new.js' %}"></script>
+<script src="{% static 'js/format_view_only.js' %}"></script>
+<script src="{% static 'js/format_edit_view.js' %}"></script>
+<script src="{% static 'js/utils_fechas.js' %}"></script>
+{% endblock %}
+
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block content %}
+<style>
+    .form-section {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 15px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        margin-bottom: 2rem;
+        overflow: hidden;
+    }
+    
+    .form-section-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 1.5rem 2rem;
+        border: none;
+        position: relative;
+    }
+    
+    .form-section-header::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%);
+        pointer-events: none;
+    }
+    
+    .form-section-header h4 {
+        font-weight: 600;
+        font-size: 1.3rem;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    
+    .form-section-header i {
+        font-size: 1.4rem;
+        opacity: 0.9;
+    }
+    
+    .form-section-header .form-check {
+        margin: 0;
+    }
+    
+    .form-section-header .form-check-input {
+        width: 1.5rem;
+        height: 1.5rem;
+        margin-right: 0.75rem;
+        margin-top: 0.25rem;
+        cursor: pointer;
+        border: 2px solid rgba(255, 255, 255, 0.5);
+        background-color: rgba(255, 255, 255, 0.2);
+        transition: all 0.3s ease;
+    }
+    
+    .form-section-header .form-check-input:checked {
+        background-color: #ffffff;
+        border-color: #ffffff;
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3e%3cpath fill='none' stroke='%2317a2b8' stroke-width='3' d='M6 10l3 3l6-6'/%3e%3c/svg%3e");
+    }
+    
+    .form-section-header .form-check-input:focus {
+        box-shadow: 0 0 0 0.25rem rgba(255, 255, 255, 0.5);
+        border-color: #ffffff;
+    }
+    
+    .form-section-header .form-check-label {
+        cursor: pointer;
+        user-select: none;
+    }
+    
+    .form-section-body {
+        background: #ffffff;
+        padding: 2rem;
+        border-radius: 0 0 15px 15px;
+    }
+    
+    .form-group-enhanced {
+        margin-bottom: 1.5rem;
+    }
+    
+    .form-label-enhanced {
+        font-weight: 600;
+        color: #2c3e50;
+        margin-bottom: 0.5rem;
+        font-size: 0.95rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    /* Estilos mejorados para todos los campos de entrada */
+    .form-control,
+    .form-control-enhanced,
+    input[type="text"],
+    input[type="number"],
+    input[type="date"],
+    input[type="email"],
+    input[type="tel"],
+    textarea,
+    select {
+        border: 1.5px solid #d1d5db !important;
+        border-radius: 10px !important;
+        padding: 0.875rem 1.125rem !important;
+        font-size: 0.95rem !important;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        background: #ffffff !important;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+        color: #1f2937 !important;
+        font-weight: 400 !important;
+    }
+    
+    .form-control:focus,
+    .form-control-enhanced:focus,
+    input[type="text"]:focus,
+    input[type="number"]:focus,
+    input[type="date"]:focus,
+    input[type="email"]:focus,
+    input[type="tel"]:focus,
+    textarea:focus,
+    select:focus {
+        border-color: var(--avenida-orange) !important;
+        box-shadow: 0 0 0 3px rgba(255, 152, 0, 0.1), 0 4px 12px rgba(0, 0, 0, 0.08) !important;
+        background: #ffffff !important;
+        outline: none !important;
+        transform: translateY(-1px);
+    }
+    
+    .form-control:hover,
+    .form-control-enhanced:hover,
+    input[type="text"]:hover,
+    input[type="number"]:hover,
+    input[type="date"]:hover,
+    input[type="email"]:hover,
+    input[type="tel"]:hover,
+    textarea:hover,
+    select:hover {
+        border-color: #9ca3af !important;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08) !important;
+    }
+    
+    .form-control-enhanced {
+        border: 1.5px solid #d1d5db;
+        border-radius: 10px;
+        padding: 0.875rem 1.125rem;
+        font-size: 0.95rem;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        background: #ffffff;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+    
+    .form-control-enhanced:focus {
+        border-color: var(--avenida-orange);
+        box-shadow: 0 0 0 3px rgba(255, 152, 0, 0.1), 0 4px 12px rgba(0, 0, 0, 0.08);
+        background: #ffffff;
+        outline: none;
+        transform: translateY(-1px);
+    }
+    
+    .form-control-enhanced:hover {
+        border-color: #9ca3af;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+    }
+    
+    /* Estilos mejorados para input-group */
+    .input-group {
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        border-radius: 10px;
+        overflow: hidden;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .input-group:hover {
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+    }
+    
+    .input-group:focus-within {
+        box-shadow: 0 0 0 3px rgba(255, 152, 0, 0.1), 0 4px 12px rgba(0, 0, 0, 0.08);
+    }
+    
+    /* Cuando el input-group-text está a la izquierda (símbolo $) */
+    .input-group > .input-group-text:first-child {
+        background: linear-gradient(135deg, var(--avenida-orange) 0%, #e68900 100%) !important;
+        color: white !important;
+        border: 1.5px solid var(--avenida-orange) !important;
+        border-right: none !important;
+        font-weight: 600 !important;
+        border-radius: 10px 0 0 10px !important;
+        padding: 0.875rem 1rem !important;
+        font-size: 0.95rem !important;
+        box-shadow: none !important;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    }
+    
+    .input-group > .form-control:not(:first-child) {
+        border-left: none !important;
+        border-radius: 0 10px 10px 0 !important;
+    }
+    
+    .input-group:focus-within > .input-group-text:first-child {
+        background: linear-gradient(135deg, #e68900 0%, var(--avenida-orange) 100%) !important;
+        box-shadow: 0 2px 8px rgba(255, 152, 0, 0.2) !important;
+    }
+    
+    /* Cuando el input-group-text está a la derecha */
+    .input-group > .input-group-text:last-child {
+        background: linear-gradient(135deg, var(--avenida-orange) 0%, #e68900 100%) !important;
+        color: white !important;
+        border: 1.5px solid var(--avenida-orange) !important;
+        border-left: none !important;
+        font-weight: 600 !important;
+        border-radius: 0 10px 10px 0 !important;
+        padding: 0.875rem 1rem !important;
+        font-size: 0.95rem !important;
+        box-shadow: none !important;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    }
+    
+    .input-group > .form-control:not(:last-child) {
+        border-right: none !important;
+        border-radius: 10px 0 0 10px !important;
+    }
+    
+    .input-group:focus-within > .input-group-text:last-child {
+        background: linear-gradient(135deg, #e68900 0%, var(--avenida-orange) 100%) !important;
+        box-shadow: 0 2px 8px rgba(255, 152, 0, 0.2) !important;
+    }
+    
+    .input-group-text {
+        background: linear-gradient(135deg, var(--avenida-orange) 0%, #e68900 100%) !important;
+        color: white !important;
+        border: 1.5px solid var(--avenida-orange) !important;
+        font-weight: 600 !important;
+        padding: 0.875rem 1rem !important;
+        font-size: 0.95rem !important;
+        box-shadow: none !important;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    }
+    
+    /* Estilos para campos de fecha */
+    input[type="date"]::-webkit-calendar-picker-indicator {
+        cursor: pointer;
+        opacity: 0.7;
+        transition: opacity 0.3s ease;
+    }
+    
+    input[type="date"]::-webkit-calendar-picker-indicator:hover {
+        opacity: 1;
+    }
+    
+    input[type="date"]::-webkit-inner-spin-button,
+    input[type="date"]::-webkit-calendar-picker-indicator {
+        filter: invert(0.5);
+    }
+    
+    /* Estilos para select */
+    select.form-control,
+    select.form-control-enhanced {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23333' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 1rem center;
+        background-size: 12px;
+        padding-right: 2.5rem;
+        appearance: none;
+        cursor: pointer;
+    }
+    
+    select.form-control:hover,
+    select.form-control-enhanced:hover {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23FF9800' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+    }
+    
+    /* Estilos para textarea */
+    textarea.form-control,
+    textarea.form-control-enhanced {
+        resize: vertical;
+        min-height: 100px;
+        line-height: 1.6;
+    }
+    
+    /* Placeholder mejorado */
+    .form-control::placeholder,
+    .form-control-enhanced::placeholder {
+        color: #9ca3af;
+        opacity: 0.7;
+        font-style: italic;
+    }
+    
+    .input-group-enhanced {
+        position: relative;
+    }
+    
+    .input-group-enhanced .input-group-text {
+        background: linear-gradient(135deg, var(--avenida-orange) 0%, #e68900 100%);
+        color: white;
+        border: 1.5px solid var(--avenida-orange);
+        border-left: none;
+        font-weight: 600;
+        border-radius: 0 10px 10px 0;
+        padding: 0.875rem 1rem;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .input-group-enhanced:focus-within .input-group-text {
+        background: linear-gradient(135deg, #e68900 0%, var(--avenida-orange) 100%);
+        box-shadow: 0 2px 8px rgba(255, 152, 0, 0.2);
+    }
+    
+    .form-check-enhanced {
+        background: #f8f9fa;
+        border: 1px solid #e9ecef;
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        transition: all 0.3s ease;
+    }
+    
+    .form-check-enhanced:hover {
+        background: #e9ecef;
+        border-color: #667eea;
+    }
+    
+    .form-check-enhanced .form-check-input:checked {
+        background-color: #667eea;
+        border-color: #667eea;
+    }
+    
+    .form-check-enhanced .form-check-label {
+        font-weight: 500;
+        color: #2c3e50;
+        margin-left: 0.5rem;
+    }
+    
+    .section-divider {
+        height: 2px;
+        background: linear-gradient(90deg, transparent, #667eea, transparent);
+        margin: 2rem 0;
+        border: none;
+    }
+    
+    .info-text {
+        color: #6c757d;
+        font-size: 0.85rem;
+        font-style: italic;
+        margin-top: 0.25rem;
+    }
+    
+    .success-text {
+        color: #28a745;
+        font-size: 0.85rem;
+        font-weight: 500;
+    }
+    
+    .warning-text {
+        color: #ffc107;
+        font-size: 0.85rem;
+        font-weight: 500;
+    }
+    
+    .btn-enhanced {
+        border-radius: 8px;
+        font-weight: 600;
+        padding: 0.75rem 1.5rem;
+        transition: all 0.3s ease;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-size: 0.9rem;
+    }
+    
+    .btn-primary-enhanced {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+    }
+    
+    .btn-primary-enhanced:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+    }
+    
+    .alert-enhanced {
+        border-radius: 10px;
+        border: none;
+        padding: 1rem 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .alert-info-enhanced {
+        background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+        color: #1565c0;
+        border-left: 4px solid #2196f3;
+    }
+    
+    .card-enhanced {
+        border: none;
+        border-radius: 15px;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+        overflow: hidden;
+    }
+    
+    .header-enhanced {
+        background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+        color: white;
+        padding: 1.5rem 2rem;
+        border: none;
+    }
+    
+    .header-enhanced h3 {
+        font-weight: 700;
+        font-size: 1.5rem;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    
+    .header-enhanced i {
+        font-size: 1.6rem;
+        opacity: 0.9;
+    }
+</style>
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card card-enhanced">
+                <div class="header-enhanced">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h3>
+                            <i class="fas fa-file-contract"></i> {{ titulo }}
+                        </h3>
+                        <a href="{% url 'gestion:dashboard' %}" class="btn btn-outline-light btn-enhanced">
+                            <i class="fas fa-arrow-left"></i> Regresar al Dashboard
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body" style="padding: 2rem;">
+                    <form method="post" id="contrato-form">
+                        {% csrf_token %}
+                        
+                        <!-- 1. Datos Generales del Contrato -->
+                        <div class="form-section">
+                            <div class="form-section-header">
+                                <h4>
+                                    <i class="fas fa-info-circle"></i> 1. Datos Generales del Contrato
+                                </h4>
+                            </div>
+                            <div class="form-section-body">
+                                <!-- Campo Tipo de Contrato (Cliente/Proveedor) - Primero y destacado -->
+                                <div class="row mb-4">
+                                    <div class="col-md-12">
+                                        <div class="form-group-enhanced">
+                                            <label for="{{ form.tipo_contrato_cliente_proveedor.id_for_label }}" class="form-label-enhanced">
+                                                <i class="fas fa-tag text-primary me-2"></i>{{ form.tipo_contrato_cliente_proveedor.label }}
+                                            </label>
+                                            {{ form.tipo_contrato_cliente_proveedor|add_class:"form-control form-control-enhanced" }}
+                                            {% if form.tipo_contrato_cliente_proveedor.errors %}
+                                                <div class="text-danger mt-1">{{ form.tipo_contrato_cliente_proveedor.errors }}</div>
+                                            {% endif %}
+                                            <small class="form-text text-muted mt-2 d-block">
+                                                <i class="fas fa-info-circle"></i> Seleccione si este contrato es para un <strong>Cliente</strong> (arrendatario que ocupa un local, stand, publicidad, etc.) o un <strong>Proveedor</strong> (empresa que presta servicios, compra de bienes, suministros, etc.).
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group-enhanced">
+                                            <label for="{{ form.num_contrato.id_for_label }}" class="form-label-enhanced">{{ form.num_contrato.label }}</label>
+                                            {{ form.num_contrato|add_class:"form-control form-control-enhanced" }}
+                                            {% if form.num_contrato.errors %}
+                                                <div class="text-danger mt-1">{{ form.num_contrato.errors }}</div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group-enhanced">
+                                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                                <label for="{{ form.tipo_contrato.id_for_label }}" class="form-label-enhanced mb-0">{{ form.tipo_contrato.label }}</label>
+                                                <a href="{% url 'gestion:nuevo_tipo_contrato' %}?next={{ request.get_full_path|urlencode }}" class="btn btn-outline-primary btn-enhanced" style="padding: 0.2rem 0.4rem; font-size: 0.75rem;">
+                                                    <i class="fas fa-plus" style="font-size: 0.7rem;"></i> Crear Nuevo
+                                                </a>
+                                            </div>
+                                            {{ form.tipo_contrato|add_class:"form-control form-control-enhanced" }}
+                                            {% if form.tipo_contrato.errors %}
+                                                <div class="text-danger mt-1">{{ form.tipo_contrato.errors }}</div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-md-12">
+                                        <div class="form-group-enhanced">
+                                            <label for="{{ form.objeto_destinacion.id_for_label }}" class="form-label-enhanced">{{ form.objeto_destinacion.label }}</label>
+                                            {{ form.objeto_destinacion|add_class:"form-control form-control-enhanced" }}
+                                            {% if form.objeto_destinacion.errors %}
+                                                <div class="text-danger mt-1">{{ form.objeto_destinacion.errors }}</div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 2. Partes Involucradas -->
+                        <div class="form-section">
+                            <div class="form-section-header" style="background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);">
+                                <h4>
+                                    <i class="fas fa-users"></i> 2. Partes Involucradas
+                                </h4>
+                            </div>
+                            <div class="form-section-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group-enhanced">
+                                            <label for="{{ form.nit_concedente.id_for_label }}" class="form-label-enhanced">{{ form.nit_concedente.label }}</label>
+                                            {{ form.nit_concedente|add_class:"form-control form-control-enhanced" }}
+                                            {% if form.nit_concedente.errors %}
+                                                <div class="text-danger mt-1">{{ form.nit_concedente.errors }}</div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group-enhanced">
+                                            <label for="{{ form.rep_legal_concedente.id_for_label }}" class="form-label-enhanced">{{ form.rep_legal_concedente.label }}</label>
+                                            {{ form.rep_legal_concedente|add_class:"form-control form-control-enhanced" }}
+                                            {% if form.rep_legal_concedente.errors %}
+                                                <div class="text-danger mt-1">{{ form.rep_legal_concedente.errors }}</div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group-enhanced">
+                                            <label for="{{ form.marca_comercial.id_for_label }}" class="form-label-enhanced">{{ form.marca_comercial.label }}</label>
+                                            {{ form.marca_comercial|add_class:"form-control form-control-enhanced" }}
+                                            {% if form.marca_comercial.errors %}
+                                                <div class="text-danger mt-1">{{ form.marca_comercial.errors }}</div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group-enhanced">
+                                            <label for="{{ form.supervisor_concedente.id_for_label }}" class="form-label-enhanced">{{ form.supervisor_concedente.label }}</label>
+                                            {{ form.supervisor_concedente|add_class:"form-control form-control-enhanced" }}
+                                            {% if form.supervisor_concedente.errors %}
+                                                <div class="text-danger mt-1">{{ form.supervisor_concedente.errors }}</div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group-enhanced">
+                                            <label for="{{ form.supervisor_contraparte.id_for_label }}" class="form-label-enhanced">{{ form.supervisor_contraparte.label }}</label>
+                                            {{ form.supervisor_contraparte|add_class:"form-control form-control-enhanced" }}
+                                            {% if form.supervisor_contraparte.errors %}
+                                                <div class="text-danger mt-1">{{ form.supervisor_contraparte.errors }}</div>
+                                            {% endif %}
+                                            <small class="text-muted d-block mt-1">
+                                                <i class="fas fa-lock"></i> Campo de solo lectura - Se auto-completa al seleccionar un Tercero (Cliente o Proveedor)
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Campos para Cliente (Arrendatario y Local) -->
+                                <div class="row" id="campos-cliente">
+                                    <div class="col-md-6">
+                                        <div class="form-group-enhanced">
+                                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                                <label for="{{ form.arrendatario.id_for_label }}" class="form-label-enhanced mb-0">{{ form.arrendatario.label }}</label>
+                                                <a href="{% url 'gestion:nuevo_arrendatario' %}?tipo=ARRENDATARIO&next={{ request.get_full_path|urlencode }}" class="btn btn-outline-primary btn-enhanced" style="padding: 0.2rem 0.4rem; font-size: 0.75rem;">
+                                                    <i class="fas fa-plus" style="font-size: 0.7rem;"></i> Crear Nuevo
+                                                </a>
+                                            </div>
+                                            {{ form.arrendatario|add_class:"form-control form-control-enhanced" }}
+                                            {% if form.arrendatario.errors %}
+                                                <div class="text-danger mt-1">{{ form.arrendatario.errors }}</div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group-enhanced">
+                                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                                <label for="{{ form.local.id_for_label }}" class="form-label-enhanced mb-0">{{ form.local.label }}</label>
+                                                <a href="{% url 'gestion:nuevo_local' %}?next={{ request.get_full_path|urlencode }}" class="btn btn-outline-primary btn-enhanced" style="padding: 0.2rem 0.4rem; font-size: 0.75rem;">
+                                                    <i class="fas fa-plus" style="font-size: 0.7rem;"></i> Crear Nuevo
+                                                </a>
+                                            </div>
+                                            {{ form.local|add_class:"form-control form-control-enhanced" }}
+                                            {% if form.local.errors %}
+                                                <div class="text-danger mt-1">{{ form.local.errors }}</div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Campos para Proveedor -->
+                                <div class="row" id="campos-proveedor" style="display: none;">
+                                    <div class="col-md-6">
+                                        <div class="form-group-enhanced">
+                                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                                <label for="{{ form.proveedor.id_for_label }}" class="form-label-enhanced mb-0">{{ form.proveedor.label }}</label>
+                                                <a href="{% url 'gestion:nuevo_arrendatario' %}?tipo=PROVEEDOR&next={{ request.get_full_path|urlencode }}" class="btn btn-outline-primary btn-enhanced" style="padding: 0.2rem 0.4rem; font-size: 0.75rem;">
+                                                    <i class="fas fa-plus" style="font-size: 0.7rem;"></i> Crear Nuevo
+                                                </a>
+                                            </div>
+                                            {{ form.proveedor|add_class:"form-control form-control-enhanced" }}
+                                            {% if form.proveedor.errors %}
+                                                <div class="text-danger mt-1">{{ form.proveedor.errors }}</div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group-enhanced">
+                                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                                <label for="{{ form.tipo_servicio.id_for_label }}" class="form-label-enhanced mb-0">{{ form.tipo_servicio.label }}</label>
+                                                <a href="{% url 'gestion:nuevo_tipo_servicio' %}?next={{ request.get_full_path|urlencode }}" class="btn btn-outline-primary btn-enhanced" style="padding: 0.2rem 0.4rem; font-size: 0.75rem;">
+                                                    <i class="fas fa-plus" style="font-size: 0.7rem;"></i> Crear Nuevo
+                                                </a>
+                                            </div>
+                                            {{ form.tipo_servicio|add_class:"form-control form-control-enhanced" }}
+                                            {% if form.tipo_servicio.errors %}
+                                                <div class="text-danger mt-1">{{ form.tipo_servicio.errors }}</div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 3. Vigencia y Plazos -->
+                        <div class="form-section">
+                            <div class="form-section-header" style="background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%); color: #212529;">
+                                <h4>
+                                    <i class="fas fa-calendar-alt"></i> 3. Vigencia y Plazos
+                                </h4>
+                            </div>
+                            <div class="form-section-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group-enhanced">
+                                            <label for="{{ form.fecha_firma.id_for_label }}" class="form-label-enhanced">{{ form.fecha_firma.label }}</label>
+                                            {{ form.fecha_firma|add_class:"form-control form-control-enhanced" }}
+                                            {% if form.fecha_firma.errors %}
+                                                <div class="text-danger mt-1">{{ form.fecha_firma.errors }}</div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group-enhanced">
+                                            <label for="{{ form.duracion_inicial_meses.id_for_label }}" class="form-label-enhanced">{{ form.duracion_inicial_meses.label }}</label>
+                                            {{ form.duracion_inicial_meses|add_class:"form-control form-control-enhanced" }}
+                                            {% if form.duracion_inicial_meses.errors %}
+                                                <div class="text-danger mt-1">{{ form.duracion_inicial_meses.errors }}</div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group-enhanced">
+                                            <label for="{{ form.fecha_inicial_contrato.id_for_label }}" class="form-label-enhanced">{{ form.fecha_inicial_contrato.label }}</label>
+                                            {{ form.fecha_inicial_contrato|add_class:"form-control form-control-enhanced" }}
+                                            {% if form.fecha_inicial_contrato.errors %}
+                                                <div class="text-danger mt-1">{{ form.fecha_inicial_contrato.errors }}</div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group-enhanced">
+                                            <label for="{{ form.fecha_final_inicial.id_for_label }}" class="form-label-enhanced">{{ form.fecha_final_inicial.label }}</label>
+                                            {{ form.fecha_final_inicial|add_class:"form-control form-control-enhanced" }}
+                                            {% if form.fecha_final_inicial.errors %}
+                                                <div class="text-danger mt-1">{{ form.fecha_final_inicial.errors }}</div>
+                                            {% endif %}
+                                            <small class="success-text">
+                                                <i class="fas fa-calculator"></i> Calculada automáticamente
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group-enhanced">
+                                            <label for="{{ form.dias_preaviso_no_renovacion.id_for_label }}" class="form-label-enhanced">{{ form.dias_preaviso_no_renovacion.label }}</label>
+                                            {{ form.dias_preaviso_no_renovacion|add_class:"form-control form-control-enhanced" }}
+                                            {% if form.dias_preaviso_no_renovacion.errors %}
+                                                <div class="text-danger mt-1">{{ form.dias_preaviso_no_renovacion.errors }}</div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group-enhanced">
+                                            <label for="{{ form.dias_terminacion_anticipada.id_for_label }}" class="form-label-enhanced">{{ form.dias_terminacion_anticipada.label }}</label>
+                                            {{ form.dias_terminacion_anticipada|add_class:"form-control form-control-enhanced" }}
+                                            {% if form.dias_terminacion_anticipada.errors %}
+                                                <div class="text-danger mt-1">{{ form.dias_terminacion_anticipada.errors }}</div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-md-12">
+                                        <div class="d-flex align-items-center flex-wrap gap-3">
+                                            <div class="form-check-enhanced">
+                                                {{ form.prorroga_automatica|add_class:"form-check-input" }}
+                                                <label class="form-check-label" for="{{ form.prorroga_automatica.id_for_label }}">
+                                                    {{ form.prorroga_automatica.label }}
+                                                </label>
+                                            </div>
+                                            <div class="form-check-enhanced">
+                                                {{ form.vigente|add_class:"form-check-input" }}
+                                                <label class="form-check-label" for="{{ form.vigente.id_for_label }}">
+                                                    {{ form.vigente.label }}
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 4. Condiciones Financieras -->
+                        <div class="form-section">
+                            <div class="form-section-header" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%);">
+                                <h4>
+                                    <i class="fas fa-dollar-sign"></i> 4. Condiciones Financieras
+                                </h4>
+                            </div>
+                            <div class="form-section-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group-enhanced">
+                                            <label for="{{ form.modalidad_pago.id_for_label }}" class="form-label-enhanced">{{ form.modalidad_pago.label }}</label>
+                                            {{ form.modalidad_pago|add_class:"form-control form-control-enhanced" }}
+                                            {% if form.modalidad_pago.errors %}
+                                                <div class="text-danger mt-1">{{ form.modalidad_pago.errors }}</div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group-enhanced">
+                                            <label for="{{ form.canon_minimo_garantizado.id_for_label }}" class="form-label-enhanced" id="label-canon-minimo-garantizado">{{ form.canon_minimo_garantizado.label }}</label>
+                                            <div class="input-group input-group-enhanced">
+                                                <span class="input-group-text">$</span>
+                                                {{ form.canon_minimo_garantizado|add_class:"form-control form-control-enhanced" }}
+                                            </div>
+                                            {% if form.canon_minimo_garantizado.errors %}
+                                                <div class="text-danger mt-1">{{ form.canon_minimo_garantizado.errors }}</div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="row" id="campos-ventas-cliente">
+                                    <div class="col-md-6">
+                                        <div class="form-group-enhanced">
+                                            <label for="{{ form.porcentaje_ventas.id_for_label }}" class="form-label-enhanced">{{ form.porcentaje_ventas.label }}</label>
+                                            <div class="input-group input-group-enhanced">
+                                                {{ form.porcentaje_ventas|add_class:"form-control form-control-enhanced" }}
+                                                <span class="input-group-text">%</span>
+                                            </div>
+                                            {% if form.porcentaje_ventas.errors %}
+                                                <div class="text-danger mt-1">{{ form.porcentaje_ventas.errors }}</div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group-enhanced">
+                                            <label for="{{ form.dia_limite_reporte_ventas.id_for_label }}" class="form-label-enhanced">{{ form.dia_limite_reporte_ventas.label }}</label>
+                                            {{ form.dia_limite_reporte_ventas|add_class:"form-control form-control-enhanced" }}
+                                            {% if form.dia_limite_reporte_ventas.errors %}
+                                                <div class="text-danger mt-1">{{ form.dia_limite_reporte_ventas.errors }}</div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="row" id="campos-opciones-cliente">
+                                    <div class="col-md-4">
+                                        <div class="form-check-enhanced">
+                                            {{ form.reporta_ventas|add_class:"form-check-input" }}
+                                            <label class="form-check-label" for="{{ form.reporta_ventas.id_for_label }}">
+                                                <i class="fas fa-chart-line text-primary"></i> {{ form.reporta_ventas.label }}
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-check-enhanced">
+                                            {{ form.cobra_servicios_publicos_aparte|add_class:"form-check-input" }}
+                                            <label class="form-check-label" for="{{ form.cobra_servicios_publicos_aparte.id_for_label }}">
+                                                <i class="fas fa-bolt text-warning"></i> {{ form.cobra_servicios_publicos_aparte.label }}
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-check-enhanced">
+                                            {{ form.cobro_administracion|add_class:"form-check-input" }}
+                                            <label class="form-check-label" for="{{ form.cobro_administracion.id_for_label }}">
+                                                <i class="fas fa-calculator text-info"></i> {{ form.cobro_administracion.label }}
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-md-12">
+                                        <div class="form-group-enhanced">
+                                            <label for="{{ form.interes_mora_pagos.id_for_label }}" class="form-label-enhanced">{{ form.interes_mora_pagos.label }}</label>
+                                            <div class="input-group input-group-enhanced">
+                                                <span class="input-group-text">%</span>
+                                                {{ form.interes_mora_pagos|add_class:"form-control form-control-enhanced" }}
+                                            </div>
+                                            {% if form.interes_mora_pagos.errors %}
+                                                <div class="text-danger mt-1">{{ form.interes_mora_pagos.errors }}</div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 4.1. Condiciones IPC -->
+                        <div class="form-section">
+                            <div class="form-section-header" style="background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);">
+                                <h4>
+                                    <i class="fas fa-chart-line"></i> 4.1. Condiciones IPC
+                                </h4>
+                            </div>
+                            <div class="form-section-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group-enhanced">
+                                            <label for="{{ form.tipo_condicion_ipc.id_for_label }}" class="form-label-enhanced">{{ form.tipo_condicion_ipc.label }}</label>
+                                            {{ form.tipo_condicion_ipc|add_class:"form-control form-control-enhanced" }}
+                                            {% if form.tipo_condicion_ipc.errors %}
+                                                <div class="text-danger mt-1">{{ form.tipo_condicion_ipc.errors }}</div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6" id="campo-puntos-ipc">
+                                        <div class="form-group-enhanced">
+                                            <label for="{{ form.puntos_adicionales_ipc.id_for_label }}" class="form-label-enhanced">{{ form.puntos_adicionales_ipc.label }}</label>
+                                            <div class="input-group input-group-enhanced">
+                                                <span class="input-group-text">+</span>
+                                                {{ form.puntos_adicionales_ipc|add_class:"form-control form-control-enhanced" }}
+                                                <span class="input-group-text">%</span>
+                                            </div>
+                                            {% if form.puntos_adicionales_ipc.errors %}
+                                                <div class="text-danger mt-1">{{ form.puntos_adicionales_ipc.errors }}</div>
+                                            {% endif %}
+                                            <small class="info-text" id="texto-ayuda-puntos">
+                                                <i class="fas fa-info-circle"></i> <span id="texto-puntos-dinamico">Se suman al IPC oficial del gobierno. Puede ingresar "2.5%" o "2.5"</span>
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group-enhanced">
+                                            <label for="{{ form.periodicidad_ipc.id_for_label }}" class="form-label-enhanced">{{ form.periodicidad_ipc.label }}</label>
+                                            {{ form.periodicidad_ipc|add_class:"form-control form-control-enhanced" }}
+                                            {% if form.periodicidad_ipc.errors %}
+                                                <div class="text-danger mt-1">{{ form.periodicidad_ipc.errors }}</div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6" id="fecha-aumento-container" style="display: none;">
+                                        <div class="form-group-enhanced">
+                                            <label for="{{ form.fecha_aumento_ipc.id_for_label }}" class="form-label-enhanced">{{ form.fecha_aumento_ipc.label }}</label>
+                                            {{ form.fecha_aumento_ipc|add_class:"form-control form-control-enhanced" }}
+                                            {% if form.fecha_aumento_ipc.errors %}
+                                                <div class="text-danger mt-1">{{ form.fecha_aumento_ipc.errors }}</div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="alert alert-enhanced alert-info-enhanced">
+                                    <i class="fas fa-info-circle"></i>
+                                    <strong>Condiciones del Contrato:</strong> Estas condiciones se aplicarán según la periodicidad seleccionada. El cálculo del IPC se realizará en el módulo correspondiente.
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <div class="form-section">
+                                    <div class="form-section-header" style="background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);">
+                                        <h4>
+                                            <div class="form-check" style="margin: 0;">
+                                                {{ form.tiene_periodo_gracia }}
+                                                <label class="form-check-label" for="{{ form.tiene_periodo_gracia.id_for_label }}" style="color: white; font-weight: 600; font-size: 1.3rem; cursor: pointer; display: flex; align-items: center; gap: 0.75rem; margin: 0;">
+                                                    <i class="fas fa-clock" style="font-size: 1.4rem; opacity: 0.9;"></i> {{ form.tiene_periodo_gracia.label }}
+                                                </label>
+                                            </div>
+                                        </h4>
+                                    </div>
+                                    <div class="form-section-body" id="periodo-gracia-details" style="display: none;">
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="form-group-enhanced">
+                                                    <label for="{{ form.fecha_inicio_periodo_gracia.id_for_label }}" class="form-label-enhanced">
+                                                        <i class="fas fa-calendar-day"></i> {{ form.fecha_inicio_periodo_gracia.label }}
+                                                    </label>
+                                                    {{ form.fecha_inicio_periodo_gracia|add_class:"form-control form-control-enhanced" }}
+                                                    {% if form.fecha_inicio_periodo_gracia.errors %}
+                                                        <div class="text-danger mt-1">{{ form.fecha_inicio_periodo_gracia.errors }}</div>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="form-group-enhanced">
+                                                    <label for="{{ form.fecha_fin_periodo_gracia.id_for_label }}" class="form-label-enhanced">
+                                                        <i class="fas fa-calendar-times"></i> {{ form.fecha_fin_periodo_gracia.label }}
+                                                    </label>
+                                                    {{ form.fecha_fin_periodo_gracia|add_class:"form-control form-control-enhanced" }}
+                                                    {% if form.fecha_fin_periodo_gracia.errors %}
+                                                        <div class="text-danger mt-1">{{ form.fecha_fin_periodo_gracia.errors }}</div>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-md-12">
+                                                <div class="form-group-enhanced">
+                                                    <label for="{{ form.condicion_gracia.id_for_label }}" class="form-label-enhanced">
+                                                        <i class="fas fa-file-contract"></i> {{ form.condicion_gracia.label }}
+                                                    </label>
+                                                    {{ form.condicion_gracia|add_class:"form-control form-control-enhanced" }}
+                                                    {% if form.condicion_gracia.errors %}
+                                                        <div class="text-danger mt-1">{{ form.condicion_gracia.errors }}</div>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 6. Pólizas y Garantías -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <div class="card border-0 shadow-sm" style="background: linear-gradient(135deg, var(--avenida-orange) 0%, var(--avenida-magenta) 100%); border-radius: 15px; overflow: hidden;">
+                                    <div class="card-header border-0 text-white" style="background: transparent; padding: 1.5rem 2rem;">
+                                        <div class="d-flex align-items-center justify-content-between">
+                                            <div>
+                                                <h4 class="mb-2" style="font-weight: 600; font-size: 1.5rem;">
+                                                    <i class="fas fa-shield-alt me-2"></i> 6. Pólizas y Garantías
+                                                </h4>
+                                                <p class="mb-0 opacity-90" style="font-size: 0.95rem;">Configure las condiciones que debe cumplir el cliente para las pólizas requeridas</p>
+                                            </div>
+                                            <div class="d-flex gap-2">
+                                                <span class="badge bg-light text-dark px-3 py-2" style="font-size: 0.85rem;">
+                                                    <i class="fas fa-shield-alt me-1"></i> Protección
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Póliza RCE -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <div class="card shadow-sm border-0" style="border-radius: 12px; overflow: hidden; transition: all 0.3s ease;">
+                                    <div class="card-header border-0" style="background: linear-gradient(135deg, rgba(255, 152, 0, 0.1) 0%, rgba(255, 152, 0, 0.05) 100%); padding: 1.25rem 1.5rem;">
+                                        <div class="form-check d-flex align-items-center">
+                                            {{ form.exige_poliza_rce }}
+                                            <label class="form-check-label ms-3 d-flex align-items-center" for="{{ form.exige_poliza_rce.id_for_label }}" style="font-weight: 600; font-size: 1.1rem; color: var(--avenida-orange); cursor: pointer;">
+                                                <i class="fas fa-shield-alt me-2" style="font-size: 1.2rem;"></i> {{ form.exige_poliza_rce.label }}
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="card-body" id="poliza-rce-details" style="display: none; padding: 1.5rem;">
+                                        <!-- Información General -->
+                                        <div class="mb-4 pb-3" style="border-bottom: 2px solid rgba(255, 152, 0, 0.2);">
+                                            <h6 class="mb-3 d-flex align-items-center" style="color: var(--avenida-orange); font-weight: 600;">
+                                                <i class="fas fa-info-circle me-2"></i> Información General
+                                            </h6>
+                                            <div class="row">
+                                                <div class="col-md-3 mb-3">
+                                                    <label for="{{ form.valor_asegurado_rce.id_for_label }}" class="form-label fw-semibold">{{ form.valor_asegurado_rce.label }}</label>
+                                                    <div class="input-group">
+                                                        <span class="input-group-text" style="background-color: var(--avenida-orange); color: white; font-weight: 600;">$</span>
+                                                        {{ form.valor_asegurado_rce }}
+                                                    </div>
+                                                    {% if form.valor_asegurado_rce.errors %}
+                                                        <div class="text-danger small">{{ form.valor_asegurado_rce.errors }}</div>
+                                                    {% endif %}
+                                                </div>
+                                                <div class="col-md-3 mb-3">
+                                                    <label for="{{ form.meses_vigencia_rce.id_for_label }}" class="form-label fw-semibold">{{ form.meses_vigencia_rce.label }}</label>
+                                                    {{ form.meses_vigencia_rce }}
+                                                    {% if form.meses_vigencia_rce.errors %}
+                                                        <div class="text-danger small">{{ form.meses_vigencia_rce.errors }}</div>
+                                                    {% endif %}
+                                                    <small class="form-text text-muted d-block mt-1">
+                                                        <i class="fas fa-info-circle"></i> Se calculará automáticamente
+                                                    </small>
+                                                </div>
+                                                <div class="col-md-3 mb-3">
+                                                    <label for="{{ form.fecha_inicio_vigencia_rce.id_for_label }}" class="form-label fw-semibold">{{ form.fecha_inicio_vigencia_rce.label }}</label>
+                                                    {{ form.fecha_inicio_vigencia_rce }}
+                                                    {% if form.fecha_inicio_vigencia_rce.errors %}
+                                                        <div class="text-danger small">{{ form.fecha_inicio_vigencia_rce.errors }}</div>
+                                                    {% endif %}
+                                                    <small class="form-text text-info d-block mt-1">
+                                                        <i class="fas fa-calendar"></i> Igual a fecha de inicio del contrato
+                                                    </small>
+                                                </div>
+                                                <div class="col-md-3 mb-3">
+                                                    <label for="{{ form.fecha_fin_vigencia_rce.id_for_label }}" class="form-label fw-semibold">{{ form.fecha_fin_vigencia_rce.label }}</label>
+                                                    {{ form.fecha_fin_vigencia_rce }}
+                                                    {% if form.fecha_fin_vigencia_rce.errors %}
+                                                        <div class="text-danger small">{{ form.fecha_fin_vigencia_rce.errors }}</div>
+                                                    {% endif %}
+                                                    <small class="form-text text-success d-block mt-1">
+                                                        <i class="fas fa-calculator"></i> Calculada automáticamente
+                                                    </small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <!-- Coberturas (solo para CLIENTE) -->
+                                        <div class="mb-4 pb-3" id="rce-coberturas-cliente" style="border-bottom: 2px solid rgba(255, 152, 0, 0.2);">
+                                            <h6 class="mb-3 d-flex align-items-center" style="color: var(--avenida-orange); font-weight: 600;">
+                                                <i class="fas fa-list-check me-2"></i> Coberturas
+                                            </h6>
+                                            <div class="row">
+                                                <div class="col-md-3 mb-3">
+                                                    <label for="{{ form.valor_propietario_locatario_ocupante_rce.id_for_label }}" class="form-label fw-semibold">PLO (Propietario, Locatario y Ocupante)</label>
+                                                    <div class="input-group">
+                                                        <span class="input-group-text" style="background-color: var(--avenida-orange); color: white; font-weight: 600;">$</span>
+                                                        {{ form.valor_propietario_locatario_ocupante_rce }}
+                                                    </div>
+                                                    {% if form.valor_propietario_locatario_ocupante_rce.errors %}
+                                                        <div class="text-danger small">{{ form.valor_propietario_locatario_ocupante_rce.errors }}</div>
+                                                    {% endif %}
+                                                </div>
+                                                <div class="col-md-3 mb-3">
+                                                    <label for="{{ form.valor_patronal_rce.id_for_label }}" class="form-label fw-semibold">Patronal</label>
+                                                    <div class="input-group">
+                                                        <span class="input-group-text" style="background-color: var(--avenida-orange); color: white; font-weight: 600;">$</span>
+                                                        {{ form.valor_patronal_rce }}
+                                                    </div>
+                                                    {% if form.valor_patronal_rce.errors %}
+                                                        <div class="text-danger small">{{ form.valor_patronal_rce.errors }}</div>
+                                                    {% endif %}
+                                                </div>
+                                                <div class="col-md-3 mb-3">
+                                                    <label for="{{ form.valor_gastos_medicos_rce.id_for_label }}" class="form-label fw-semibold">Gastos Médicos de Terceros</label>
+                                                    <div class="input-group">
+                                                        <span class="input-group-text" style="background-color: var(--avenida-orange); color: white; font-weight: 600;">$</span>
+                                                        {{ form.valor_gastos_medicos_rce }}
+                                                    </div>
+                                                    {% if form.valor_gastos_medicos_rce.errors %}
+                                                        <div class="text-danger small">{{ form.valor_gastos_medicos_rce.errors }}</div>
+                                                    {% endif %}
+                                                </div>
+                                                <div class="col-md-3 mb-3">
+                                                    <label for="{{ form.valor_vehiculos_rce.id_for_label }}" class="form-label fw-semibold">Vehículos Propios y No Propios</label>
+                                                    <div class="input-group">
+                                                        <span class="input-group-text" style="background-color: var(--avenida-orange); color: white; font-weight: 600;">$</span>
+                                                        {{ form.valor_vehiculos_rce }}
+                                                    </div>
+                                                    {% if form.valor_vehiculos_rce.errors %}
+                                                        <div class="text-danger small">{{ form.valor_vehiculos_rce.errors }}</div>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                            <div class="row mt-2">
+                                                <div class="col-md-3 mb-3">
+                                                    <label for="{{ form.valor_contratistas_rce.id_for_label }}" class="form-label fw-semibold">Contratistas y Subcontratistas</label>
+                                                    <div class="input-group">
+                                                        <span class="input-group-text" style="background-color: var(--avenida-orange); color: white; font-weight: 600;">$</span>
+                                                        {{ form.valor_contratistas_rce }}
+                                                    </div>
+                                                    {% if form.valor_contratistas_rce.errors %}
+                                                        <div class="text-danger small">{{ form.valor_contratistas_rce.errors }}</div>
+                                                    {% endif %}
+                                                </div>
+                                                <div class="col-md-3 mb-3">
+                                                    <label for="{{ form.valor_perjuicios_extrapatrimoniales_rce.id_for_label }}" class="form-label fw-semibold">Perjuicios Extrapatrimoniales</label>
+                                                    <div class="input-group">
+                                                        <span class="input-group-text" style="background-color: var(--avenida-orange); color: white; font-weight: 600;">$</span>
+                                                        {{ form.valor_perjuicios_extrapatrimoniales_rce }}
+                                                    </div>
+                                                    {% if form.valor_perjuicios_extrapatrimoniales_rce.errors %}
+                                                        <div class="text-danger small">{{ form.valor_perjuicios_extrapatrimoniales_rce.errors }}</div>
+                                                    {% endif %}
+                                                </div>
+                                                <div class="col-md-3 mb-3">
+                                                    <label for="{{ form.valor_dano_moral_rce.id_for_label }}" class="form-label fw-semibold">Daño Moral</label>
+                                                    <div class="input-group">
+                                                        <span class="input-group-text" style="background-color: var(--avenida-orange); color: white; font-weight: 600;">$</span>
+                                                        {{ form.valor_dano_moral_rce }}
+                                                    </div>
+                                                    {% if form.valor_dano_moral_rce.errors %}
+                                                        <div class="text-danger small">{{ form.valor_dano_moral_rce.errors }}</div>
+                                                    {% endif %}
+                                                </div>
+                                                <div class="col-md-3 mb-3">
+                                                    <label for="{{ form.valor_lucro_cesante_rce.id_for_label }}" class="form-label fw-semibold">Lucro Cesante</label>
+                                                    <div class="input-group">
+                                                        <span class="input-group-text" style="background-color: var(--avenida-orange); color: white; font-weight: 600;">$</span>
+                                                        {{ form.valor_lucro_cesante_rce }}
+                                                    </div>
+                                                    {% if form.valor_lucro_cesante_rce.errors %}
+                                                        <div class="text-danger small">{{ form.valor_lucro_cesante_rce.errors }}</div>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <!-- Coberturas RCE - Solo para PROVEEDOR -->
+                                        <div class="mb-4 pb-3" id="rce-coberturas-proveedor" style="display: none; border-bottom: 2px solid rgba(255, 152, 0, 0.2);">
+                                            <h6 class="mb-3 d-flex align-items-center" style="color: var(--avenida-orange); font-weight: 600;">
+                                                <i class="fas fa-shield-alt me-2"></i> PÓLIZA DE RESPONSABILIDAD CIVIL EXTRACONTRACTUAL (RCE) – Coberturas
+                                            </h6>
+                                            <div class="row">
+                                                <div class="col-md-3 mb-3">
+                                                    <label for="{{ form.rce_cobertura_danos_materiales.id_for_label }}" class="form-label fw-semibold">{{ form.rce_cobertura_danos_materiales.label }}</label>
+                                                    <div class="input-group">
+                                                        <span class="input-group-text" style="background-color: var(--avenida-orange); color: white; font-weight: 600;">$</span>
+                                                        {{ form.rce_cobertura_danos_materiales|add_class:"form-control money-input" }}
+                                                    </div>
+                                                    {% if form.rce_cobertura_danos_materiales.errors %}
+                                                        <div class="text-danger small">{{ form.rce_cobertura_danos_materiales.errors }}</div>
+                                                    {% endif %}
+                                                </div>
+                                                <div class="col-md-3 mb-3">
+                                                    <label for="{{ form.rce_cobertura_lesiones_personales.id_for_label }}" class="form-label fw-semibold">{{ form.rce_cobertura_lesiones_personales.label }}</label>
+                                                    <div class="input-group">
+                                                        <span class="input-group-text" style="background-color: var(--avenida-orange); color: white; font-weight: 600;">$</span>
+                                                        {{ form.rce_cobertura_lesiones_personales|add_class:"form-control money-input" }}
+                                                    </div>
+                                                    {% if form.rce_cobertura_lesiones_personales.errors %}
+                                                        <div class="text-danger small">{{ form.rce_cobertura_lesiones_personales.errors }}</div>
+                                                    {% endif %}
+                                                </div>
+                                                <div class="col-md-3 mb-3">
+                                                    <label for="{{ form.rce_cobertura_muerte_terceros.id_for_label }}" class="form-label fw-semibold">{{ form.rce_cobertura_muerte_terceros.label }}</label>
+                                                    <div class="input-group">
+                                                        <span class="input-group-text" style="background-color: var(--avenida-orange); color: white; font-weight: 600;">$</span>
+                                                        {{ form.rce_cobertura_muerte_terceros|add_class:"form-control money-input" }}
+                                                    </div>
+                                                    {% if form.rce_cobertura_muerte_terceros.errors %}
+                                                        <div class="text-danger small">{{ form.rce_cobertura_muerte_terceros.errors }}</div>
+                                                    {% endif %}
+                                                </div>
+                                                <div class="col-md-3 mb-3">
+                                                    <label for="{{ form.rce_cobertura_danos_bienes_terceros.id_for_label }}" class="form-label fw-semibold">{{ form.rce_cobertura_danos_bienes_terceros.label }}</label>
+                                                    <div class="input-group">
+                                                        <span class="input-group-text" style="background-color: var(--avenida-orange); color: white; font-weight: 600;">$</span>
+                                                        {{ form.rce_cobertura_danos_bienes_terceros|add_class:"form-control money-input" }}
+                                                    </div>
+                                                    {% if form.rce_cobertura_danos_bienes_terceros.errors %}
+                                                        <div class="text-danger small">{{ form.rce_cobertura_danos_bienes_terceros.errors }}</div>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                            <div class="row">
+                                                <div class="col-md-3 mb-3">
+                                                    <label for="{{ form.rce_cobertura_responsabilidad_patronal.id_for_label }}" class="form-label fw-semibold">{{ form.rce_cobertura_responsabilidad_patronal.label }}</label>
+                                                    <div class="input-group">
+                                                        <span class="input-group-text" style="background-color: var(--avenida-orange); color: white; font-weight: 600;">$</span>
+                                                        {{ form.rce_cobertura_responsabilidad_patronal|add_class:"form-control money-input" }}
+                                                    </div>
+                                                    {% if form.rce_cobertura_responsabilidad_patronal.errors %}
+                                                        <div class="text-danger small">{{ form.rce_cobertura_responsabilidad_patronal.errors }}</div>
+                                                    {% endif %}
+                                                </div>
+                                                <div class="col-md-3 mb-3">
+                                                    <label for="{{ form.rce_cobertura_responsabilidad_cruzada.id_for_label }}" class="form-label fw-semibold">{{ form.rce_cobertura_responsabilidad_cruzada.label }}</label>
+                                                    <div class="input-group">
+                                                        <span class="input-group-text" style="background-color: var(--avenida-orange); color: white; font-weight: 600;">$</span>
+                                                        {{ form.rce_cobertura_responsabilidad_cruzada|add_class:"form-control money-input" }}
+                                                    </div>
+                                                    {% if form.rce_cobertura_responsabilidad_cruzada.errors %}
+                                                        <div class="text-danger small">{{ form.rce_cobertura_responsabilidad_cruzada.errors }}</div>
+                                                    {% endif %}
+                                                </div>
+                                                <div class="col-md-3 mb-3">
+                                                    <label for="{{ form.rce_cobertura_danos_contratistas.id_for_label }}" class="form-label fw-semibold">{{ form.rce_cobertura_danos_contratistas.label }}</label>
+                                                    <div class="input-group">
+                                                        <span class="input-group-text" style="background-color: var(--avenida-orange); color: white; font-weight: 600;">$</span>
+                                                        {{ form.rce_cobertura_danos_contratistas|add_class:"form-control money-input" }}
+                                                    </div>
+                                                    {% if form.rce_cobertura_danos_contratistas.errors %}
+                                                        <div class="text-danger small">{{ form.rce_cobertura_danos_contratistas.errors }}</div>
+                                                    {% endif %}
+                                                </div>
+                                                <div class="col-md-3 mb-3">
+                                                    <label for="{{ form.rce_cobertura_danos_ejecucion_contrato.id_for_label }}" class="form-label fw-semibold">{{ form.rce_cobertura_danos_ejecucion_contrato.label }}</label>
+                                                    <div class="input-group">
+                                                        <span class="input-group-text" style="background-color: var(--avenida-orange); color: white; font-weight: 600;">$</span>
+                                                        {{ form.rce_cobertura_danos_ejecucion_contrato|add_class:"form-control money-input" }}
+                                                    </div>
+                                                    {% if form.rce_cobertura_danos_ejecucion_contrato.errors %}
+                                                        <div class="text-danger small">{{ form.rce_cobertura_danos_ejecucion_contrato.errors }}</div>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                            <div class="row">
+                                                <div class="col-md-3 mb-3">
+                                                    <label for="{{ form.rce_cobertura_danos_predios_vecinos.id_for_label }}" class="form-label fw-semibold">{{ form.rce_cobertura_danos_predios_vecinos.label }}</label>
+                                                    <div class="input-group">
+                                                        <span class="input-group-text" style="background-color: var(--avenida-orange); color: white; font-weight: 600;">$</span>
+                                                        {{ form.rce_cobertura_danos_predios_vecinos|add_class:"form-control money-input" }}
+                                                    </div>
+                                                    {% if form.rce_cobertura_danos_predios_vecinos.errors %}
+                                                        <div class="text-danger small">{{ form.rce_cobertura_danos_predios_vecinos.errors }}</div>
+                                                    {% endif %}
+                                                </div>
+                                                <div class="col-md-3 mb-3">
+                                                    <label for="{{ form.rce_cobertura_gastos_medicos.id_for_label }}" class="form-label fw-semibold">{{ form.rce_cobertura_gastos_medicos.label }}</label>
+                                                    <div class="input-group">
+                                                        <span class="input-group-text" style="background-color: var(--avenida-orange); color: white; font-weight: 600;">$</span>
+                                                        {{ form.rce_cobertura_gastos_medicos|add_class:"form-control money-input" }}
+                                                    </div>
+                                                    {% if form.rce_cobertura_gastos_medicos.errors %}
+                                                        <div class="text-danger small">{{ form.rce_cobertura_gastos_medicos.errors }}</div>
+                                                    {% endif %}
+                                                </div>
+                                                <div class="col-md-3 mb-3">
+                                                    <label for="{{ form.rce_cobertura_gastos_defensa.id_for_label }}" class="form-label fw-semibold">{{ form.rce_cobertura_gastos_defensa.label }}</label>
+                                                    <div class="input-group">
+                                                        <span class="input-group-text" style="background-color: var(--avenida-orange); color: white; font-weight: 600;">$</span>
+                                                        {{ form.rce_cobertura_gastos_defensa|add_class:"form-control money-input" }}
+                                                    </div>
+                                                    {% if form.rce_cobertura_gastos_defensa.errors %}
+                                                        <div class="text-danger small">{{ form.rce_cobertura_gastos_defensa.errors }}</div>
+                                                    {% endif %}
+                                                </div>
+                                                <div class="col-md-3 mb-3">
+                                                    <label for="{{ form.rce_cobertura_perjuicios_patrimoniales.id_for_label }}" class="form-label fw-semibold">{{ form.rce_cobertura_perjuicios_patrimoniales.label }}</label>
+                                                    <div class="input-group">
+                                                        <span class="input-group-text" style="background-color: var(--avenida-orange); color: white; font-weight: 600;">$</span>
+                                                        {{ form.rce_cobertura_perjuicios_patrimoniales|add_class:"form-control money-input" }}
+                                                    </div>
+                                                    {% if form.rce_cobertura_perjuicios_patrimoniales.errors %}
+                                                        <div class="text-danger small">{{ form.rce_cobertura_perjuicios_patrimoniales.errors }}</div>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <!-- Seguimiento -->
+                                        <div class="mb-3">
+                                            <h6 class="mb-3 d-flex align-items-center" style="color: var(--avenida-orange); font-weight: 600;">
+                                                <i class="fas fa-clipboard-list me-2"></i> Seguimiento
+                                            </h6>
+                                            <div class="row">
+                                                <div class="col-12">
+                                                    <label for="{{ form.seguimiento_poliza_rce.id_for_label }}" class="form-label fw-semibold">{{ form.seguimiento_poliza_rce.label }}</label>
+                                                    {{ form.seguimiento_poliza_rce|add_class:"form-control form-control-enhanced" }}
+                                                    <small class="info-text d-block mt-1">
+                                                        <i class="fas fa-info-circle"></i> Se registrará una nota para la póliza RCE aunque todavía no exista documento cargado.
+                                                    </small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {% if seguimientos_poliza_por_tipo and seguimientos_poliza_por_tipo.rce %}
+                                        <div class="mt-3">
+                                            <div class="list-group list-group-flush">
+                                                {% for seguimiento in seguimientos_poliza_por_tipo.rce %}
+                                                    <div class="list-group-item px-0">
+                                                        <div class="d-flex justify-content-between align-items-start">
+                                                            <span class="fw-semibold text-primary">{{ seguimiento.registrado_por|default:"Registro" }}</span>
+                                                            <small class="text-muted">
+                                                                <i class="fas fa-clock me-1"></i>{{ seguimiento.fecha_registro|date:"d/m/Y H:i" }}
+                                                            </small>
+                                                        </div>
+                                                        <p class="mb-0 text-muted">{{ seguimiento.detalle|linebreaksbr }}</p>
+                                                    </div>
+                                                {% endfor %}
+                                            </div>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Póliza de Cumplimiento -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <div class="card shadow-sm border-0" style="border-radius: 12px; overflow: hidden; transition: all 0.3s ease;">
+                                    <div class="card-header border-0" style="background: linear-gradient(135deg, rgba(139, 195, 74, 0.1) 0%, rgba(139, 195, 74, 0.05) 100%); padding: 1.25rem 1.5rem;">
+                                        <div class="form-check d-flex align-items-center">
+                                            {{ form.exige_poliza_cumplimiento }}
+                                            <label class="form-check-label ms-3 d-flex align-items-center" for="{{ form.exige_poliza_cumplimiento.id_for_label }}" style="font-weight: 600; font-size: 1.1rem; color: var(--avenida-green); cursor: pointer;">
+                                                <i class="fas fa-check-circle me-2" style="font-size: 1.2rem;"></i> {{ form.exige_poliza_cumplimiento.label }}
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="card-body" id="poliza-cumplimiento-details" style="display: none; padding: 1.5rem;">
+                                        <!-- Información General -->
+                                        <div class="mb-4 pb-3" style="border-bottom: 2px solid rgba(139, 195, 74, 0.2);">
+                                            <h6 class="mb-3 d-flex align-items-center" style="color: var(--avenida-green); font-weight: 600;">
+                                                <i class="fas fa-info-circle me-2"></i> Información General
+                                            </h6>
+                                            <div class="row">
+                                                <div class="col-md-3 mb-3">
+                                                    <label for="{{ form.valor_asegurado_cumplimiento.id_for_label }}" class="form-label fw-semibold">{{ form.valor_asegurado_cumplimiento.label }}</label>
+                                                    <div class="input-group">
+                                                        <span class="input-group-text" style="background-color: var(--avenida-green); color: white; font-weight: 600;">$</span>
+                                                        {{ form.valor_asegurado_cumplimiento }}
+                                                    </div>
+                                                    {% if form.valor_asegurado_cumplimiento.errors %}
+                                                        <div class="text-danger small">{{ form.valor_asegurado_cumplimiento.errors }}</div>
+                                                    {% endif %}
+                                                </div>
+                                                <div class="col-md-3 mb-3">
+                                                    <label for="{{ form.meses_vigencia_cumplimiento.id_for_label }}" class="form-label fw-semibold">{{ form.meses_vigencia_cumplimiento.label }}</label>
+                                                    {{ form.meses_vigencia_cumplimiento }}
+                                                    {% if form.meses_vigencia_cumplimiento.errors %}
+                                                        <div class="text-danger small">{{ form.meses_vigencia_cumplimiento.errors }}</div>
+                                                    {% endif %}
+                                                    <small class="form-text text-muted d-block mt-1">
+                                                        <i class="fas fa-info-circle"></i> Se calculará automáticamente
+                                                    </small>
+                                                </div>
+                                                <div class="col-md-3 mb-3">
+                                                    <label for="{{ form.fecha_inicio_vigencia_cumplimiento.id_for_label }}" class="form-label fw-semibold">{{ form.fecha_inicio_vigencia_cumplimiento.label }}</label>
+                                                    {{ form.fecha_inicio_vigencia_cumplimiento }}
+                                                    {% if form.fecha_inicio_vigencia_cumplimiento.errors %}
+                                                        <div class="text-danger small">{{ form.fecha_inicio_vigencia_cumplimiento.errors }}</div>
+                                                    {% endif %}
+                                                    <small class="form-text text-info d-block mt-1">
+                                                        <i class="fas fa-calendar"></i> Igual a fecha de inicio del contrato
+                                                    </small>
+                                                </div>
+                                                <div class="col-md-3 mb-3">
+                                                    <label for="{{ form.fecha_fin_vigencia_cumplimiento.id_for_label }}" class="form-label fw-semibold">{{ form.fecha_fin_vigencia_cumplimiento.label }}</label>
+                                                    {{ form.fecha_fin_vigencia_cumplimiento }}
+                                                    {% if form.fecha_fin_vigencia_cumplimiento.errors %}
+                                                        <div class="text-danger small">{{ form.fecha_fin_vigencia_cumplimiento.errors }}</div>
+                                                    {% endif %}
+                                                    <small class="form-text text-success d-block mt-1">
+                                                        <i class="fas fa-calculator"></i> Calculada automáticamente
+                                                    </small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <!-- Coberturas (solo para CLIENTE) -->
+                                        <div class="mb-4 pb-3" id="cumplimiento-coberturas-cliente" style="border-bottom: 2px solid rgba(139, 195, 74, 0.2);">
+                                            <h6 class="mb-3 d-flex align-items-center" style="color: var(--avenida-green); font-weight: 600;">
+                                                <i class="fas fa-list-check me-2"></i> Coberturas
+                                            </h6>
+                                            <div class="row">
+                                                <div class="col-md-3 mb-3">
+                                                    <label for="{{ form.valor_remuneraciones_cumplimiento.id_for_label }}" class="form-label fw-semibold">Remuneraciones Mensuales</label>
+                                                    <div class="input-group">
+                                                        <span class="input-group-text" style="background-color: var(--avenida-green); color: white; font-weight: 600;">$</span>
+                                                        {{ form.valor_remuneraciones_cumplimiento }}
+                                                    </div>
+                                                    {% if form.valor_remuneraciones_cumplimiento.errors %}
+                                                        <div class="text-danger small">{{ form.valor_remuneraciones_cumplimiento.errors }}</div>
+                                                    {% endif %}
+                                                </div>
+                                                <div class="col-md-3 mb-3">
+                                                    <label for="{{ form.valor_servicios_publicos_cumplimiento.id_for_label }}" class="form-label fw-semibold">Servicios Públicos</label>
+                                                    <div class="input-group">
+                                                        <span class="input-group-text" style="background-color: var(--avenida-green); color: white; font-weight: 600;">$</span>
+                                                        {{ form.valor_servicios_publicos_cumplimiento }}
+                                                    </div>
+                                                    {% if form.valor_servicios_publicos_cumplimiento.errors %}
+                                                        <div class="text-danger small">{{ form.valor_servicios_publicos_cumplimiento.errors }}</div>
+                                                    {% endif %}
+                                                </div>
+                                                <div class="col-md-3 mb-3">
+                                                    <label for="{{ form.valor_iva_cumplimiento.id_for_label }}" class="form-label fw-semibold">IVA</label>
+                                                    <div class="input-group">
+                                                        <span class="input-group-text" style="background-color: var(--avenida-green); color: white; font-weight: 600;">$</span>
+                                                        {{ form.valor_iva_cumplimiento }}
+                                                    </div>
+                                                    {% if form.valor_iva_cumplimiento.errors %}
+                                                        <div class="text-danger small">{{ form.valor_iva_cumplimiento.errors }}</div>
+                                                    {% endif %}
+                                                </div>
+                                                <div class="col-md-3 mb-3">
+                                                    <label for="{{ form.valor_otros_cumplimiento.id_for_label }}" class="form-label fw-semibold">Cuota de admon.</label>
+                                                    <div class="input-group">
+                                                        <span class="input-group-text" style="background-color: var(--avenida-green); color: white; font-weight: 600;">$</span>
+                                                        {{ form.valor_otros_cumplimiento }}
+                                                    </div>
+                                                    {% if form.valor_otros_cumplimiento.errors %}
+                                                        <div class="text-danger small">{{ form.valor_otros_cumplimiento.errors }}</div>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <!-- Amparos Cumplimiento - Solo para PROVEEDOR -->
+                                        <div class="mb-4 pb-3" id="cumplimiento-amparos-proveedor" style="display: none; border-bottom: 2px solid rgba(139, 195, 74, 0.2);">
+                                            <h6 class="mb-3 d-flex align-items-center" style="color: var(--avenida-green); font-weight: 600;">
+                                                <i class="fas fa-shield-alt me-2"></i> PÓLIZA DE CUMPLIMIENTO – Amparos
+                                            </h6>
+                                            <div class="row">
+                                                <div class="col-md-3 mb-3">
+                                                    <label for="{{ form.cumplimiento_amparo_cumplimiento_contrato.id_for_label }}" class="form-label fw-semibold">{{ form.cumplimiento_amparo_cumplimiento_contrato.label }}</label>
+                                                    <div class="input-group">
+                                                        <span class="input-group-text" style="background-color: var(--avenida-green); color: white; font-weight: 600;">$</span>
+                                                        {{ form.cumplimiento_amparo_cumplimiento_contrato|add_class:"form-control money-input" }}
+                                                    </div>
+                                                    {% if form.cumplimiento_amparo_cumplimiento_contrato.errors %}
+                                                        <div class="text-danger small">{{ form.cumplimiento_amparo_cumplimiento_contrato.errors }}</div>
+                                                    {% endif %}
+                                                </div>
+                                                <div class="col-md-3 mb-3">
+                                                    <label for="{{ form.cumplimiento_amparo_buen_manejo_anticipo.id_for_label }}" class="form-label fw-semibold">{{ form.cumplimiento_amparo_buen_manejo_anticipo.label }}</label>
+                                                    <div class="input-group">
+                                                        <span class="input-group-text" style="background-color: var(--avenida-green); color: white; font-weight: 600;">$</span>
+                                                        {{ form.cumplimiento_amparo_buen_manejo_anticipo|add_class:"form-control money-input" }}
+                                                    </div>
+                                                    {% if form.cumplimiento_amparo_buen_manejo_anticipo.errors %}
+                                                        <div class="text-danger small">{{ form.cumplimiento_amparo_buen_manejo_anticipo.errors }}</div>
+                                                    {% endif %}
+                                                </div>
+                                                <div class="col-md-3 mb-3">
+                                                    <label for="{{ form.cumplimiento_amparo_amortizacion_anticipo.id_for_label }}" class="form-label fw-semibold">{{ form.cumplimiento_amparo_amortizacion_anticipo.label }}</label>
+                                                    <div class="input-group">
+                                                        <span class="input-group-text" style="background-color: var(--avenida-green); color: white; font-weight: 600;">$</span>
+                                                        {{ form.cumplimiento_amparo_amortizacion_anticipo|add_class:"form-control money-input" }}
+                                                    </div>
+                                                    {% if form.cumplimiento_amparo_amortizacion_anticipo.errors %}
+                                                        <div class="text-danger small">{{ form.cumplimiento_amparo_amortizacion_anticipo.errors }}</div>
+                                                    {% endif %}
+                                                </div>
+                                                <div class="col-md-3 mb-3">
+                                                    <label for="{{ form.cumplimiento_amparo_salarios_prestaciones.id_for_label }}" class="form-label fw-semibold">{{ form.cumplimiento_amparo_salarios_prestaciones.label }}</label>
+                                                    <div class="input-group">
+                                                        <span class="input-group-text" style="background-color: var(--avenida-green); color: white; font-weight: 600;">$</span>
+                                                        {{ form.cumplimiento_amparo_salarios_prestaciones|add_class:"form-control money-input" }}
+                                                    </div>
+                                                    {% if form.cumplimiento_amparo_salarios_prestaciones.errors %}
+                                                        <div class="text-danger small">{{ form.cumplimiento_amparo_salarios_prestaciones.errors }}</div>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                            <div class="row">
+                                                <div class="col-md-3 mb-3">
+                                                    <label for="{{ form.cumplimiento_amparo_aportes_seguridad_social.id_for_label }}" class="form-label fw-semibold">{{ form.cumplimiento_amparo_aportes_seguridad_social.label }}</label>
+                                                    <div class="input-group">
+                                                        <span class="input-group-text" style="background-color: var(--avenida-green); color: white; font-weight: 600;">$</span>
+                                                        {{ form.cumplimiento_amparo_aportes_seguridad_social|add_class:"form-control money-input" }}
+                                                    </div>
+                                                    {% if form.cumplimiento_amparo_aportes_seguridad_social.errors %}
+                                                        <div class="text-danger small">{{ form.cumplimiento_amparo_aportes_seguridad_social.errors }}</div>
+                                                    {% endif %}
+                                                </div>
+                                                <div class="col-md-3 mb-3">
+                                                    <label for="{{ form.cumplimiento_amparo_calidad_servicio.id_for_label }}" class="form-label fw-semibold">{{ form.cumplimiento_amparo_calidad_servicio.label }}</label>
+                                                    <div class="input-group">
+                                                        <span class="input-group-text" style="background-color: var(--avenida-green); color: white; font-weight: 600;">$</span>
+                                                        {{ form.cumplimiento_amparo_calidad_servicio|add_class:"form-control money-input" }}
+                                                    </div>
+                                                    {% if form.cumplimiento_amparo_calidad_servicio.errors %}
+                                                        <div class="text-danger small">{{ form.cumplimiento_amparo_calidad_servicio.errors }}</div>
+                                                    {% endif %}
+                                                </div>
+                                                <div class="col-md-3 mb-3">
+                                                    <label for="{{ form.cumplimiento_amparo_estabilidad_obra.id_for_label }}" class="form-label fw-semibold">{{ form.cumplimiento_amparo_estabilidad_obra.label }}</label>
+                                                    <div class="input-group">
+                                                        <span class="input-group-text" style="background-color: var(--avenida-green); color: white; font-weight: 600;">$</span>
+                                                        {{ form.cumplimiento_amparo_estabilidad_obra|add_class:"form-control money-input" }}
+                                                    </div>
+                                                    {% if form.cumplimiento_amparo_estabilidad_obra.errors %}
+                                                        <div class="text-danger small">{{ form.cumplimiento_amparo_estabilidad_obra.errors }}</div>
+                                                    {% endif %}
+                                                </div>
+                                                <div class="col-md-3 mb-3">
+                                                    <label for="{{ form.cumplimiento_amparo_calidad_bienes.id_for_label }}" class="form-label fw-semibold">{{ form.cumplimiento_amparo_calidad_bienes.label }}</label>
+                                                    <div class="input-group">
+                                                        <span class="input-group-text" style="background-color: var(--avenida-green); color: white; font-weight: 600;">$</span>
+                                                        {{ form.cumplimiento_amparo_calidad_bienes|add_class:"form-control money-input" }}
+                                                    </div>
+                                                    {% if form.cumplimiento_amparo_calidad_bienes.errors %}
+                                                        <div class="text-danger small">{{ form.cumplimiento_amparo_calidad_bienes.errors }}</div>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                            <div class="row">
+                                                <div class="col-md-3 mb-3">
+                                                    <label for="{{ form.cumplimiento_amparo_multas.id_for_label }}" class="form-label fw-semibold">{{ form.cumplimiento_amparo_multas.label }}</label>
+                                                    <div class="input-group">
+                                                        <span class="input-group-text" style="background-color: var(--avenida-green); color: white; font-weight: 600;">$</span>
+                                                        {{ form.cumplimiento_amparo_multas|add_class:"form-control money-input" }}
+                                                    </div>
+                                                    {% if form.cumplimiento_amparo_multas.errors %}
+                                                        <div class="text-danger small">{{ form.cumplimiento_amparo_multas.errors }}</div>
+                                                    {% endif %}
+                                                </div>
+                                                <div class="col-md-3 mb-3">
+                                                    <label for="{{ form.cumplimiento_amparo_clausula_penal.id_for_label }}" class="form-label fw-semibold">{{ form.cumplimiento_amparo_clausula_penal.label }}</label>
+                                                    <div class="input-group">
+                                                        <span class="input-group-text" style="background-color: var(--avenida-green); color: white; font-weight: 600;">$</span>
+                                                        {{ form.cumplimiento_amparo_clausula_penal|add_class:"form-control money-input" }}
+                                                    </div>
+                                                    {% if form.cumplimiento_amparo_clausula_penal.errors %}
+                                                        <div class="text-danger small">{{ form.cumplimiento_amparo_clausula_penal.errors }}</div>
+                                                    {% endif %}
+                                                </div>
+                                                <div class="col-md-3 mb-3">
+                                                    <label for="{{ form.cumplimiento_amparo_sanciones_incumplimiento.id_for_label }}" class="form-label fw-semibold">{{ form.cumplimiento_amparo_sanciones_incumplimiento.label }}</label>
+                                                    <div class="input-group">
+                                                        <span class="input-group-text" style="background-color: var(--avenida-green); color: white; font-weight: 600;">$</span>
+                                                        {{ form.cumplimiento_amparo_sanciones_incumplimiento|add_class:"form-control money-input" }}
+                                                    </div>
+                                                    {% if form.cumplimiento_amparo_sanciones_incumplimiento.errors %}
+                                                        <div class="text-danger small">{{ form.cumplimiento_amparo_sanciones_incumplimiento.errors }}</div>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <!-- Seguimiento -->
+                                        <div class="mb-3">
+                                            <h6 class="mb-3 d-flex align-items-center" style="color: var(--avenida-green); font-weight: 600;">
+                                                <i class="fas fa-clipboard-list me-2"></i> Seguimiento
+                                            </h6>
+                                            <div class="row">
+                                                <div class="col-12">
+                                                    <label for="{{ form.seguimiento_poliza_cumplimiento.id_for_label }}" class="form-label fw-semibold">{{ form.seguimiento_poliza_cumplimiento.label }}</label>
+                                                    {{ form.seguimiento_poliza_cumplimiento|add_class:"form-control form-control-enhanced" }}
+                                                    <small class="info-text d-block mt-1">
+                                                        <i class="fas fa-info-circle"></i> Agregue notas o instrucciones relacionadas con la póliza de cumplimiento.
+                                                    </small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {% if seguimientos_poliza_por_tipo and seguimientos_poliza_por_tipo.cumplimiento %}
+                                        <div class="mt-3">
+                                            <div class="list-group list-group-flush">
+                                                {% for seguimiento in seguimientos_poliza_por_tipo.cumplimiento %}
+                                                    <div class="list-group-item px-0">
+                                                        <div class="d-flex justify-content-between align-items-start">
+                                                            <span class="fw-semibold text-primary">{{ seguimiento.registrado_por|default:"Registro" }}</span>
+                                                            <small class="text-muted">
+                                                                <i class="fas fa-clock me-1"></i>{{ seguimiento.fecha_registro|date:"d/m/Y H:i" }}
+                                                            </small>
+                                                        </div>
+                                                        <p class="mb-0 text-muted">{{ seguimiento.detalle|linebreaksbr }}</p>
+                                                    </div>
+                                                {% endfor %}
+                                            </div>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Póliza de Arrendamiento -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <div class="card shadow-sm border-0" style="border-radius: 12px; overflow: hidden; transition: all 0.3s ease;">
+                                    <div class="card-header border-0" style="background: linear-gradient(135deg, rgba(0, 188, 212, 0.1) 0%, rgba(0, 188, 212, 0.05) 100%); padding: 1.25rem 1.5rem;">
+                                        <div class="form-check d-flex align-items-center">
+                                            {{ form.exige_poliza_arrendamiento }}
+                                            <label class="form-check-label ms-3 d-flex align-items-center" for="{{ form.exige_poliza_arrendamiento.id_for_label }}" style="font-weight: 600; font-size: 1.1rem; color: var(--avenida-cyan); cursor: pointer;">
+                                                <i class="fas fa-building me-2" style="font-size: 1.2rem;"></i> {{ form.exige_poliza_arrendamiento.label }}
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="card-body" id="poliza-arrendamiento-details" style="display: none; padding: 1.5rem;">
+                                        <!-- Información General -->
+                                        <div class="mb-4 pb-3" style="border-bottom: 2px solid rgba(0, 188, 212, 0.2);">
+                                            <h6 class="mb-3 d-flex align-items-center" style="color: var(--avenida-cyan); font-weight: 600;">
+                                                <i class="fas fa-info-circle me-2"></i> Información General
+                                            </h6>
+                                            <div class="row">
+                                                <div class="col-md-3 mb-3">
+                                                    <label for="{{ form.valor_asegurado_arrendamiento.id_for_label }}" class="form-label fw-semibold">{{ form.valor_asegurado_arrendamiento.label }}</label>
+                                                    <div class="input-group">
+                                                        <span class="input-group-text" style="background-color: var(--avenida-cyan); color: white; font-weight: 600;">$</span>
+                                                        {{ form.valor_asegurado_arrendamiento }}
+                                                    </div>
+                                                    {% if form.valor_asegurado_arrendamiento.errors %}
+                                                        <div class="text-danger small">{{ form.valor_asegurado_arrendamiento.errors }}</div>
+                                                    {% endif %}
+                                                </div>
+                                                <div class="col-md-3 mb-3">
+                                                    <label for="{{ form.meses_vigencia_arrendamiento.id_for_label }}" class="form-label fw-semibold">{{ form.meses_vigencia_arrendamiento.label }}</label>
+                                                    {{ form.meses_vigencia_arrendamiento }}
+                                                    {% if form.meses_vigencia_arrendamiento.errors %}
+                                                        <div class="text-danger small">{{ form.meses_vigencia_arrendamiento.errors }}</div>
+                                                    {% endif %}
+                                                    <small class="form-text text-muted d-block mt-1">
+                                                        <i class="fas fa-info-circle"></i> Se calculará automáticamente
+                                                    </small>
+                                                </div>
+                                                <div class="col-md-3 mb-3">
+                                                    <label for="{{ form.fecha_inicio_vigencia_arrendamiento.id_for_label }}" class="form-label fw-semibold">{{ form.fecha_inicio_vigencia_arrendamiento.label }}</label>
+                                                    {{ form.fecha_inicio_vigencia_arrendamiento }}
+                                                    {% if form.fecha_inicio_vigencia_arrendamiento.errors %}
+                                                        <div class="text-danger small">{{ form.fecha_inicio_vigencia_arrendamiento.errors }}</div>
+                                                    {% endif %}
+                                                    <small class="form-text text-info d-block mt-1">
+                                                        <i class="fas fa-calendar"></i> Igual a fecha de inicio del contrato
+                                                    </small>
+                                                </div>
+                                                <div class="col-md-3 mb-3">
+                                                    <label for="{{ form.fecha_fin_vigencia_arrendamiento.id_for_label }}" class="form-label fw-semibold">{{ form.fecha_fin_vigencia_arrendamiento.label }}</label>
+                                                    {{ form.fecha_fin_vigencia_arrendamiento }}
+                                                    {% if form.fecha_fin_vigencia_arrendamiento.errors %}
+                                                        <div class="text-danger small">{{ form.fecha_fin_vigencia_arrendamiento.errors }}</div>
+                                                    {% endif %}
+                                                    <small class="form-text text-success d-block mt-1">
+                                                        <i class="fas fa-calculator"></i> Calculada automáticamente
+                                                    </small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <!-- Coberturas -->
+                                        <div class="mb-4 pb-3" style="border-bottom: 2px solid rgba(0, 188, 212, 0.2);">
+                                            <h6 class="mb-3 d-flex align-items-center" style="color: var(--avenida-cyan); font-weight: 600;">
+                                                <i class="fas fa-list-check me-2"></i> Coberturas
+                                            </h6>
+                                            <div class="row">
+                                                <div class="col-md-3 mb-3">
+                                                    <label for="{{ form.valor_remuneraciones_arrendamiento.id_for_label }}" class="form-label fw-semibold">Remuneraciones Mensuales</label>
+                                                    <div class="input-group">
+                                                        <span class="input-group-text" style="background-color: var(--avenida-cyan); color: white; font-weight: 600;">$</span>
+                                                        {{ form.valor_remuneraciones_arrendamiento }}
+                                                    </div>
+                                                    {% if form.valor_remuneraciones_arrendamiento.errors %}
+                                                        <div class="text-danger small">{{ form.valor_remuneraciones_arrendamiento.errors }}</div>
+                                                    {% endif %}
+                                                </div>
+                                                <div class="col-md-3 mb-3">
+                                                    <label for="{{ form.valor_servicios_publicos_arrendamiento.id_for_label }}" class="form-label fw-semibold">Servicios Públicos</label>
+                                                    <div class="input-group">
+                                                        <span class="input-group-text" style="background-color: var(--avenida-cyan); color: white; font-weight: 600;">$</span>
+                                                        {{ form.valor_servicios_publicos_arrendamiento }}
+                                                    </div>
+                                                    {% if form.valor_servicios_publicos_arrendamiento.errors %}
+                                                        <div class="text-danger small">{{ form.valor_servicios_publicos_arrendamiento.errors }}</div>
+                                                    {% endif %}
+                                                </div>
+                                                <div class="col-md-3 mb-3">
+                                                    <label for="{{ form.valor_iva_arrendamiento.id_for_label }}" class="form-label fw-semibold">IVA</label>
+                                                    <div class="input-group">
+                                                        <span class="input-group-text" style="background-color: var(--avenida-cyan); color: white; font-weight: 600;">$</span>
+                                                        {{ form.valor_iva_arrendamiento }}
+                                                    </div>
+                                                    {% if form.valor_iva_arrendamiento.errors %}
+                                                        <div class="text-danger small">{{ form.valor_iva_arrendamiento.errors }}</div>
+                                                    {% endif %}
+                                                </div>
+                                                <div class="col-md-3 mb-3">
+                                                    <label for="{{ form.valor_otros_arrendamiento.id_for_label }}" class="form-label fw-semibold">Cuota de admon.</label>
+                                                    <div class="input-group">
+                                                        <span class="input-group-text" style="background-color: var(--avenida-cyan); color: white; font-weight: 600;">$</span>
+                                                        {{ form.valor_otros_arrendamiento }}
+                                                    </div>
+                                                    {% if form.valor_otros_arrendamiento.errors %}
+                                                        <div class="text-danger small">{{ form.valor_otros_arrendamiento.errors }}</div>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <!-- Seguimiento -->
+                                        <div class="mb-3">
+                                            <h6 class="mb-3 d-flex align-items-center" style="color: var(--avenida-cyan); font-weight: 600;">
+                                                <i class="fas fa-clipboard-list me-2"></i> Seguimiento
+                                            </h6>
+                                            <div class="row">
+                                                <div class="col-12">
+                                                    <label for="{{ form.seguimiento_poliza_arrendamiento.id_for_label }}" class="form-label fw-semibold">{{ form.seguimiento_poliza_arrendamiento.label }}</label>
+                                                    {{ form.seguimiento_poliza_arrendamiento|add_class:"form-control form-control-enhanced" }}
+                                                    <small class="info-text d-block mt-1">
+                                                        <i class="fas fa-info-circle"></i> Utilice este campo para registrar instrucciones sobre la póliza de arrendamiento.
+                                                    </small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {% if seguimientos_poliza_por_tipo and seguimientos_poliza_por_tipo.arrendamiento %}
+                                        <div class="mt-3">
+                                            <div class="list-group list-group-flush">
+                                                {% for seguimiento in seguimientos_poliza_por_tipo.arrendamiento %}
+                                                    <div class="list-group-item px-0">
+                                                        <div class="d-flex justify-content-between align-items-start">
+                                                            <span class="fw-semibold text-primary">{{ seguimiento.registrado_por|default:"Registro" }}</span>
+                                                            <small class="text-muted">
+                                                                <i class="fas fa-clock me-1"></i>{{ seguimiento.fecha_registro|date:"d/m/Y H:i" }}
+                                                            </small>
+                                                        </div>
+                                                        <p class="mb-0 text-muted">{{ seguimiento.detalle|linebreaksbr }}</p>
+                                                    </div>
+                                                {% endfor %}
+                                            </div>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                        <!-- Póliza Todo Riesgo -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <div class="card shadow-sm border-0" style="border-radius: 12px; overflow: hidden; transition: all 0.3s ease;">
+                                    <div class="card-header border-0" style="background: linear-gradient(135deg, rgba(233, 30, 99, 0.1) 0%, rgba(233, 30, 99, 0.05) 100%); padding: 1.25rem 1.5rem;">
+                                        <div class="form-check d-flex align-items-center">
+                                            {{ form.exige_poliza_todo_riesgo }}
+                                            <label class="form-check-label ms-3 d-flex align-items-center" for="{{ form.exige_poliza_todo_riesgo.id_for_label }}" style="font-weight: 600; font-size: 1.1rem; color: var(--avenida-magenta); cursor: pointer;">
+                                                <i class="fas fa-tools me-2" style="font-size: 1.2rem;"></i> {{ form.exige_poliza_todo_riesgo.label }}
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="card-body" id="poliza-todo-riesgo-details" style="display: none; padding: 1.5rem;">
+                                        <!-- Información General -->
+                                        <div class="mb-4 pb-3" style="border-bottom: 2px solid rgba(233, 30, 99, 0.2);">
+                                            <h6 class="mb-3 d-flex align-items-center" style="color: var(--avenida-magenta); font-weight: 600;">
+                                                <i class="fas fa-info-circle me-2"></i> Información General
+                                            </h6>
+                                            <div class="row">
+                                                <div class="col-md-3 mb-3">
+                                                    <label for="{{ form.valor_asegurado_todo_riesgo.id_for_label }}" class="form-label fw-semibold">{{ form.valor_asegurado_todo_riesgo.label }}</label>
+                                                    <div class="input-group">
+                                                        <span class="input-group-text" style="background-color: var(--avenida-magenta); color: white; font-weight: 600;">$</span>
+                                                        {{ form.valor_asegurado_todo_riesgo }}
+                                                    </div>
+                                                    {% if form.valor_asegurado_todo_riesgo.errors %}
+                                                        <div class="text-danger small">{{ form.valor_asegurado_todo_riesgo.errors }}</div>
+                                                    {% endif %}
+                                                </div>
+                                                <div class="col-md-3 mb-3">
+                                                    <label for="{{ form.meses_vigencia_todo_riesgo.id_for_label }}" class="form-label fw-semibold">{{ form.meses_vigencia_todo_riesgo.label }}</label>
+                                                    {{ form.meses_vigencia_todo_riesgo }}
+                                                    {% if form.meses_vigencia_todo_riesgo.errors %}
+                                                        <div class="text-danger small">{{ form.meses_vigencia_todo_riesgo.errors }}</div>
+                                                    {% endif %}
+                                                    <small class="form-text text-muted d-block mt-1">
+                                                        <i class="fas fa-info-circle"></i> Se calculará automáticamente
+                                                    </small>
+                                                </div>
+                                                <div class="col-md-3 mb-3">
+                                                    <label for="{{ form.fecha_inicio_vigencia_todo_riesgo.id_for_label }}" class="form-label fw-semibold">{{ form.fecha_inicio_vigencia_todo_riesgo.label }}</label>
+                                                    {{ form.fecha_inicio_vigencia_todo_riesgo }}
+                                                    {% if form.fecha_inicio_vigencia_todo_riesgo.errors %}
+                                                        <div class="text-danger small">{{ form.fecha_inicio_vigencia_todo_riesgo.errors }}</div>
+                                                    {% endif %}
+                                                    <small class="form-text text-info d-block mt-1">
+                                                        <i class="fas fa-calendar"></i> Igual a fecha de inicio del contrato
+                                                    </small>
+                                                </div>
+                                                <div class="col-md-3 mb-3">
+                                                    <label for="{{ form.fecha_fin_vigencia_todo_riesgo.id_for_label }}" class="form-label fw-semibold">{{ form.fecha_fin_vigencia_todo_riesgo.label }}</label>
+                                                    {{ form.fecha_fin_vigencia_todo_riesgo }}
+                                                    {% if form.fecha_fin_vigencia_todo_riesgo.errors %}
+                                                        <div class="text-danger small">{{ form.fecha_fin_vigencia_todo_riesgo.errors }}</div>
+                                                    {% endif %}
+                                                    <small class="form-text text-success d-block mt-1">
+                                                        <i class="fas fa-calculator"></i> Calculada automáticamente
+                                                    </small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <!-- Seguimiento -->
+                                        <div class="mb-3">
+                                            <h6 class="mb-3 d-flex align-items-center" style="color: var(--avenida-magenta); font-weight: 600;">
+                                                <i class="fas fa-clipboard-list me-2"></i> Seguimiento
+                                            </h6>
+                                            <div class="row">
+                                                <div class="col-12">
+                                                    <label for="{{ form.seguimiento_poliza_todo_riesgo.id_for_label }}" class="form-label fw-semibold">{{ form.seguimiento_poliza_todo_riesgo.label }}</label>
+                                                    {{ form.seguimiento_poliza_todo_riesgo|add_class:"form-control form-control-enhanced" }}
+                                                    <small class="info-text d-block mt-1">
+                                                        <i class="fas fa-info-circle"></i> Registre notas para la póliza de todo riesgo que deban tenerse en cuenta.
+                                                    </small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {% if seguimientos_poliza_por_tipo and seguimientos_poliza_por_tipo.todo_riesgo %}
+                                        <div class="mt-3">
+                                            <div class="list-group list-group-flush">
+                                                {% for seguimiento in seguimientos_poliza_por_tipo.todo_riesgo %}
+                                                    <div class="list-group-item px-0">
+                                                        <div class="d-flex justify-content-between align-items-start">
+                                                            <span class="fw-semibold text-primary">{{ seguimiento.registrado_por|default:"Registro" }}</span>
+                                                            <small class="text-muted">
+                                                                <i class="fas fa-clock me-1"></i>{{ seguimiento.fecha_registro|date:"d/m/Y H:i" }}
+                                                            </small>
+                                                        </div>
+                                                        <p class="mb-0 text-muted">{{ seguimiento.detalle|linebreaksbr }}</p>
+                                                    </div>
+                                                {% endfor %}
+                                            </div>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Otra Póliza -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <div class="card shadow-sm border-0" style="border-radius: 12px; overflow: hidden; transition: all 0.3s ease;">
+                                    <div class="card-header border-0" style="background: linear-gradient(135deg, rgba(0, 188, 212, 0.1) 0%, rgba(139, 195, 74, 0.05) 100%); padding: 1.25rem 1.5rem;">
+                                        <div class="form-check d-flex align-items-center">
+                                            {{ form.exige_poliza_otra_1 }}
+                                            <label class="form-check-label ms-3 d-flex align-items-center" for="{{ form.exige_poliza_otra_1.id_for_label }}" style="font-weight: 600; font-size: 1.1rem; color: var(--avenida-cyan); cursor: pointer;">
+                                                <i class="fas fa-plus-circle me-2" style="font-size: 1.2rem;"></i> {{ form.exige_poliza_otra_1.label }}
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="card-body" id="poliza-otra-details" style="display: none; padding: 1.5rem;">
+                                        <!-- Información General -->
+                                        <div class="mb-4 pb-3" style="border-bottom: 2px solid rgba(0, 188, 212, 0.2);">
+                                            <h6 class="mb-3 d-flex align-items-center" style="color: var(--avenida-cyan); font-weight: 600;">
+                                                <i class="fas fa-info-circle me-2"></i> Información General
+                                            </h6>
+                                            <div class="row">
+                                                <div class="col-md-3 mb-3">
+                                                    <label for="{{ form.nombre_poliza_otra_1.id_for_label }}" class="form-label fw-semibold">{{ form.nombre_poliza_otra_1.label }}</label>
+                                                    {{ form.nombre_poliza_otra_1 }}
+                                                    {% if form.nombre_poliza_otra_1.errors %}
+                                                        <div class="text-danger small">{{ form.nombre_poliza_otra_1.errors }}</div>
+                                                    {% endif %}
+                                                </div>
+                                                <div class="col-md-3 mb-3">
+                                                    <label for="{{ form.valor_asegurado_otra_1.id_for_label }}" class="form-label fw-semibold">{{ form.valor_asegurado_otra_1.label }}</label>
+                                                    <div class="input-group">
+                                                        <span class="input-group-text" style="background-color: var(--avenida-cyan); color: white; font-weight: 600;">$</span>
+                                                        {{ form.valor_asegurado_otra_1 }}
+                                                    </div>
+                                                    {% if form.valor_asegurado_otra_1.errors %}
+                                                        <div class="text-danger small">{{ form.valor_asegurado_otra_1.errors }}</div>
+                                                    {% endif %}
+                                                </div>
+                                                <div class="col-md-3 mb-3">
+                                                    <label for="{{ form.meses_vigencia_otra_1.id_for_label }}" class="form-label fw-semibold">{{ form.meses_vigencia_otra_1.label }}</label>
+                                                    {{ form.meses_vigencia_otra_1 }}
+                                                    {% if form.meses_vigencia_otra_1.errors %}
+                                                        <div class="text-danger small">{{ form.meses_vigencia_otra_1.errors }}</div>
+                                                    {% endif %}
+                                                    <small class="form-text text-muted d-block mt-1">
+                                                        <i class="fas fa-info-circle"></i> Se calculará automáticamente
+                                                    </small>
+                                                </div>
+                                                <div class="col-md-3 mb-3">
+                                                    <label for="{{ form.fecha_inicio_vigencia_otra_1.id_for_label }}" class="form-label fw-semibold">{{ form.fecha_inicio_vigencia_otra_1.label }}</label>
+                                                    {{ form.fecha_inicio_vigencia_otra_1 }}
+                                                    {% if form.fecha_inicio_vigencia_otra_1.errors %}
+                                                        <div class="text-danger small">{{ form.fecha_inicio_vigencia_otra_1.errors }}</div>
+                                                    {% endif %}
+                                                    <small class="form-text text-info d-block mt-1">
+                                                        <i class="fas fa-calendar"></i> Igual a fecha de inicio del contrato
+                                                    </small>
+                                                </div>
+                                            </div>
+                                            <div class="row mt-2">
+                                                <div class="col-md-6 mb-3">
+                                                    <label for="{{ form.fecha_fin_vigencia_otra_1.id_for_label }}" class="form-label fw-semibold">{{ form.fecha_fin_vigencia_otra_1.label }}</label>
+                                                    {{ form.fecha_fin_vigencia_otra_1 }}
+                                                    {% if form.fecha_fin_vigencia_otra_1.errors %}
+                                                        <div class="text-danger small">{{ form.fecha_fin_vigencia_otra_1.errors }}</div>
+                                                    {% endif %}
+                                                    <small class="form-text text-success d-block mt-1">
+                                                        <i class="fas fa-calculator"></i> Calculada automáticamente
+                                                    </small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <!-- Seguimiento -->
+                                        <div class="mb-3">
+                                            <h6 class="mb-3 d-flex align-items-center" style="color: var(--avenida-cyan); font-weight: 600;">
+                                                <i class="fas fa-clipboard-list me-2"></i> Seguimiento
+                                            </h6>
+                                            <div class="row">
+                                                <div class="col-12">
+                                                    <label for="{{ form.seguimiento_poliza_otra.id_for_label }}" class="form-label fw-semibold">{{ form.seguimiento_poliza_otra.label }}</label>
+                                                    {{ form.seguimiento_poliza_otra|add_class:"form-control form-control-enhanced" }}
+                                                    <small class="info-text d-block mt-1">
+                                                        <i class="fas fa-info-circle"></i> Registre observaciones adicionales para esta póliza.
+                                                    </small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {% if seguimientos_poliza_por_tipo and seguimientos_poliza_por_tipo.otra %}
+                                        <div class="mt-3">
+                                            <div class="list-group list-group-flush">
+                                                {% for seguimiento in seguimientos_poliza_por_tipo.otra %}
+                                                    <div class="list-group-item px-0">
+                                                        <div class="d-flex justify-content-between align-items-start">
+                                                            <span class="fw-semibold text-primary">{{ seguimiento.registrado_por|default:"Registro" }}</span>
+                                                            <small class="text-muted">
+                                                                <i class="fas fa-clock me-1"></i>{{ seguimiento.fecha_registro|date:"d/m/Y H:i" }}
+                                                            </small>
+                                                        </div>
+                                                        <p class="mb-0 text-muted">{{ seguimiento.detalle|linebreaksbr }}</p>
+                                                    </div>
+                                                {% endfor %}
+                                            </div>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 7. Sanciones y Penalidades -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <div class="card border-danger">
+                                    <div class="card-header bg-danger text-white">
+                                        <h4 class="mb-0">
+                                            <i class="fas fa-exclamation-triangle"></i> 7. Sanciones y Penalidades
+                                        </h4>
+                                    </div>
+                                    <div class="card-body">
+                        
+                                        <div class="row mb-3">
+                                            <div class="col-md-4">
+                                                <label for="{{ form.clausula_penal_incumplimiento.id_for_label }}" class="form-label">{{ form.clausula_penal_incumplimiento.label }}</label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text">$</span>
+                                                    {{ form.clausula_penal_incumplimiento }}
+                                                </div>
+                                                {% if form.clausula_penal_incumplimiento.errors %}
+                                                    <div class="text-danger">{{ form.clausula_penal_incumplimiento.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label for="{{ form.penalidad_terminacion_anticipada.id_for_label }}" class="form-label">{{ form.penalidad_terminacion_anticipada.label }}</label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text">$</span>
+                                                    {{ form.penalidad_terminacion_anticipada }}
+                                                </div>
+                                                {% if form.penalidad_terminacion_anticipada.errors %}
+                                                    <div class="text-danger">{{ form.penalidad_terminacion_anticipada.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label for="{{ form.multa_mora_no_restitucion.id_for_label }}" class="form-label">{{ form.multa_mora_no_restitucion.label }}</label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text">$</span>
+                                                    {{ form.multa_mora_no_restitucion }}
+                                                </div>
+                                                {% if form.multa_mora_no_restitucion.errors %}
+                                                    <div class="text-danger">{{ form.multa_mora_no_restitucion.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 8. SARLAFT y Protección de Datos -->
+                        <div class="form-section">
+                            <div class="form-section-header" style="background: linear-gradient(135deg, #20c997 0%, #17a2b8 100%);">
+                                <h4>
+                                    <i class="fas fa-shield-alt"></i> 8. SARLAFT y Protección de Datos
+                                </h4>
+                            </div>
+                            <div class="form-section-body">
+                                <div class="alert alert-enhanced alert-info-enhanced mb-4">
+                                    <i class="fas fa-info-circle"></i>
+                                    <strong>Información:</strong> Esta sección registra las cláusulas relacionadas con SARLAFT (Sistema de Administración de Riesgo de Lavado de Activos y Financiación del Terrorismo) y Protección de Datos Personales.
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-check-enhanced">
+                                            {{ form.tiene_clausula_sarlaft|add_class:"form-check-input" }}
+                                            <label class="form-check-label" for="{{ form.tiene_clausula_sarlaft.id_for_label }}">
+                                                <i class="fas fa-shield-alt text-success"></i> {{ form.tiene_clausula_sarlaft.label }}
+                                            </label>
+                                            <small class="d-block text-muted mt-2 ms-4">
+                                                <i class="fas fa-info-circle"></i> Indica si el contrato incluye cláusulas relacionadas con el cumplimiento de SARLAFT.
+                                            </small>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-check-enhanced">
+                                            {{ form.tiene_clausula_proteccion_datos|add_class:"form-check-input" }}
+                                            <label class="form-check-label" for="{{ form.tiene_clausula_proteccion_datos.id_for_label }}">
+                                                <i class="fas fa-lock text-info"></i> {{ form.tiene_clausula_proteccion_datos.label }}
+                                            </label>
+                                            <small class="d-block text-muted mt-2 ms-4">
+                                                <i class="fas fa-info-circle"></i> Indica si el contrato incluye cláusulas de protección de datos personales conforme a la normativa vigente.
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Seguimiento del Contrato -->
+                        <div class="form-section">
+                            <div class="form-section-header" style="background: linear-gradient(135deg, #6f42c1 0%, #512da8 100%);">
+                                <h4>
+                                    <i class="fas fa-clipboard-list"></i> Seguimiento del Contrato
+                                </h4>
+                            </div>
+                            <div class="form-section-body">
+                                <div class="form-group-enhanced">
+                                    <label for="{{ form.seguimiento_general.id_for_label }}" class="form-label-enhanced">{{ form.seguimiento_general.label }}</label>
+                                    {{ form.seguimiento_general|add_class:"form-control form-control-enhanced" }}
+                                    <small class="info-text">
+                                        <i class="fas fa-info-circle"></i> Este texto se registrará como una nueva nota en la bitácora del contrato.
+                                    </small>
+                                </div>
+                                {% if seguimientos_contrato %}
+                                <div class="mt-4">
+                                    <h6 class="text-uppercase text-muted fw-semibold mb-3">
+                                        <i class="fas fa-history me-2"></i>Historial reciente
+                                    </h6>
+                                    <ul class="list-group list-group-flush">
+                                        {% for seguimiento in seguimientos_contrato %}
+                                            <li class="list-group-item px-0">
+                                                <div class="d-flex justify-content-between align-items-start">
+                                                    <span class="fw-semibold text-primary">{{ seguimiento.registrado_por|default:"Registro" }}</span>
+                                                    <small class="text-muted">
+                                                        <i class="fas fa-clock me-1"></i>{{ seguimiento.fecha_registro|date:"d/m/Y H:i" }}
+                                                    </small>
+                                                </div>
+                                                <p class="mb-0 text-muted">{{ seguimiento.detalle|linebreaksbr }}</p>
+                                            </li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <!-- URL Archivo -->
+                        <div class="row mt-4">
+                            <div class="col-12">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <h5 class="card-title">
+                                            <i class="fas fa-link text-primary"></i> Archivo Digital
+                                        </h5>
+                                        <div class="form-group-enhanced">
+                                            <label for="{{ form.url_archivo.id_for_label }}" class="form-label-enhanced">
+                                                {{ form.url_archivo.label }}
+                                            </label>
+                                            {{ form.url_archivo|add_class:"form-control form-control-enhanced" }}
+                                            {% if form.url_archivo.help_text %}
+                                                <small class="form-text text-muted">{{ form.url_archivo.help_text }}</small>
+                                            {% endif %}
+                                            {% if form.url_archivo.errors %}
+                                                <div class="text-danger mt-1">{{ form.url_archivo.errors }}</div>
+                                            {% endif %}
+                                            <small class="form-text text-muted">
+                                                <i class="fas fa-info-circle"></i> Ingrese el enlace al archivo digital del contrato (OneDrive, Google Drive, etc.)
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Botones -->
+                        <div class="row mt-4">
+                            <div class="col-12">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between">
+                                            <a href="{% url 'gestion:lista_contratos' %}" class="btn btn-outline-secondary btn-lg">
+                                                <i class="fas fa-arrow-left"></i> Cancelar
+                                            </a>
+                                            <button type="submit" class="btn btn-primary btn-lg">
+                                                <i class="fas fa-save"></i> Guardar Contrato
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Configurar cálculo automático de fecha final del contrato usando utils_fechas.js
+    configurarCalculoFechaFinalContrato(
+        '{{ form.fecha_inicial_contrato.id_for_label }}',
+        '{{ form.duracion_inicial_meses.id_for_label }}',
+        '{{ form.fecha_final_inicial.id_for_label }}'
+    );
+    
+    // Configurar cálculo automático de fechas para todas las pólizas usando utils_fechas.js
+    configurarCalculoFechasPolizasContrato('{{ form.fecha_inicial_contrato.id_for_label }}');
+    
+    // Configurar toggles para mostrar/ocultar detalles de pólizas
+    const configuracionesToggle = [
+        { checkbox: '{{ form.exige_poliza_rce.id_for_label }}', detalles: 'poliza-rce-details' },
+        { checkbox: '{{ form.exige_poliza_cumplimiento.id_for_label }}', detalles: 'poliza-cumplimiento-details' },
+        { checkbox: '{{ form.exige_poliza_arrendamiento.id_for_label }}', detalles: 'poliza-arrendamiento-details' },
+        { checkbox: '{{ form.exige_poliza_todo_riesgo.id_for_label }}', detalles: 'poliza-todo-riesgo-details' },
+        { checkbox: '{{ form.exige_poliza_otra_1.id_for_label }}', detalles: 'poliza-otra-details' }
+    ];
+    
+    configuracionesToggle.forEach(config => {
+        const checkbox = document.getElementById(config.checkbox);
+        const detalles = document.getElementById(config.detalles);
+        
+        if (checkbox && detalles) {
+            function toggleDetalles() {
+                detalles.style.display = checkbox.checked ? 'block' : 'none';
+            }
+            
+            checkbox.addEventListener('change', toggleDetalles);
+            toggleDetalles(); // Estado inicial
+        }
+    });
+    
+    // Periodos Especiales
+    const tienePeriodoGracia = document.getElementById('{{ form.tiene_periodo_gracia.id_for_label }}');
+    const detallesPeriodoGracia = document.getElementById('periodo-gracia-details');
+    
+    if (tienePeriodoGracia && detallesPeriodoGracia) {
+        function togglePeriodoGracia() {
+            detallesPeriodoGracia.style.display = tienePeriodoGracia.checked ? 'block' : 'none';
+        }
+        
+        tienePeriodoGracia.addEventListener('change', togglePeriodoGracia);
+        togglePeriodoGracia(); // Estado inicial
+    }
+    
+    // Funcionalidad IPC
+    const periodicidadIpc = document.getElementById('{{ form.periodicidad_ipc.id_for_label }}');
+    const fechaAumentoContainer = document.getElementById('fecha-aumento-container');
+    const fechaInicioContrato = document.getElementById('{{ form.fecha_inicial_contrato.id_for_label }}');
+    const fechaAumentoIpc = document.getElementById('{{ form.fecha_aumento_ipc.id_for_label }}');
+    
+    if (periodicidadIpc && fechaAumentoContainer && fechaAumentoIpc) {
+        function toggleFechaAumento() {
+            const periodicidad = periodicidadIpc.value;
+            
+            if (periodicidad === 'ANUAL') {
+                // Mostrar campo y hacerlo readonly
+                fechaAumentoContainer.style.display = 'block';
+                fechaAumentoIpc.readOnly = true;
+                fechaAumentoIpc.style.backgroundColor = '#e9ecef';
+                fechaAumentoIpc.style.cursor = 'not-allowed';
+                
+                // Si hay fecha de inicio, sugerirla como fecha de aumento
+                if (fechaInicioContrato && fechaInicioContrato.value && !fechaAumentoIpc.value) {
+                    fechaAumentoIpc.value = fechaInicioContrato.value;
+                }
+            } else if (periodicidad === 'FECHA_ESPECIFICA') {
+                // Mostrar campo y hacerlo editable
+                fechaAumentoContainer.style.display = 'block';
+                fechaAumentoIpc.readOnly = false;
+                fechaAumentoIpc.style.backgroundColor = '';
+                fechaAumentoIpc.style.cursor = '';
+            } else {
+                // Ocultar campo si no hay periodicidad seleccionada
+                fechaAumentoContainer.style.display = 'none';
+            }
+        }
+        
+        periodicidadIpc.addEventListener('change', toggleFechaAumento);
+        
+        if (fechaInicioContrato) {
+            fechaInicioContrato.addEventListener('change', function() {
+                if (periodicidadIpc.value === 'ANUAL' && !fechaAumentoIpc.value) {
+                    fechaAumentoIpc.value = fechaInicioContrato.value;
+                }
+            });
+        }
+        
+        toggleFechaAumento(); // Estado inicial
+    }
+    
+    // Limpiar valores antes de enviar el formulario
+    const form = document.getElementById('contrato-form');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            if (typeof cleanFormValues === 'function') {
+                cleanFormValues();
+            }
+        });
+    }
+
+    // Actualizar formulario cuando se regresa de crear nuevo arrendatario/local
+    window.addEventListener('focus', function() {
+        if (document.referrer.includes('nuevo_arrendatario') || document.referrer.includes('nuevo_local')) {
+            const successMessage = document.createElement('div');
+            successMessage.className = 'alert alert-success alert-dismissible fade show';
+            successMessage.innerHTML = `
+                <i class="fas fa-check-circle"></i> ¡Elemento creado exitosamente! Los datos se han actualizado.
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            document.querySelector('.card-body').insertBefore(successMessage, document.querySelector('.card-body').firstChild);
+            
+            setTimeout(() => {
+                window.location.reload();
+            }, 2000);
+        }
+    });
+
+    // Auto-completar Supervisor Contraparte basado en el tercero seleccionado (cliente o proveedor)
+    function setupAutoFillSupervisor() {
+        const arrendatarioField = document.getElementById('id_arrendatario');
+        const proveedorField = document.getElementById('id_proveedor');
+        const supervisorContraparteField = document.getElementById('id_supervisor_contraparte');
+        
+        if (!supervisorContraparteField) {
+            return;
+        }
+        
+        // Datos de arrendatarios y sus supervisores operativos
+        const arrendatariosData = {
+            {% for arrendatario in form.arrendatario.field.queryset %}
+            {{ arrendatario.id }}: {
+                'supervisor': '{{ arrendatario.nombre_supervisor_op|default:"" }}',
+                'email': '{{ arrendatario.email_supervisor_op|default:"" }}'
+            }{% if not forloop.last %},{% endif %}
+            {% endfor %}
+        };
+        
+        // Datos de proveedores y sus supervisores operativos
+        const proveedoresData = {
+            {% for proveedor in form.proveedor.field.queryset %}
+            {{ proveedor.id }}: {
+                'supervisor': '{{ proveedor.nombre_supervisor_op|default:"" }}',
+                'email': '{{ proveedor.email_supervisor_op|default:"" }}'
+            }{% if not forloop.last %},{% endif %}
+            {% endfor %}
+        };
+        
+        // Deshabilitar el campo para que solo sea de lectura
+        supervisorContraparteField.setAttribute('readonly', 'readonly');
+        supervisorContraparteField.style.backgroundColor = '#e9ecef';
+        supervisorContraparteField.style.cursor = 'not-allowed';
+        
+        function actualizarSupervisor(selectedId, dataSource, tipo) {
+            if (selectedId && dataSource[selectedId]) {
+                const supervisor = dataSource[selectedId].supervisor;
+                if (supervisor && supervisor !== 'None' && supervisor.trim() !== '') {
+                    supervisorContraparteField.value = supervisor;
+                    
+                    // Mostrar notificación
+                    const notification = document.createElement('div');
+                    notification.className = 'alert alert-info alert-dismissible fade show mt-2';
+                    notification.innerHTML = `
+                        <i class="fas fa-info-circle"></i> Supervisor Contraparte auto-completado con la información del ${tipo}.
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    `;
+                    supervisorContraparteField.parentElement.parentElement.appendChild(notification);
+                    
+                    // Remover notificación después de 3 segundos
+                    setTimeout(() => {
+                        notification.remove();
+                    }, 3000);
+                } else {
+                    supervisorContraparteField.value = '';
+                }
+            } else {
+                supervisorContraparteField.value = '';
+            }
+        }
+        
+        // Listener para arrendatario (cliente)
+        if (arrendatarioField) {
+            arrendatarioField.addEventListener('change', function() {
+                const selectedId = this.value;
+                actualizarSupervisor(selectedId, arrendatariosData, 'cliente');
+            });
+        }
+        
+        // Listener para proveedor
+        if (proveedorField) {
+            proveedorField.addEventListener('change', function() {
+                const selectedId = this.value;
+                actualizarSupervisor(selectedId, proveedoresData, 'proveedor');
+            });
+        }
+    }
+    
+    // Ejecutar al cargar la página
+    setupAutoFillSupervisor();
+    
+    // Manejar visibilidad de campos según tipo de contrato (Cliente/Proveedor)
+    function toggleCamposPorTipo() {
+        const tipoContratoCp = document.getElementById('id_tipo_contrato_cliente_proveedor');
+        const camposCliente = document.getElementById('campos-cliente');
+        const camposProveedor = document.getElementById('campos-proveedor');
+        const tipoContratoField = document.getElementById('id_tipo_contrato');
+        const tipoContratoGroup = tipoContratoField ? tipoContratoField.closest('.col-md-6') : null;
+        
+        if (!tipoContratoCp) return;
+        
+        function actualizarCampos() {
+            const valor = tipoContratoCp.value;
+            
+            // Declarar variables de campos una sola vez al inicio
+            const arrendatarioField = document.getElementById('id_arrendatario');
+            const localField = document.getElementById('id_local');
+            const tipoContratoField = document.getElementById('id_tipo_contrato');
+            const proveedorField = document.getElementById('id_proveedor');
+            const tipoServicioField = document.getElementById('id_tipo_servicio');
+            
+            // Campos de condiciones financieras
+            const camposVentasCliente = document.getElementById('campos-ventas-cliente');
+            const camposOpcionesCliente = document.getElementById('campos-opciones-cliente');
+            const labelCanonMinimo = document.getElementById('label-canon-minimo-garantizado');
+            
+            if (valor === 'CLIENTE') {
+                // Mostrar campos de cliente
+                if (camposCliente) camposCliente.style.display = 'flex';
+                if (camposProveedor) camposProveedor.style.display = 'none';
+                if (tipoContratoGroup) tipoContratoGroup.style.display = 'block';
+                
+                // Mostrar campos de condiciones financieras de cliente
+                if (camposVentasCliente) camposVentasCliente.style.display = 'flex';
+                if (camposOpcionesCliente) camposOpcionesCliente.style.display = 'flex';
+                
+                // Restaurar label original
+                if (labelCanonMinimo) {
+                    labelCanonMinimo.textContent = 'Canon Mínimo Garantizado';
+                }
+                
+                // Hacer campos requeridos y quitar required de campos ocultos
+                if (arrendatarioField) {
+                    arrendatarioField.required = true;
+                    arrendatarioField.removeAttribute('disabled');
+                }
+                if (localField) {
+                    localField.required = true;
+                    localField.removeAttribute('disabled');
+                }
+                if (tipoContratoField) {
+                    tipoContratoField.required = true;
+                    tipoContratoField.removeAttribute('disabled');
+                }
+                
+                // Quitar required de campos de proveedor cuando están ocultos
+                if (proveedorField) {
+                    proveedorField.required = false;
+                    proveedorField.setAttribute('disabled', 'disabled');
+                }
+                if (tipoServicioField) {
+                    tipoServicioField.required = false;
+                    tipoServicioField.setAttribute('disabled', 'disabled');
+                }
+                
+                // Ocultar secciones de coberturas RCE y amparos de Cumplimiento (solo para PROVEEDOR)
+                const rceCoberturasProveedor = document.getElementById('rce-coberturas-proveedor');
+                const cumplimientoAmparosProveedor = document.getElementById('cumplimiento-amparos-proveedor');
+                const rceCoberturasCliente = document.getElementById('rce-coberturas-cliente');
+                const cumplimientoCoberturasCliente = document.getElementById('cumplimiento-coberturas-cliente');
+                if (rceCoberturasProveedor) rceCoberturasProveedor.style.display = 'none';
+                if (cumplimientoAmparosProveedor) cumplimientoAmparosProveedor.style.display = 'none';
+                if (rceCoberturasCliente) rceCoberturasCliente.style.display = 'block';
+                if (cumplimientoCoberturasCliente) cumplimientoCoberturasCliente.style.display = 'block';
+                
+                // Limpiar campos de proveedor (usar variables ya declaradas arriba)
+                if (proveedorField) proveedorField.value = '';
+                if (tipoServicioField) tipoServicioField.value = '';
+            } else if (valor === 'PROVEEDOR') {
+                // Mostrar campos de proveedor
+                if (camposCliente) camposCliente.style.display = 'none';
+                if (camposProveedor) camposProveedor.style.display = 'flex';
+                if (tipoContratoGroup) tipoContratoGroup.style.display = 'none';
+                
+                // Mostrar secciones de coberturas RCE y amparos de Cumplimiento (solo para PROVEEDOR)
+                const rceCoberturasProveedor = document.getElementById('rce-coberturas-proveedor');
+                const cumplimientoAmparosProveedor = document.getElementById('cumplimiento-amparos-proveedor');
+                const rceCoberturasCliente = document.getElementById('rce-coberturas-cliente');
+                const cumplimientoCoberturasCliente = document.getElementById('cumplimiento-coberturas-cliente');
+                if (rceCoberturasProveedor) rceCoberturasProveedor.style.display = 'block';
+                if (cumplimientoAmparosProveedor) cumplimientoAmparosProveedor.style.display = 'block';
+                if (rceCoberturasCliente) rceCoberturasCliente.style.display = 'none';
+                if (cumplimientoCoberturasCliente) cumplimientoCoberturasCliente.style.display = 'none';
+                
+                // Ocultar campos de condiciones financieras de cliente
+                if (camposVentasCliente) camposVentasCliente.style.display = 'none';
+                if (camposOpcionesCliente) camposOpcionesCliente.style.display = 'none';
+                
+                // Cambiar label a "Valor mensual"
+                if (labelCanonMinimo) {
+                    labelCanonMinimo.textContent = 'Valor mensual';
+                }
+                
+                // Hacer campos requeridos y quitar required de campos ocultos
+                if (proveedorField) {
+                    proveedorField.required = true;
+                    proveedorField.removeAttribute('disabled');
+                    // Filtrar opciones para mostrar solo proveedores
+                    setTimeout(() => filtrarOpcionesProveedor(proveedorField), 100);
+                }
+                if (tipoServicioField) {
+                    tipoServicioField.required = true;
+                    tipoServicioField.removeAttribute('disabled');
+                }
+                
+                // Quitar required de campos de cliente cuando están ocultos
+                if (arrendatarioField) {
+                    arrendatarioField.required = false;
+                    arrendatarioField.setAttribute('disabled', 'disabled');
+                    arrendatarioField.value = '';
+                }
+                if (localField) {
+                    localField.required = false;
+                    localField.setAttribute('disabled', 'disabled');
+                    localField.value = '';
+                }
+                if (tipoContratoField) {
+                    tipoContratoField.required = false;
+                    tipoContratoField.setAttribute('disabled', 'disabled');
+                    tipoContratoField.value = '';
+                }
+                
+                // Limpiar campos de ventas
+                const porcentajeVentasField = document.getElementById('id_porcentaje_ventas');
+                const diaLimiteReporteField = document.getElementById('id_dia_limite_reporte_ventas');
+                const reportaVentasField = document.getElementById('id_reporta_ventas');
+                const cobraServiciosField = document.getElementById('id_cobra_servicios_publicos_aparte');
+                const cobroAdministracionField = document.getElementById('id_cobro_administracion');
+                
+                if (porcentajeVentasField) porcentajeVentasField.value = '';
+                if (diaLimiteReporteField) diaLimiteReporteField.value = '';
+                if (reportaVentasField) reportaVentasField.checked = false;
+                if (cobraServiciosField) cobraServiciosField.checked = false;
+                if (cobroAdministracionField) cobroAdministracionField.checked = false;
+            } else {
+                // Por defecto mostrar campos de cliente
+                if (camposCliente) camposCliente.style.display = 'flex';
+                if (camposProveedor) camposProveedor.style.display = 'none';
+                if (tipoContratoGroup) tipoContratoGroup.style.display = 'block';
+                
+                // Mostrar campos de condiciones financieras de cliente por defecto
+                if (camposVentasCliente) camposVentasCliente.style.display = 'flex';
+                if (camposOpcionesCliente) camposOpcionesCliente.style.display = 'flex';
+                
+                // Restaurar label original
+                if (labelCanonMinimo) {
+                    labelCanonMinimo.textContent = 'Canon Mínimo Garantizado';
+                }
+            }
+        }
+        
+        // Ejecutar al cambiar el valor
+        tipoContratoCp.addEventListener('change', actualizarCampos);
+        
+        // Ejecutar al cargar la página
+        actualizarCampos();
+    }
+    
+    // Función para filtrar opciones del campo proveedor
+    function filtrarOpcionesProveedor(proveedorField) {
+        if (!proveedorField) return;
+        
+        // Obtener todas las opciones
+        const opciones = proveedorField.querySelectorAll('option');
+        
+        // IDs de proveedores desde el template
+        const proveedoresIds = [
+            {% for tercero in form.proveedor.field.queryset %}
+            {{ tercero.id }}{% if not forloop.last %},{% endif %}
+            {% endfor %}
+        ];
+        
+        // Mostrar/ocultar opciones según si son proveedores
+        opciones.forEach(option => {
+            const valor = option.value;
+            if (!valor || valor === '') {
+                // Mantener la opción vacía visible
+                option.style.display = '';
+            } else if (proveedoresIds.length > 0 && proveedoresIds.includes(parseInt(valor))) {
+                // Mostrar solo proveedores del queryset
+                option.style.display = '';
+            } else if (proveedoresIds.length === 0) {
+                // Si no hay proveedores en el queryset, ocultar todas las opciones excepto la vacía
+                option.style.display = 'none';
+            } else {
+                // Ocultar opciones que no están en la lista de proveedores (arrendatarios)
+                option.style.display = 'none';
+            }
+        });
+        
+        // Si no hay proveedores y hay un valor seleccionado que no es válido, limpiarlo
+        if (proveedoresIds.length === 0 && proveedorField.value && proveedorField.value !== '') {
+            proveedorField.value = '';
+        }
+    }
+    
+    // Función para filtrar opciones del campo arrendatario
+    function filtrarOpcionesArrendatario(arrendatarioField) {
+        if (!arrendatarioField) return;
+        
+        // Obtener todas las opciones
+        const opciones = arrendatarioField.querySelectorAll('option');
+        const arrendatariosIds = [
+            {% for tercero in form.arrendatario.field.queryset %}
+            {{ tercero.id }}{% if not forloop.last %},{% endif %}
+            {% endfor %}
+        ];
+        
+        // Mostrar/ocultar opciones según si son arrendatarios
+        opciones.forEach(option => {
+            const valor = option.value;
+            if (!valor || valor === '') {
+                // Mantener la opción vacía visible
+                option.style.display = '';
+            } else if (arrendatariosIds.includes(parseInt(valor))) {
+                // Mostrar solo arrendatarios
+                option.style.display = '';
+            } else {
+                // Ocultar proveedores
+                option.style.display = 'none';
+            }
+        });
+    }
+    
+    // Ejecutar al cargar la página
+    toggleCamposPorTipo();
+    
+    // Filtrar opciones inicialmente según el tipo seleccionado
+    const tipoContratoCp = document.getElementById('id_tipo_contrato_cliente_proveedor');
+    if (tipoContratoCp) {
+        const proveedorField = document.getElementById('id_proveedor');
+        const arrendatarioField = document.getElementById('id_arrendatario');
+        
+        // Siempre filtrar las opciones al cargar la página
+        if (proveedorField) {
+            filtrarOpcionesProveedor(proveedorField);
+        }
+        if (arrendatarioField) {
+            filtrarOpcionesArrendatario(arrendatarioField);
+        }
+        
+        // También filtrar cuando cambia el tipo
+        tipoContratoCp.addEventListener('change', function() {
+            setTimeout(() => {
+                if (proveedorField) filtrarOpcionesProveedor(proveedorField);
+                if (arrendatarioField) filtrarOpcionesArrendatario(arrendatarioField);
+            }, 100);
+        });
+    }
+    
+    // Función para manejar campos de IPC/Salario Mínimo
+    function toggleCamposIPC() {
+        const tipoCondicionIPC = document.getElementById('id_tipo_condicion_ipc');
+        const campoPuntosIPC = document.getElementById('campo-puntos-ipc');
+        const textoPuntosDinamico = document.getElementById('texto-puntos-dinamico');
+        
+        if (!tipoCondicionIPC) return;
+        
+        function actualizarCamposIPC() {
+            const valor = tipoCondicionIPC.value;
+            
+            if (valor === 'IPC') {
+                // Mostrar campo de puntos adicionales IPC
+                if (campoPuntosIPC) campoPuntosIPC.style.display = 'block';
+                
+                // Actualizar texto de ayuda para IPC
+                if (textoPuntosDinamico) {
+                    textoPuntosDinamico.textContent = 'Se suman al IPC oficial del gobierno. Puede ingresar "2.5%" o "2.5"';
+                }
+            } else if (valor === 'SALARIO_MINIMO') {
+                // Mostrar campo de puntos adicionales (el porcentaje de Salario Mínimo viene de la tabla histórica)
+                if (campoPuntosIPC) campoPuntosIPC.style.display = 'block';
+                
+                // Actualizar texto de ayuda para Salario Mínimo
+                if (textoPuntosDinamico) {
+                    textoPuntosDinamico.textContent = 'Se suman al porcentaje de Salario Mínimo (obtenido de la tabla histórica). Puede ingresar "3.0%" o "3.0"';
+                }
+            } else {
+                // Por defecto ocultar campo de puntos adicionales
+                if (campoPuntosIPC) campoPuntosIPC.style.display = 'none';
+            }
+        }
+        
+        tipoCondicionIPC.addEventListener('change', actualizarCamposIPC);
+        actualizarCamposIPC();
+    }
+    
+    // Ejecutar al cargar la página
+    toggleCamposIPC();
+});
+</script>
+{% endblock %}

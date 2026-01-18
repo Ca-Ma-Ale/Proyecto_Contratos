@@ -1,0 +1,94 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ titulo }} - Gestión de Contratos{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="display-6">
+                    <i class="fas fa-edit text-primary"></i> {{ titulo }}
+                </h1>
+                <a href="{% url 'gestion:lista_informes_ventas' %}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Volver
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-file-alt"></i> Datos del Informe
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            {{ form.contrato.label_tag }}
+                            {{ form.contrato }}
+                            {% if form.contrato.errors %}
+                                <div class="text-danger">{{ form.contrato.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                {{ form.mes.label_tag }}
+                                {{ form.mes }}
+                                {% if form.mes.errors %}
+                                    <div class="text-danger">{{ form.mes.errors }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                {{ form.año.label_tag }}
+                                {{ form.año }}
+                                {% if form.año.errors %}
+                                    <div class="text-danger">{{ form.año.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            {{ form.observaciones.label_tag }}
+                            {{ form.observaciones }}
+                            {% if form.observaciones.errors %}
+                                <div class="text-danger">{{ form.observaciones.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            {{ form.url_archivo.label_tag }}
+                            {{ form.url_archivo }}
+                            {% if form.url_archivo.help_text %}
+                                <small class="form-text text-muted">{{ form.url_archivo.help_text }}</small>
+                            {% endif %}
+                            {% if form.url_archivo.errors %}
+                                <div class="text-danger">{{ form.url_archivo.errors }}</div>
+                            {% endif %}
+                            <small class="form-text text-muted">
+                                <i class="fas fa-info-circle"></i> Ingrese el enlace al archivo digital del informe (OneDrive, Google Drive, etc.)
+                            </small>
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'gestion:lista_informes_ventas' %}" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Guardar
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

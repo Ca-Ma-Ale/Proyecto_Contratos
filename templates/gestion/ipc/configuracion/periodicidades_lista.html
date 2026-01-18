@@ -1,0 +1,105 @@
+{% extends 'base.html' %}
+
+{% block title %}Periodicidades IPC - Gestión de Contratos{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="display-6">
+                    <i class="fas fa-calendar-alt text-primary"></i> Periodicidades IPC
+                </h1>
+                <div>
+                    {% if user.is_staff %}
+                    <a href="{% url 'gestion:nueva_periodicidad_ipc' %}" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Nueva Periodicidad
+                    </a>
+                    {% endif %}
+                    <a href="{% url 'gestion:lista_ipc_historico' %}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Volver a IPC
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm border-0">
+                <div class="card-header" style="background: linear-gradient(135deg, var(--avenida-cyan) 0%, var(--avenida-blue) 100%); color: white;">
+                    <h5 class="mb-0">
+                        <i class="fas fa-calendar-alt"></i> Catálogo de Periodicidades IPC
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if periodicidades %}
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Orden</th>
+                                        <th>Código</th>
+                                        <th>Nombre</th>
+                                        <th>Descripción</th>
+                                        <th class="text-center">Estado</th>
+                                        <th class="text-center">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for periodicidad in periodicidades %}
+                                    <tr>
+                                        <td>{{ periodicidad.orden }}</td>
+                                        <td><code>{{ periodicidad.codigo }}</code></td>
+                                        <td><strong>{{ periodicidad.nombre }}</strong></td>
+                                        <td>{{ periodicidad.descripcion|default:"-"|truncatewords:10 }}</td>
+                                        <td class="text-center">
+                                            {% if periodicidad.activo %}
+                                                <span class="badge bg-success">Activo</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">Inactivo</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-center">
+                                            <div class="btn-group" role="group">
+                                                {% if user.is_staff %}
+                                                <a href="{% url 'gestion:editar_periodicidad_ipc' periodicidad.id %}"
+                                                   class="btn btn-sm btn-outline-warning" title="Editar">
+                                                    <i class="fas fa-edit"></i>
+                                                </a>
+                                                <form method="post" action="{% url 'gestion:eliminar_periodicidad_ipc' periodicidad.id %}" style="display: inline;">
+                                                    {% csrf_token %}
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Eliminar"
+                                                            onclick="return confirm('¿Está seguro de que desea eliminar la periodicidad {{ periodicidad.nombre }}?')">
+                                                        <i class="fas fa-trash-alt"></i>
+                                                    </button>
+                                                </form>
+                                                {% else %}
+                                                <span class="text-muted">Solo lectura</span>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-calendar-alt fa-3x text-muted mb-3"></i>
+                            <h4 class="text-muted">No hay periodicidades IPC registradas</h4>
+                            <p class="text-muted">Crea el catálogo para usarlas en los contratos.</p>
+                            {% if user.is_staff %}
+                            <a href="{% url 'gestion:nueva_periodicidad_ipc' %}" class="btn btn-primary">
+                                <i class="fas fa-plus"></i> Crear Periodicidad IPC
+                            </a>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

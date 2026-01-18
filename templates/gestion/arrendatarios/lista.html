@@ -1,0 +1,125 @@
+{% extends 'base.html' %}
+
+{% block title %}Lista de Terceros - Gestión de Contratos{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="display-6">
+                    <i class="fas fa-building text-primary"></i> Lista de Terceros
+                </h1>
+                <div>
+                    <a href="{% url 'gestion:nuevo_arrendatario' %}?tipo=ARRENDATARIO" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Nuevo Arrendatario
+                    </a>
+                    <a href="{% url 'gestion:nuevo_arrendatario' %}?tipo=PROVEEDOR" class="btn btn-success">
+                        <i class="fas fa-plus"></i> Nuevo Proveedor
+                    </a>
+                    <a href="{% url 'gestion:dashboard' %}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm border-0">
+                <div class="card-header" style="background: linear-gradient(135deg, var(--avenida-orange) 0%, var(--avenida-magenta) 100%); color: white;">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="fas fa-building"></i> Terceros Registrados
+                        </h5>
+                        <div class="btn-group btn-group-sm" role="group">
+                            <a href="?tipo=" class="btn btn-light {% if not tipo_filtro %}active{% endif %}">Todos</a>
+                            <a href="?tipo=ARRENDATARIO" class="btn btn-light {% if tipo_filtro == 'ARRENDATARIO' %}active{% endif %}">Arrendatarios</a>
+                            <a href="?tipo=PROVEEDOR" class="btn btn-light {% if tipo_filtro == 'PROVEEDOR' %}active{% endif %}">Proveedores</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if terceros %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Tipo</th>
+                                        <th>NIT</th>
+                                        <th>Razón Social</th>
+                                        <th>Representante Legal</th>
+                                        <th>Supervisor Operativo</th>
+                                        <th>Email Supervisor</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for tercero in terceros %}
+                                    <tr>
+                                        <td>
+                                            {% if tercero.tipo == 'ARRENDATARIO' %}
+                                                <span class="badge bg-primary">Arrendatario</span>
+                                            {% else %}
+                                                <span class="badge bg-success">Proveedor</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <strong>{{ tercero.nit }}</strong>
+                                        </td>
+                                        <td>{{ tercero.razon_social }}</td>
+                                        <td>{{ tercero.nombre_rep_legal }}</td>
+                                        <td>
+                                            {% if tercero.nombre_supervisor_op %}
+                                                {{ tercero.nombre_supervisor_op }}
+                                            {% else %}
+                                                <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if tercero.email_supervisor_op %}
+                                                <a href="mailto:{{ tercero.email_supervisor_op }}">
+                                                    <i class="fas fa-envelope"></i> {{ tercero.email_supervisor_op }}
+                                                </a>
+                                            {% else %}
+                                                <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="btn-group" role="group">
+                                                <a href="{% url 'gestion:editar_arrendatario' tercero.id %}" 
+                                                   class="btn btn-sm btn-outline-warning" title="Editar">
+                                                    <i class="fas fa-edit"></i>
+                                                </a>
+                                                {% if user.is_staff %}
+                                                <a href="{% url 'gestion:eliminar_arrendatario' tercero.id %}" 
+                                                   class="btn btn-sm btn-outline-danger" title="Eliminar"
+                                                   onclick="return confirm('¿Está seguro de que desea eliminar el {{ tercero.get_tipo_display|lower }} {{ tercero.razon_social }}?')">
+                                                    <i class="fas fa-trash-alt"></i>
+                                                </a>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-building fa-3x text-muted mb-3"></i>
+                            <h4 class="text-muted">No hay terceros registrados</h4>
+                            <p class="text-muted">Comienza creando tu primer tercero</p>
+                            <a href="{% url 'gestion:nuevo_arrendatario' %}" class="btn btn-primary">
+                                <i class="fas fa-plus"></i> Crear Primer Tercero
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

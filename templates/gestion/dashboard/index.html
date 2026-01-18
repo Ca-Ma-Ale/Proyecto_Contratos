@@ -1,0 +1,902 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard - Gestión de Contratos{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header con estadísticas generales -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h1 class="display-4 mb-0">
+                    <i class="fas fa-tachometer-alt text-primary"></i> Dashboard de Contratos
+                </h1>
+                <div class="btn-group" role="group">
+                    <a href="{% url 'gestion:nuevo_contrato' %}" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Nuevo Contrato
+                    </a>
+                    <a href="{% url 'gestion:lista_contratos' %}" class="btn btn-outline-primary">
+                        <i class="fas fa-list"></i> Ver Todos
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Estadísticas generales -->
+    <div class="row mb-4">
+        <div class="col-md-3 mb-3">
+            <div class="card stat-card text-center">
+                <div class="card-body">
+                    <h3>{{ total_contratos }}</h3>
+                    <p class="mb-0">Total Contratos</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card stat-card-alt text-center">
+                <div class="card-body">
+                    <h3>{{ contratos_vigentes }}</h3>
+                    <p class="mb-0">Contratos Vigentes</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card stat-card text-center">
+                <div class="card-body">
+                    <h3>{{ contratos_vencidos }}</h3>
+                    <p class="mb-0">Contratos Vencidos</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card stat-card-alt text-center">
+                <div class="card-body">
+                    <h3>{{ total_polizas }}</h3>
+                    <p class="mb-0">Total Pólizas</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Acciones Rápidas -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-bolt text-warning"></i> Acciones Rápidas
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3 mb-3">
+                            <a href="{% url 'gestion:nuevo_contrato' %}" class="btn btn-primary w-100">
+                                <i class="fas fa-plus fa-2x mb-2"></i><br>
+                                Nuevo Contrato
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            {% url 'gestion:dashboard' as dashboard_url %}
+                            <a href="{% url 'gestion:nuevo_arrendatario' %}?next={{ dashboard_url|urlencode }}" class="btn btn-success w-100">
+                                <i class="fas fa-users fa-2x mb-2"></i><br>
+                                Nuevo Tercero
+                            </a>
+                            <a href="{% url 'gestion:lista_arrendatarios' %}" class="btn btn-sm btn-outline-success w-100 mt-2">
+                                <i class="fas fa-list"></i> Listar Terceros
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            {% url 'gestion:dashboard' as dashboard_url %}
+                            <a href="{% url 'gestion:nuevo_local' %}?next={{ dashboard_url|urlencode }}" class="btn btn-info w-100">
+                                <i class="fas fa-store fa-2x mb-2"></i><br>
+                                Nuevo Local
+                            </a>
+                            <a href="{% url 'gestion:lista_locales' %}" class="btn btn-sm btn-outline-info w-100 mt-2">
+                                <i class="fas fa-list"></i> Listar Locales
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <a href="{% url 'gestion:exportaciones' %}" class="btn btn-warning w-100">
+                                <i class="fas fa-file-export fa-2x mb-2"></i><br>
+                                Exportaciones
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <a href="{% url 'gestion:lista_contratos' %}" class="btn btn-secondary w-100">
+                                <i class="fas fa-list fa-2x mb-2"></i><br>
+                                Ver Contratos
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <a href="{% url 'gestion:lista_informes_ventas' %}" class="btn btn-primary w-100" style="background-color: var(--avenida-green); border-color: var(--avenida-green);">
+                                <i class="fas fa-chart-line fa-2x mb-2"></i><br>
+                                Informes de Ventas
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <a href="{% url 'gestion:lista_ipc_historico' %}" class="btn btn-primary w-100" style="background-color: var(--avenida-cyan); border-color: var(--avenida-cyan);">
+                                <i class="fas fa-percentage fa-2x mb-2"></i><br>
+                                Gestión IPC
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <a href="{% url 'gestion:gestion_renovaciones_automaticas' %}" class="btn btn-primary w-100" style="background-color: var(--avenida-orange); border-color: var(--avenida-orange);">
+                                <i class="fas fa-sync-alt fa-2x mb-2"></i><br>
+                                Gestión de Renovaciones Automáticas
+                                {% if total_alertas_renovacion_automatica > 0 %}
+                                    <span class="badge bg-danger ms-2">{{ total_alertas_renovacion_automatica }}</span>
+                                {% endif %}
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <a href="{% url 'gestion:gestionar_clausulas' %}" class="btn btn-primary w-100" style="background-color: #6c757d; border-color: #6c757d;">
+                                <i class="fas fa-file-contract fa-2x mb-2"></i><br>
+                                Gestionar Cláusulas
+                            </a>
+                            <a href="{% url 'gestion:parametrizar_clausulas' %}" class="btn btn-sm btn-outline-secondary w-100 mt-2">
+                                <i class="fas fa-cog"></i> Parametrizar
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Estadísticas por modalidad -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chart-pie text-info"></i> Distribución por Modalidad de Pago
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4 text-center">
+                            <div class="border rounded p-3" style="border-color: var(--avenida-orange) !important;">
+                                <h4 class="text-primary">{{ contratos_fijos }}</h4>
+                                <p class="mb-0">Contratos Fijos</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4 text-center">
+                            <div class="border rounded p-3" style="border-color: var(--avenida-green) !important;">
+                                <h4 class="text-success">{{ contratos_variables }}</h4>
+                                <p class="mb-0">Contratos Variables</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4 text-center">
+                            <div class="border rounded p-3" style="border-color: var(--avenida-cyan) !important;">
+                                <h4 class="text-info">{{ contratos_hibridos }}</h4>
+                                <p class="mb-0">Contratos Híbridos</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtro Global de Alertas -->
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body py-2">
+                    <div class="d-flex align-items-center">
+                        <span class="me-3"><strong>Filtrar Alertas:</strong></span>
+                        <div class="btn-group" role="group">
+                            <a href="?tipo_alerta=" class="btn btn-sm {% if not tipo_filtro %}btn-primary{% else %}btn-outline-primary{% endif %}">
+                                Todos
+                            </a>
+                            <a href="?tipo_alerta=CLIENTE" class="btn btn-sm {% if tipo_filtro == 'CLIENTE' %}btn-primary{% else %}btn-outline-primary{% endif %}">
+                                Clientes
+                            </a>
+                            <a href="?tipo_alerta=PROVEEDOR" class="btn btn-sm {% if tipo_filtro == 'PROVEEDOR' %}btn-primary{% else %}btn-outline-primary{% endif %}">
+                                Proveedores
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alertas -->
+    <div class="row">
+        <!-- Alertas de Vencimiento de Contrato -->
+        <div class="col-lg-6 mb-4">
+            <div class="card alert-card alert-vencimiento">
+                <div class="card-header" style="background-color: var(--avenida-orange); color: white;">
+                    <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center">
+                        <div>
+                            <h5 class="mb-0">
+                                <i class="fas fa-exclamation-triangle"></i> 
+                                Alertas de Vencimiento de Contrato
+                                <span class="badge bg-light text-dark ms-2">{{ total_alertas_vencimiento }}</span>
+                            </h5>
+                        </div>
+                        <a
+                            href="{% url 'gestion:exportar_alertas_vencimiento' %}"
+                            class="btn btn-light btn-sm mt-3 mt-lg-0 text-warning fw-semibold{% if total_alertas_vencimiento == 0 %} disabled{% endif %}"
+                            {% if total_alertas_vencimiento == 0 %}aria-disabled="true"{% endif %}
+                        >
+                            <i class="fas fa-file-excel"></i> Exportar Excel
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if contratos_por_vencer %}
+                        <div class="table-responsive alert-collapsible" data-collapsed="true" style="max-height: 64px; overflow: hidden; position: relative;">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Contrato</th>
+                                        <th>Tercero</th>
+                                        <th>Vence</th>
+                                        <th>Días</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in contratos_por_vencer %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ item.contrato.num_contrato }}</strong><br>
+                                            <small class="text-muted">{% if item.contrato.local %}{{ item.contrato.local.nombre_comercial_stand }}{% else %}-{% endif %}</small>
+                                        </td>
+                                        <td>
+                                            {% if item.contrato.obtener_tercero %}
+                                                {{ item.contrato.obtener_tercero.razon_social }}
+                                                {% if item.contrato.tipo_contrato_cliente_proveedor == 'PROVEEDOR' %}
+                                                    <br><span class="badge bg-success">Proveedor</span>
+                                                {% else %}
+                                                    <br><span class="badge bg-primary">Cliente</span>
+                                                {% endif %}
+                                            {% else %}
+                                                <span class="text-muted">Sin tercero asignado</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {{ item.fecha_final_actualizada|date:"d \d\e F \d\e Y" }}
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-warning">
+                                                Próximo a vencer
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                            <div class="fade-overlay" style="display: block; position: absolute; left: 0; right: 0; bottom: 0; height: 24px; background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,1));"></div>
+                        </div>
+                        <button class="btn btn-link p-0 mt-2 toggle-alert" type="button">Ver más</button>
+                    {% else %}
+                        <div class="text-center text-muted">
+                            <i class="fas fa-check-circle fa-2x mb-2"></i>
+                            {% if tipo_filtro %}
+                                <p>No hay contratos por vencer para {% if tipo_filtro == 'CLIENTE' %}clientes{% else %}proveedores{% endif %} en los próximos 60 días</p>
+                            {% else %}
+                                <p>No hay contratos por vencer en los próximos 60 días</p>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Alertas de Pólizas -->
+        <div class="col-lg-6 mb-4">
+            <div class="card alert-card alert-poliza">
+                <div class="card-header" style="background-color: var(--avenida-magenta); color: white;">
+                    <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center">
+                        <div>
+                            <h5 class="mb-0">
+                                <i class="fas fa-shield-alt"></i> 
+                                Alertas de Pólizas
+                                <span class="badge bg-light text-dark ms-2">{{ total_polizas_criticas }}</span>
+                            </h5>
+                        </div>
+                        <a
+                            href="{% url 'gestion:exportar_alertas_polizas' %}"
+                            class="btn btn-light btn-sm mt-3 mt-lg-0 text-danger fw-semibold{% if total_polizas_criticas == 0 %} disabled{% endif %}"
+                            {% if total_polizas_criticas == 0 %}aria-disabled="true"{% endif %}
+                        >
+                            <i class="fas fa-file-excel"></i> Exportar Excel
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if polizas_criticas %}
+                        <div class="table-responsive alert-collapsible" data-collapsed="true" style="max-height: 64px; overflow: hidden; position: relative;">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Póliza</th>
+                                        <th>Contrato</th>
+                                        <th>Estado</th>
+                                        <th>Vence</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for poliza in polizas_criticas %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ poliza.numero_poliza }}</strong><br>
+                                            <small class="text-muted">{{ poliza.get_tipo_display }}</small>
+                                        </td>
+                                        <td>{{ poliza.contrato.num_contrato }}</td>
+                                        <td>
+                                            {% if poliza.obtener_estado_vigencia == 'Vencida' %}
+                                                <span class="badge bg-danger">
+                                                    <i class="fas fa-times-circle"></i> {{ poliza.obtener_estado_legible }}
+                                                </span>
+                                            {% elif poliza.obtener_dias_para_vencer <= 30 %}
+                                                <span class="badge bg-warning">
+                                                    <i class="fas fa-exclamation-triangle"></i> {{ poliza.obtener_estado_legible }}
+                                                </span>
+                                            {% else %}
+                                                <span class="badge bg-success">
+                                                    <i class="fas fa-check-circle"></i> {{ poliza.obtener_estado_legible }}
+                                                </span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ poliza.fecha_vencimiento }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                            <div class="fade-overlay" style="display: block; position: absolute; left: 0; right: 0; bottom: 0; height: 24px; background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,1));"></div>
+                        </div>
+                        <button class="btn btn-link p-0 mt-2 toggle-alert" type="button">Ver más</button>
+                    {% else %}
+                        <div class="text-center text-muted">
+                            <i class="fas fa-check-circle fa-2x mb-2"></i>
+                            {% if tipo_filtro %}
+                                <p>Todas las pólizas de {% if tipo_filtro == 'CLIENTE' %}clientes{% else %}proveedores{% endif %} están en orden</p>
+                            {% else %}
+                                <p>Todas las pólizas están en orden</p>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Alertas de Renovación (Preaviso) -->
+        <div class="col-lg-6 mb-4">
+            <div class="card alert-card alert-preaviso">
+                <div class="card-header" style="background-color: var(--avenida-cyan); color: white;">
+                    <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center">
+                        <div>
+                            <h5 class="mb-0">
+                                <i class="fas fa-clock"></i> 
+                                Alertas de Renovación (Preaviso)
+                                <span class="badge bg-light text-dark ms-2">{{ total_alertas_preaviso }}</span>
+                            </h5>
+                        </div>
+                        <a
+                            href="{% url 'gestion:exportar_alertas_preaviso' %}"
+                            class="btn btn-light btn-sm mt-3 mt-lg-0 text-info fw-semibold{% if total_alertas_preaviso == 0 %} disabled{% endif %}"
+                            {% if total_alertas_preaviso == 0 %}aria-disabled="true"{% endif %}
+                        >
+                            <i class="fas fa-file-excel"></i> Exportar Excel
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if alertas_preaviso_renovacion %}
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Contrato</th>
+                                        <th>Tercero</th>
+                                        <th>Vence</th>
+                                        <th>Preaviso</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in alertas_preaviso_renovacion %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ item.contrato.num_contrato }}</strong><br>
+                                            <small class="text-muted">{% if item.contrato.local %}{{ item.contrato.local.nombre_comercial_stand }}{% else %}-{% endif %}</small>
+                                        </td>
+                                        <td>
+                                            {% if item.contrato.obtener_tercero %}
+                                                {{ item.contrato.obtener_tercero.razon_social }}
+                                                {% if item.contrato.tipo_contrato_cliente_proveedor == 'PROVEEDOR' %}
+                                                    <br><span class="badge bg-success">Proveedor</span>
+                                                {% else %}
+                                                    <br><span class="badge bg-primary">Cliente</span>
+                                                {% endif %}
+                                            {% else %}
+                                                <span class="text-muted">Sin tercero asignado</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ item.fecha_final_actualizada|date:"d \d\e F \d\e Y" }}</td>
+                                        <td>
+                                            <span class="badge bg-warning">
+                                                {{ item.contrato.dias_preaviso_no_renovacion }} días
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center text-muted">
+                            <i class="fas fa-check-circle fa-2x mb-2"></i>
+                            {% if tipo_filtro %}
+                                <p>No hay alertas de preaviso activas para {% if tipo_filtro == 'CLIENTE' %}clientes{% else %}proveedores{% endif %}</p>
+                            {% else %}
+                                <p>No hay alertas de preaviso activas</p>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Alertas de Ajuste de IPC en Facturación -->
+        <div class="col-lg-6 mb-4">
+            <div class="card alert-card alert-ipc">
+                <div class="card-header" style="background-color: var(--avenida-green); color: white;">
+                    <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center">
+                        <div>
+                            <h5 class="mb-0">
+                                <i class="fas fa-percentage"></i> 
+                                Alertas de Ajuste de IPC en Facturación
+                                <span class="badge bg-light text-dark ms-2">{{ total_alertas_ipc }}</span>
+                            </h5>
+                            <small class="d-block mt-2">
+                                <span class="badge bg-danger me-1"><i class="fas fa-exclamation-circle"></i> 0-1 mes</span>
+                                <span class="badge bg-warning me-1"><i class="fas fa-exclamation-triangle"></i> 2 meses</span>
+                                <span class="badge bg-success me-1"><i class="fas fa-check-circle"></i> 3+ meses</span>
+                            </small>
+                        </div>
+                        <div class="d-flex gap-2 mt-3 mt-lg-0">
+                            <a
+                                href="{% url 'gestion:lista_ipc_historico' %}"
+                                class="btn btn-light btn-sm text-success fw-semibold"
+                                title="Calcular ajuste por IPC"
+                            >
+                                <i class="fas fa-calculator"></i> Calcular
+                            </a>
+                            <a
+                                href="{% url 'gestion:exportar_alertas_ipc' %}"
+                                class="btn btn-light btn-sm text-success fw-semibold{% if total_alertas_ipc == 0 %} disabled{% endif %}"
+                                {% if total_alertas_ipc == 0 %}aria-disabled="true"{% endif %}
+                            >
+                                <i class="fas fa-file-excel"></i> Exportar
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if alertas_ipc %}
+                        <div class="table-responsive alert-collapsible" data-collapsed="true" style="max-height: 64px; overflow: hidden; position: relative;">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Contrato</th>
+                                        <th>Tercero</th>
+                                        <th>Mes Ajuste</th>
+                                        <th>Estado</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for alerta in alertas_ipc %}
+                                    <tr style="{% if alerta.color_alerta == 'danger' %}background-color: #fff5f5;{% elif alerta.color_alerta == 'warning' %}background-color: #fffbf0;{% endif %}">
+                                        <td>
+                                            <strong>{{ alerta.contrato.num_contrato }}</strong><br>
+                                            <small class="text-muted">{% if alerta.contrato.local %}{{ alerta.contrato.local.nombre_comercial_stand }}{% else %}-{% endif %}</small>
+                                        </td>
+                                        <td>
+                                            {% if alerta.contrato.obtener_tercero %}
+                                                {{ alerta.contrato.obtener_tercero.razon_social }}
+                                                {% if alerta.contrato.tipo_contrato_cliente_proveedor == 'PROVEEDOR' %}
+                                                    <br><span class="badge bg-success">Proveedor</span>
+                                                {% else %}
+                                                    <br><span class="badge bg-primary">Cliente</span>
+                                                {% endif %}
+                                            {% else %}
+                                                <span class="text-muted">Sin tercero asignado</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-info">{{ alerta.mes_ajuste }}</span><br>
+                                            <small class="text-muted">{{ alerta.condicion_ipc }}</small>
+                                            {% if alerta.otrosi_modificador %}
+                                                <br><small class="text-info" title="Modificado por Otrosí">
+                                                    <i class="fas fa-file-signature"></i> {{ alerta.otrosi_modificador }}
+                                                </small>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-{{ alerta.color_alerta }}">
+                                                {% if alerta.meses_restantes < 0 %}
+                                                    <i class="fas fa-exclamation-circle"></i> Vencida ({{ alerta.meses_restantes_abs }} meses)
+                                                {% elif alerta.meses_restantes == 0 %}
+                                                    <i class="fas fa-exclamation-circle"></i> Este mes
+                                                {% elif alerta.meses_restantes == 1 %}
+                                                    <i class="fas fa-exclamation-circle"></i> 1 mes
+                                                {% elif alerta.meses_restantes == 2 %}
+                                                    <i class="fas fa-exclamation-triangle"></i> 2 meses
+                                                {% elif alerta.meses_restantes == 3 %}
+                                                    <i class="fas fa-info-circle"></i> 3 meses
+                                                {% else %}
+                                                    <i class="fas fa-check-circle"></i> {{ alerta.meses_restantes }} meses
+                                                {% endif %}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                            <div class="fade-overlay" style="display: block; position: absolute; left: 0; right: 0; bottom: 0; height: 24px; background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,1));"></div>
+                        </div>
+                        <button class="btn btn-link p-0 mt-2 toggle-alert" type="button">Ver más</button>
+                    {% else %}
+                        <div class="text-center text-muted">
+                            <i class="fas fa-check-circle fa-2x mb-2"></i>
+                            {% if tipo_filtro %}
+                                <p>No hay alertas de ajuste de IPC para {% if tipo_filtro == 'CLIENTE' %}clientes{% else %}proveedores{% endif %}</p>
+                            {% else %}
+                                <p>No hay alertas de ajuste de IPC</p>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Alertas de Ajuste de Salario Mínimo en Facturación -->
+        <div class="col-lg-6 mb-4">
+            <div class="card alert-card alert-salario-minimo">
+                <div class="card-header" style="background-color: #28a745; color: white;">
+                    <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center">
+                        <div>
+                            <h5 class="mb-0">
+                                <i class="fas fa-dollar-sign"></i> 
+                                Alertas de Ajuste de Salario Mínimo
+                                <span class="badge bg-light text-dark ms-2">{{ total_alertas_salario_minimo }}</span>
+                            </h5>
+                            <small class="d-block mt-2">
+                                <span class="badge bg-danger me-1"><i class="fas fa-exclamation-circle"></i> 0-1 mes</span>
+                                <span class="badge bg-warning me-1"><i class="fas fa-exclamation-triangle"></i> 2 meses</span>
+                                <span class="badge bg-success me-1"><i class="fas fa-check-circle"></i> 3+ meses</span>
+                            </small>
+                        </div>
+                        <div class="d-flex gap-2 mt-3 mt-lg-0">
+                            <a
+                                href="{% url 'gestion:lista_salario_minimo_historico' %}"
+                                class="btn btn-light btn-sm text-success fw-semibold"
+                                title="Calcular ajuste por Salario Mínimo"
+                            >
+                                <i class="fas fa-calculator"></i> Calcular
+                            </a>
+                            <a
+                                href="{% url 'gestion:exportar_alertas_salario_minimo' %}"
+                                class="btn btn-light btn-sm text-success fw-semibold{% if total_alertas_salario_minimo == 0 %} disabled{% endif %}"
+                                {% if total_alertas_salario_minimo == 0 %}aria-disabled="true"{% endif %}
+                            >
+                                <i class="fas fa-file-excel"></i> Exportar
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if alertas_salario_minimo %}
+                        <div class="table-responsive alert-collapsible" data-collapsed="true" style="max-height: 64px; overflow: hidden; position: relative;">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Contrato</th>
+                                        <th>Tercero</th>
+                                        <th>Mes Ajuste</th>
+                                        <th>Estado</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for alerta in alertas_salario_minimo %}
+                                    <tr style="{% if alerta.color_alerta == 'danger' %}background-color: #fff5f5;{% elif alerta.color_alerta == 'warning' %}background-color: #fffbf0;{% endif %}">
+                                        <td>
+                                            <strong>{{ alerta.contrato.num_contrato }}</strong><br>
+                                            <small class="text-muted">{% if alerta.contrato.local %}{{ alerta.contrato.local.nombre_comercial_stand }}{% else %}-{% endif %}</small>
+                                        </td>
+                                        <td>
+                                            {% if alerta.contrato.obtener_tercero %}
+                                                {{ alerta.contrato.obtener_tercero.razon_social }}
+                                                {% if alerta.contrato.tipo_contrato_cliente_proveedor == 'PROVEEDOR' %}
+                                                    <br><span class="badge bg-success">Proveedor</span>
+                                                {% else %}
+                                                    <br><span class="badge bg-primary">Cliente</span>
+                                                {% endif %}
+                                            {% else %}
+                                                <span class="text-muted">Sin tercero asignado</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-success">{{ alerta.mes_ajuste }}</span><br>
+                                            <small class="text-muted">{{ alerta.condicion_salario_minimo }}</small>
+                                            {% if alerta.otrosi_modificador %}
+                                                <br><small class="text-info" title="Modificado por Otrosí">
+                                                    <i class="fas fa-file-signature"></i> {{ alerta.otrosi_modificador }}
+                                                </small>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-{{ alerta.color_alerta }}">
+                                                {% if alerta.meses_restantes < 0 %}
+                                                    <i class="fas fa-exclamation-circle"></i> Vencida ({{ alerta.meses_restantes_abs }} meses)
+                                                {% elif alerta.meses_restantes == 0 %}
+                                                    <i class="fas fa-exclamation-circle"></i> Este mes
+                                                {% elif alerta.meses_restantes == 1 %}
+                                                    <i class="fas fa-exclamation-circle"></i> 1 mes
+                                                {% elif alerta.meses_restantes == 2 %}
+                                                    <i class="fas fa-exclamation-triangle"></i> 2 meses
+                                                {% elif alerta.meses_restantes == 3 %}
+                                                    <i class="fas fa-info-circle"></i> 3 meses
+                                                {% else %}
+                                                    <i class="fas fa-check-circle"></i> {{ alerta.meses_restantes }} meses
+                                                {% endif %}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                            <div class="fade-overlay" style="display: block; position: absolute; left: 0; right: 0; bottom: 0; height: 24px; background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,1));"></div>
+                        </div>
+                        <button class="btn btn-link p-0 mt-2 toggle-alert" type="button">Ver más</button>
+                    {% else %}
+                        <div class="text-center text-muted">
+                            <i class="fas fa-check-circle fa-2x mb-2"></i>
+                            {% if tipo_filtro %}
+                                <p>No hay alertas de ajuste de Salario Mínimo para {% if tipo_filtro == 'CLIENTE' %}clientes{% else %}proveedores{% endif %}</p>
+                            {% else %}
+                                <p>No hay alertas de ajuste de Salario Mínimo</p>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Alertas de Pólizas Requeridas No Aportadas -->
+        <div class="col-lg-6 mb-4">
+            <div class="card alert-card alert-poliza-requerida">
+                <div class="card-header" style="background-color: var(--avenida-magenta); color: white;">
+                    <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center">
+                        <div>
+                            <h5 class="mb-0">
+                                <i class="fas fa-exclamation-circle"></i> 
+                                Alertas de Pólizas Requeridas No Aportadas
+                                <span class="badge bg-light text-dark ms-2">{{ total_alertas_polizas_requeridas }}</span>
+                            </h5>
+                        </div>
+                        <a
+                            href="{% url 'gestion:exportar_alertas_polizas_requeridas' %}"
+                            class="btn btn-light btn-sm mt-3 mt-lg-0 text-danger fw-semibold{% if total_alertas_polizas_requeridas == 0 %} disabled{% endif %}"
+                            {% if total_alertas_polizas_requeridas == 0 %}aria-disabled="true"{% endif %}
+                        >
+                            <i class="fas fa-file-excel"></i> Exportar Excel
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if alertas_polizas_requeridas %}
+                        <div class="table-responsive alert-collapsible" data-collapsed="true" style="max-height: 64px; overflow: hidden; position: relative;">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Contrato</th>
+                                        <th>Tercero</th>
+                                        <th>Tipo Póliza</th>
+                                        <th>Estado</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for alerta in alertas_polizas_requeridas %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ alerta.contrato.num_contrato }}</strong><br>
+                                            <small class="text-muted">{% if alerta.contrato.local %}{{ alerta.contrato.local.nombre_comercial_stand }}{% else %}-{% endif %}</small>
+                                        </td>
+                                        <td>
+                                            {% if alerta.contrato.obtener_tercero %}
+                                                {{ alerta.contrato.obtener_tercero.razon_social }}
+                                                {% if alerta.contrato.tipo_contrato_cliente_proveedor == 'PROVEEDOR' %}
+                                                    <br><span class="badge bg-success">Proveedor</span>
+                                                {% else %}
+                                                    <br><span class="badge bg-primary">Cliente</span>
+                                                {% endif %}
+                                            {% else %}
+                                                <span class="text-muted">Sin tercero asignado</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-info">{{ alerta.nombre_poliza }}</span>
+                                            {% if alerta.otrosi_modificador %}
+                                                <br><small class="text-info" title="Modificado por Otrosí">
+                                                    <i class="fas fa-file-signature"></i> {{ alerta.otrosi_modificador }}
+                                                </small>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if alerta.tiene_poliza %}
+                                                <span class="badge bg-warning">
+                                                    <i class="fas fa-exclamation-triangle"></i> Póliza vencida
+                                                </span>
+                                            {% else %}
+                                                <span class="badge bg-danger">
+                                                    <i class="fas fa-times-circle"></i> Sin póliza
+                                                </span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                            <div class="fade-overlay" style="display: block; position: absolute; left: 0; right: 0; bottom: 0; height: 24px; background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,1));"></div>
+                        </div>
+                        <button class="btn btn-link p-0 mt-2 toggle-alert" type="button">Ver más</button>
+                    {% else %}
+                        <div class="text-center text-muted">
+                            <i class="fas fa-check-circle fa-2x mb-2"></i>
+                            {% if tipo_filtro %}
+                                <p>Todas las pólizas requeridas de {% if tipo_filtro == 'CLIENTE' %}clientes{% else %}proveedores{% endif %} están aportadas y vigentes</p>
+                            {% else %}
+                                <p>Todas las pólizas requeridas están aportadas y vigentes</p>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Alertas de Terminación Anticipada -->
+        <div class="col-lg-6 mb-4">
+            <div class="card alert-card alert-terminacion">
+                <div class="card-header" style="background-color: var(--avenida-orange); color: white;">
+                    <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center">
+                        <div>
+                            <h5 class="mb-0">
+                                <i class="fas fa-hourglass-half"></i> 
+                                Alertas de Terminación Anticipada
+                                <span class="badge bg-light text-dark ms-2">{{ total_alertas_terminacion }}</span>
+                            </h5>
+                        </div>
+                        <a
+                            href="{% url 'gestion:exportar_alertas_terminacion' %}"
+                            class="btn btn-light btn-sm mt-3 mt-lg-0 text-warning fw-semibold{% if total_alertas_terminacion == 0 %} disabled{% endif %}"
+                            {% if total_alertas_terminacion == 0 %}aria-disabled="true"{% endif %}
+                        >
+                            <i class="fas fa-file-excel"></i> Exportar Excel
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if alertas_terminacion %}
+                        <div class="table-responsive alert-collapsible" data-collapsed="true" style="max-height: 64px; overflow: hidden; position: relative;">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Contrato</th>
+                                        <th>Tercero</th>
+                                        <th>Vence</th>
+                                        <th>Días Restantes</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for alerta in alertas_terminacion %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ alerta.contrato.num_contrato }}</strong><br>
+                                            <small class="text-muted">{% if alerta.contrato.local %}{{ alerta.contrato.local.nombre_comercial_stand }}{% else %}-{% endif %}</small>
+                                        </td>
+                                        <td>
+                                            {% if alerta.contrato.obtener_tercero %}
+                                                {{ alerta.contrato.obtener_tercero.razon_social }}
+                                                {% if alerta.contrato.tipo_contrato_cliente_proveedor == 'PROVEEDOR' %}
+                                                    <br><span class="badge bg-success">Proveedor</span>
+                                                {% else %}
+                                                    <br><span class="badge bg-primary">Cliente</span>
+                                                {% endif %}
+                                            {% else %}
+                                                <span class="text-muted">Sin tercero asignado</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {{ alerta.fecha_final_actualizada|date:"d \d\e F \d\e Y" }}
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-warning">
+                                                {{ alerta.dias_restantes }} días
+                                            </span>
+                                            <br>
+                                            <small class="text-muted">
+                                                Límite: {{ alerta.fecha_limite_terminacion|date:"d/m/Y" }}
+                                            </small>
+                                            {% if alerta.otrosi_modificador %}
+                                                <br><small class="text-info" title="Modificado por Otrosí">
+                                                    <i class="fas fa-file-signature"></i> {{ alerta.otrosi_modificador }}
+                                                </small>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                            <div class="fade-overlay" style="display: block; position: absolute; left: 0; right: 0; bottom: 0; height: 24px; background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,1));"></div>
+                        </div>
+                        <button class="btn btn-link p-0 mt-2 toggle-alert" type="button">Ver más</button>
+                    {% else %}
+                        <div class="text-center text-muted">
+                            <i class="fas fa-check-circle fa-2x mb-2"></i>
+                            {% if tipo_filtro %}
+                                <p>No hay contratos de {% if tipo_filtro == 'CLIENTE' %}clientes{% else %}proveedores{% endif %} dentro del período de terminación anticipada</p>
+                            {% else %}
+                                <p>No hay contratos dentro del período de terminación anticipada</p>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Información adicional -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body text-center text-muted">
+                    <small>
+                        <i class="fas fa-info-circle"></i> 
+                        Última actualización: {{ fecha_actual }} | 
+                        <a href="/admin/" class="text-decoration-none">Ir a Administración</a>
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  document.addEventListener('click', function(e){
+    const btn = e.target.closest('.toggle-alert');
+    if (!btn) return;
+    e.preventDefault();
+    const cardBody = btn.closest('.card-body');
+    if (!cardBody) return;
+    const container = cardBody.querySelector('.alert-collapsible');
+    if (!container) return;
+    const collapsed = container.getAttribute('data-collapsed') === 'true';
+    if (collapsed) {
+      container.style.maxHeight = '40vh';
+      container.style.overflowY = 'auto';
+      const overlay = container.querySelector('.fade-overlay');
+      if (overlay) overlay.style.display = 'none';
+      container.setAttribute('data-collapsed', 'false');
+      btn.textContent = 'Ver menos';
+      btn.setAttribute('aria-expanded', 'true');
+    } else {
+      container.style.maxHeight = '64px';
+      container.style.overflowY = 'hidden';
+      const overlay = container.querySelector('.fade-overlay');
+      if (overlay) overlay.style.display = 'block';
+      container.setAttribute('data-collapsed', 'true');
+      btn.textContent = 'Ver más';
+      btn.setAttribute('aria-expanded', 'false');
+    }
+  });
+});
+</script>
+{% endblock %}

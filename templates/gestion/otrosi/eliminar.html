@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="display-6 mb-4">
+                <i class="fas fa-trash text-danger"></i> {{ titulo }}
+            </h1>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6 offset-md-3">
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0"><i class="fas fa-exclamation-triangle"></i> Confirmar Eliminación</h5>
+                </div>
+                <div class="card-body">
+                    <p class="lead">
+                        Está a punto de eliminar el siguiente Otro Sí:
+                    </p>
+                    
+                    <div class="alert alert-warning">
+                        <strong>Número:</strong> {{ otrosi.numero_otrosi }}<br>
+                        <strong>Tipo:</strong> {{ otrosi.get_tipo_display }}<br>
+                        <strong>Versión:</strong> v{{ otrosi.version }}<br>
+                        <strong>Estado:</strong> {{ otrosi.get_estado_display }}<br>
+                        <strong>Contrato:</strong> {{ contrato.num_contrato }}<br>
+                        <strong>Creado:</strong> {{ otrosi.fecha_creacion|date:"Y-m-d H:i" }}
+                    </div>
+
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-circle"></i> 
+                        <strong>¡ADVERTENCIA!</strong> Esta acción no se puede deshacer. El Otro Sí será eliminado permanentemente de la base de datos.
+                    </div>
+                    
+                    {% if otrosi.estado == 'APROBADO' %}
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <strong>ATENCIÓN:</strong> Este Otro Sí está <strong>APROBADO</strong> y puede estar vigente. 
+                        Al eliminarlo, se perderá el historial de cambios del contrato. 
+                        Solo un administrador puede realizar esta acción.
+                    </div>
+                    {% endif %}
+
+                    {% if tiene_posteriores %}
+                    <div class="alert alert-danger">
+                        <i class="fas fa-lock"></i>
+                        <strong>RESTRICCIÓN:</strong> No se puede eliminar este Otro Sí porque existen Otros Sí posteriores en el contrato. 
+                        Solo se puede eliminar el último Otro Sí del contrato (el de mayor número). 
+                        Se permite <strong>editar</strong> este Otro Sí, pero no eliminarlo.
+                    </div>
+                    {% endif %}
+
+                    <form method="post" action="">
+                        {% csrf_token %}
+                        <div class="d-grid gap-2">
+                            {% if tiene_posteriores %}
+                                <button type="button" class="btn btn-danger btn-lg" disabled>
+                                    <i class="fas fa-lock"></i> NO SE PUEDE ELIMINAR (Hay Otros Sí posteriores)
+                                </button>
+                            {% else %}
+                                <button type="submit" name="accion" value="confirmar" class="btn btn-danger btn-lg" onclick="return confirm('¿Está ABSOLUTAMENTE seguro de eliminar este Otro Sí?');">
+                                    <i class="fas fa-trash"></i> SÍ, ELIMINAR PERMANENTEMENTE
+                                </button>
+                            {% endif %}
+                            <button type="submit" name="accion" value="cancelar" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> NO, Cancelar y Volver
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

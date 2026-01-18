@@ -1,0 +1,105 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}{{ titulo }} - Gestión de Contratos{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="display-6">
+                    <i class="fas fa-edit text-primary"></i> {{ titulo }}
+                </h1>
+                <a href="{% url 'gestion:historico_salario_minimo_valores' %}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Volver
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-file-alt"></i> Datos del Salario Mínimo Histórico
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" onsubmit="if(typeof cleanFormValues === 'function') cleanFormValues(); return true;">
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            {{ form.año.label_tag }}
+                            {{ form.año }}
+                            {% if form.año.help_text %}
+                                <small class="form-text text-muted">{{ form.año.help_text }}</small>
+                            {% endif %}
+                            {% if form.año.errors %}
+                                <div class="text-danger">{{ form.año.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            {{ form.valor_salario_minimo.label_tag }}
+                            {{ form.valor_salario_minimo }}
+                            {% if form.valor_salario_minimo.help_text %}
+                                <small class="form-text text-muted">{{ form.valor_salario_minimo.help_text }}</small>
+                            {% endif %}
+                            {% if form.valor_salario_minimo.errors %}
+                                <div class="text-danger">{{ form.valor_salario_minimo.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            {{ form.fecha_decreto.label_tag }}
+                            {{ form.fecha_decreto }}
+                            {% if form.fecha_decreto.help_text %}
+                                <small class="form-text text-muted">{{ form.fecha_decreto.help_text }}</small>
+                            {% endif %}
+                            {% if form.fecha_decreto.errors %}
+                                <div class="text-danger">{{ form.fecha_decreto.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            {{ form.observaciones.label_tag }}
+                            {{ form.observaciones }}
+                            {% if form.observaciones.help_text %}
+                                <small class="form-text text-muted">{{ form.observaciones.help_text }}</small>
+                            {% endif %}
+                            {% if form.observaciones.errors %}
+                                <div class="text-danger">{{ form.observaciones.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'gestion:historico_salario_minimo_valores' %}" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Guardar
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const campoValor = document.querySelector('.money-input');
+        if (campoValor && typeof initMoneyFormatter === 'function') {
+            setTimeout(function() {
+                initMoneyFormatter('.money-input', true);
+            }, 500);
+        }
+    });
+</script>
+{% endblock %}
+

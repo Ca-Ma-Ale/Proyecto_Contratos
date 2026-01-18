@@ -1,0 +1,261 @@
+{% extends 'base.html' %}
+
+{% block title %}Lista de Contratos - Gestión de Contratos{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="display-6">
+                    <i class="fas fa-list text-primary"></i> Lista de Contratos
+                </h1>
+                <div>
+                    <a href="{% url 'gestion:nuevo_contrato' %}" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Nuevo Contrato
+                    </a>
+                    <a href="{% url 'gestion:dashboard' %}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Estadísticas -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card stat-card">
+                <div class="card-body text-center">
+                    <h3>{{ total_contratos }}</h3>
+                    <p class="mb-0">Contratos Encontrados</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-filter"></i> Filtros
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="get">
+                        <div class="row">
+                            <div class="col-md-3">
+                                {{ filtro_form.tipo_contrato_cliente_proveedor.label_tag }}
+                                {{ filtro_form.tipo_contrato_cliente_proveedor }}
+                            </div>
+                            <div class="col-md-3" id="tipo-contrato-cliente-field">
+                                {{ filtro_form.tipo_contrato.label_tag }}
+                                {{ filtro_form.tipo_contrato }}
+                            </div>
+                            <div class="col-md-3" id="tipo-servicio-proveedor-field" style="display: none;">
+                                {{ filtro_form.tipo_servicio.label_tag }}
+                                {{ filtro_form.tipo_servicio }}
+                            </div>
+                            <div class="col-md-3">
+                                {{ filtro_form.estado_vigencia.label_tag }}
+                                {{ filtro_form.estado_vigencia }}
+                            </div>
+                        </div>
+                        <div class="row mt-3">
+                            <div class="col-md-6">
+                                {{ filtro_form.buscar.label_tag }}
+                                {{ filtro_form.buscar }}
+                            </div>
+                        </div>
+                        <div class="row mt-3">
+                            <div class="col-12">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-search"></i> Buscar
+                                </button>
+                                <a href="{% url 'gestion:lista_contratos' %}" class="btn btn-secondary">
+                                    <i class="fas fa-times"></i> Limpiar
+                                </a>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm border-0">
+                <div class="card-header" style="background: linear-gradient(135deg, var(--avenida-orange) 0%, var(--avenida-magenta) 100%); color: white;">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="fas fa-file-contract"></i> Contratos Registrados
+                        </h5>
+                        <div class="btn-group btn-group-sm" role="group">
+                            {% url 'gestion:lista_contratos' as base_url %}
+                            <a href="{{ base_url }}{% if request.GET.estado_vigencia or request.GET.tipo_contrato or request.GET.tipo_servicio or request.GET.buscar %}?{% if request.GET.estado_vigencia %}estado_vigencia={{ request.GET.estado_vigencia }}&{% endif %}{% if request.GET.tipo_contrato %}tipo_contrato={{ request.GET.tipo_contrato }}&{% endif %}{% if request.GET.tipo_servicio %}tipo_servicio={{ request.GET.tipo_servicio }}&{% endif %}{% if request.GET.buscar %}buscar={{ request.GET.buscar }}{% endif %}{% endif %}" class="btn {% if not tipo_filtro_activo %}btn-info text-white fw-bold{% else %}btn-light{% endif %}">Todos</a>
+                            <a href="{{ base_url }}?{% if request.GET.estado_vigencia %}estado_vigencia={{ request.GET.estado_vigencia }}&{% endif %}{% if request.GET.tipo_contrato %}tipo_contrato={{ request.GET.tipo_contrato }}&{% endif %}{% if request.GET.tipo_servicio %}tipo_servicio={{ request.GET.tipo_servicio }}&{% endif %}{% if request.GET.buscar %}buscar={{ request.GET.buscar }}&{% endif %}tipo_contrato_cliente_proveedor=CLIENTE" class="btn {% if tipo_filtro_activo == 'CLIENTE' %}btn-info text-white fw-bold{% else %}btn-light{% endif %}">Clientes</a>
+                            <a href="{{ base_url }}?{% if request.GET.estado_vigencia %}estado_vigencia={{ request.GET.estado_vigencia }}&{% endif %}{% if request.GET.tipo_contrato %}tipo_contrato={{ request.GET.tipo_contrato }}&{% endif %}{% if request.GET.tipo_servicio %}tipo_servicio={{ request.GET.tipo_servicio }}&{% endif %}{% if request.GET.buscar %}buscar={{ request.GET.buscar }}&{% endif %}tipo_contrato_cliente_proveedor=PROVEEDOR" class="btn {% if tipo_filtro_activo == 'PROVEEDOR' %}btn-info text-white fw-bold{% else %}btn-light{% endif %}">Proveedores</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if contratos_con_estado %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Número</th>
+                                        <th>Tipo</th>
+                                        <th>Tercero</th>
+                                        <th>Local / Tipo Servicio</th>
+                                        <th>Modalidad</th>
+                                        <th>Fecha Inicio</th>
+                                        <th>Fecha Fin</th>
+                                        <th>Estado</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in contratos_con_estado %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ item.contrato.num_contrato }}</strong>
+                                        </td>
+                                        <td>
+                                            {% if item.contrato.tipo_contrato_cliente_proveedor == 'PROVEEDOR' %}
+                                                <span class="badge bg-success">Proveedor</span>
+                                            {% else %}
+                                                <span class="badge bg-primary">Cliente</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if item.contrato.obtener_tercero %}
+                                                {{ item.contrato.obtener_nombre_tercero }}
+                                            {% else %}
+                                                <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if item.contrato.tipo_contrato_cliente_proveedor == 'PROVEEDOR' %}
+                                                {% if item.contrato.tipo_servicio %}
+                                                    {{ item.contrato.tipo_servicio.nombre }}
+                                                {% else %}
+                                                    <span class="text-muted">-</span>
+                                                {% endif %}
+                                            {% else %}
+                                                {% if item.contrato.local %}
+                                                    {{ item.contrato.local.nombre_comercial_stand }}
+                                                {% else %}
+                                                    <span class="text-muted">-</span>
+                                                {% endif %}
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if item.contrato.modalidad_pago %}
+                                                <span class="badge bg-info">{{ item.contrato.get_modalidad_pago_display }}</span>
+                                            {% else %}
+                                                <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ item.contrato.fecha_inicial_contrato|date:"d \d\e F \d\e Y" }}</td>
+                                        <td>
+                                            {% if item.fecha_final_vigente %}
+                                                {{ item.fecha_final_vigente|date:"d \d\e F \d\e Y" }}
+                                                {% if item.evento_fecha_final %}
+                                                    <br>
+                                                    <span class="badge {% if item.evento_fecha_final.tipo == 'OS' %}bg-warning text-dark{% else %}bg-primary{% endif %}">
+                                                        {% if item.evento_fecha_final.tipo == 'OS' %}
+                                                            Otro Sí {{ item.evento_fecha_final.numero }}
+                                                        {% else %}
+                                                            Renovación Automática {{ item.evento_fecha_final.numero }}
+                                                        {% endif %}
+                                                    </span>
+                                                {% endif %}
+                                            {% else %}
+                                                <span class="text-muted">Sin fecha</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if item.estado_vigente %}
+                                                <span class="badge bg-success">Vigente</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">No Vigente</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="btn-group" role="group">
+                                                <a href="{% url 'gestion:detalle_contrato' item.contrato.id %}" 
+                                                   class="btn btn-sm btn-outline-primary" title="Ver detalle">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
+                                                <a href="{% url 'gestion:editar_contrato' item.contrato.id %}" 
+                                                   class="btn btn-sm btn-outline-warning" title="Editar">
+                                                    <i class="fas fa-edit"></i>
+                                                </a>
+                                                <a href="{% url 'gestion:eliminar_contrato' item.contrato.id %}" 
+                                                   class="btn btn-sm btn-outline-danger" title="Eliminar"
+                                                   onclick="return confirm('¿Está seguro de que desea eliminar este contrato?')">
+                                                    <i class="fas fa-trash-alt"></i>
+                                                </a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-file-contract fa-3x text-muted mb-3"></i>
+                            <h4 class="text-muted">No hay contratos registrados</h4>
+                            <p class="text-muted">Comienza creando tu primer contrato</p>
+                            <a href="{% url 'gestion:nuevo_contrato' %}" class="btn btn-primary">
+                                <i class="fas fa-plus"></i> Crear Primer Contrato
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const tipoContratoField = document.querySelector('#id_tipo_contrato_cliente_proveedor');
+    const tipoContratoClienteField = document.getElementById('tipo-contrato-cliente-field');
+    const tipoServicioProveedorField = document.getElementById('tipo-servicio-proveedor-field');
+    
+    function toggleTipoFields() {
+        const valor = tipoContratoField ? tipoContratoField.value : '';
+        
+        if (valor === 'CLIENTE') {
+            tipoContratoClienteField.style.display = 'block';
+            tipoServicioProveedorField.style.display = 'none';
+            const servicioSelect = tipoServicioProveedorField.querySelector('select');
+            if (servicioSelect) servicioSelect.value = '';
+        } else if (valor === 'PROVEEDOR') {
+            tipoContratoClienteField.style.display = 'none';
+            tipoServicioProveedorField.style.display = 'block';
+            const contratoSelect = tipoContratoClienteField.querySelector('select');
+            if (contratoSelect) contratoSelect.value = '';
+        } else {
+            tipoContratoClienteField.style.display = 'none';
+            tipoServicioProveedorField.style.display = 'none';
+            const contratoSelect = tipoContratoClienteField.querySelector('select');
+            const servicioSelect = tipoServicioProveedorField.querySelector('select');
+            if (contratoSelect) contratoSelect.value = '';
+            if (servicioSelect) servicioSelect.value = '';
+        }
+    }
+    
+    if (tipoContratoField) {
+        tipoContratoField.addEventListener('change', toggleTipoFields);
+        toggleTipoFields();
+    }
+});
+</script>
+{% endblock %}

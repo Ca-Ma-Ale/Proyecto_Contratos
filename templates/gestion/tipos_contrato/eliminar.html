@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+
+{% block title %}Eliminar Tipo de Contrato{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-lg-6">
+            <div class="card border-danger shadow-sm">
+                <div class="card-header bg-danger text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-exclamation-triangle"></i> Confirmar Eliminación
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <p class="mb-4">
+                        ¿Está seguro de que desea eliminar el tipo de contrato
+                        <strong>{{ tipo_contrato.nombre }}</strong>?
+                    </p>
+                    <p class="text-muted">
+                        Esta acción es irreversible. Solo puede eliminar tipos que no tengan contratos asociados.
+                    </p>
+                    <form method="post" class="mt-4">
+                        {% csrf_token %}
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'gestion:lista_tipos_contrato' %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-danger">
+                                <i class="fas fa-trash-alt"></i> Eliminar
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+

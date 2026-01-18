@@ -1,0 +1,315 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load formato_filters %}
+
+{% block title %}Otro Sí - Contrato {{ contrato.num_contrato }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="display-6">
+                    <i class="fas fa-file-signature text-success"></i> Otro Sí - Contrato {{ contrato.num_contrato }}
+                </h1>
+                <div>
+                    <a href="{% url 'gestion:nuevo_otrosi' contrato.id %}" class="btn btn-success">
+                        <i class="fas fa-plus"></i> Nuevo Otro Sí
+                    </a>
+                    <a href="{% url 'gestion:vista_vigente_contrato' contrato.id %}" class="btn btn-primary">
+                        <i class="fas fa-eye"></i> Vista Vigente
+                    </a>
+                    <a href="{% url 'gestion:detalle_contrato' contrato.id %}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Volver al Contrato
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Información del Contrato -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <div class="row">
+                        {% if contrato.tipo_contrato_cliente_proveedor == 'CLIENTE' %}
+                        <div class="col-md-3">
+                            <strong>Arrendatario:</strong><br>
+                            {% if contrato.arrendatario %}
+                                {{ contrato.arrendatario.razon_social }}
+                            {% else %}
+                                N/A
+                            {% endif %}
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Local:</strong><br>
+                            {% if contrato.local %}
+                                {{ contrato.local.nombre_comercial_stand }}
+                            {% else %}
+                                N/A
+                            {% endif %}
+                        </div>
+                        {% elif contrato.tipo_contrato_cliente_proveedor == 'PROVEEDOR' %}
+                        <div class="col-md-3">
+                            <strong>Proveedor:</strong><br>
+                            {% if contrato.proveedor %}
+                                {{ contrato.proveedor.razon_social }}
+                            {% else %}
+                                N/A
+                            {% endif %}
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Tipo:</strong><br>
+                            {% if contrato.tipo_servicio %}
+                                {{ contrato.tipo_servicio.nombre }}
+                            {% else %}
+                                N/A
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                        <div class="col-md-3">
+                            <strong>Fecha Inicial:</strong><br>
+                            {{ contrato.fecha_inicial_contrato }}
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Estado:</strong><br>
+                            {% if contrato.vigente %}
+                                <span class="badge bg-success">Vigente</span>
+                            {% else %}
+                                <span class="badge bg-secondary">No Vigente</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detalles del Otro Sí Seleccionado -->
+    <div id="otrosi-detalles-container" class="row mb-4" {% if not otrosi_vigente %}style="display: none;"{% endif %}>
+        <div class="col-12">
+            <div class="alert alert-info" id="otrosi-detalles">
+                <h5 class="alert-heading">
+                    <i class="fas fa-check-circle"></i> <span id="otrosi-titulo">{% if otrosi_vigente %}Otro Sí Vigente Actual{% else %}Detalles del Otro Sí{% endif %}</span>
+                </h5>
+                <div class="row">
+                    <div class="col-md-3">
+                        <strong>Número:</strong> <span id="otrosi-numero">{% if otrosi_vigente %}{{ otrosi_vigente.numero_otrosi }}{% endif %}</span>
+                    </div>
+                    <div class="col-md-3">
+                        <strong>Versión:</strong> <span id="otrosi-version">{% if otrosi_vigente %}{{ otrosi_vigente.version }}{% endif %}</span>
+                    </div>
+                    <div class="col-md-3">
+                        <strong>Tipo:</strong> <span id="otrosi-tipo">{% if otrosi_vigente %}{{ otrosi_vigente.get_tipo_display }}{% endif %}</span>
+                    </div>
+                    <div class="col-md-3">
+                        <strong>Vigencia:</strong> <span id="otrosi-vigencia">{% if otrosi_vigente %}{{ otrosi_vigente.effective_from }}{% endif %}</span>
+                    </div>
+                </div>
+                <hr>
+                <strong>Cambios:</strong>
+                <ul class="mb-0" id="otrosi-cambios">
+                    {% if otrosi_vigente %}
+                        {% for cambio in otrosi_vigente.get_cambios_resumen %}
+                            <li>{{ cambio }}</li>
+                        {% endfor %}
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lista de Otro Sí -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-list"></i> Todos los Otro Sí ({{ otrosis.count }})
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if otrosis %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Número</th>
+                                        <th>Tipo</th>
+                                        <th>Estado</th>
+                                        <th>Versión</th>
+                                        <th>Vigencia Desde</th>
+                                        <th>Vigencia Hasta</th>
+                                        <th>Creado Por</th>
+                                        <th>Fecha Creación</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for otrosi in otrosis %}
+                                        <tr data-otrosi-id="{{ otrosi.id }}" class="otrosi-row {% if otrosi == otrosi_vigente %}table-success selected-row{% endif %}" style="cursor: pointer;">
+                                            <td>
+                                                <strong>{{ otrosi.numero_otrosi }}</strong>
+                                                {% if otrosi.estado == 'APROBADO' %}
+                                                    {% with estado_vigencia=otrosi.get_estado_vigencia %}
+                                                        {% if estado_vigencia == 'VIGENTE' %}
+                                                            <span class="badge bg-success ms-2" title="Este Otro Sí está actualmente en vigencia">VIGENTE</span>
+                                                        {% elif estado_vigencia == 'PENDIENTE' %}
+                                                            <span class="badge bg-info ms-2" title="Este Otro Sí aún no ha iniciado su vigencia (inicia el {{ otrosi.effective_from|date:'d/m/Y' }})">PENDIENTE</span>
+                                                        {% elif estado_vigencia == 'VENCIDO' %}
+                                                            <span class="badge bg-danger ms-2" title="Este Otro Sí ya venció{% if otrosi.effective_to %} el {{ otrosi.effective_to|date:'d/m/Y' }}{% endif %}">VENCIDO</span>
+                                                        {% endif %}
+                                                    {% endwith %}
+                                                {% endif %}
+                                            </td>
+                                            <td>{{ otrosi.get_tipo_display }}</td>
+                                            <td>
+                                                {% if otrosi.estado == 'BORRADOR' %}
+                                                    <span class="badge bg-secondary">{{ otrosi.get_estado_display }}</span>
+                                                {% elif otrosi.estado == 'EN_REVISION' %}
+                                                    <span class="badge bg-warning text-dark">{{ otrosi.get_estado_display }}</span>
+                                                {% elif otrosi.estado == 'APROBADO' %}
+                                                    <span class="badge bg-success">{{ otrosi.get_estado_display }}</span>
+                                                {% elif otrosi.estado == 'RECHAZADO' %}
+                                                    <span class="badge bg-danger">{{ otrosi.get_estado_display }}</span>
+                                                {% else %}
+                                                    <span class="badge bg-dark">{{ otrosi.get_estado_display }}</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>v{{ otrosi.version }}</td>
+                                            <td>{{ otrosi.effective_from }}</td>
+                                            <td>{{ otrosi.effective_to|default:"Sin límite" }}</td>
+                                            <td>{{ otrosi.creado_por|default:"Sistema" }}</td>
+                                            <td>{{ otrosi.fecha_creacion|date:"Y-m-d H:i" }}</td>
+                                            <td onclick="event.stopPropagation();">
+                                                <a href="{% url 'gestion:detalle_otrosi' otrosi.id %}" class="btn btn-sm btn-primary" title="Ver Detalle">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
+                                                {% if user.is_staff %}
+                                                    <a href="{% url 'gestion:editar_otrosi' otrosi.id %}" class="btn btn-sm btn-warning" title="Editar (Solo Admin)">
+                                                        <i class="fas fa-edit"></i>
+                                                    </a>
+                                                {% endif %}
+                                                {% if user.is_staff %}
+                                                    {% if otrosi.tiene_posteriores %}
+                                                        <button class="btn btn-sm btn-danger" disabled title="No se puede eliminar porque existen Otros Sí posteriores">
+                                                            <i class="fas fa-lock"></i>
+                                                        </button>
+                                                    {% else %}
+                                                        <a href="{% url 'gestion:eliminar_otrosi' otrosi.id %}" class="btn btn-sm btn-danger" title="Eliminar (Solo Admin)" onclick="return confirm('¿Eliminar este Otro Sí? Esta acción no se puede deshacer.');">
+                                                            <i class="fas fa-trash"></i>
+                                                        </a>
+                                                    {% endif %}
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-warning">
+                            <i class="fas fa-info-circle"></i> No hay Otro Sí registrados para este contrato.
+                            <a href="{% url 'gestion:nuevo_otrosi' contrato.id %}" class="alert-link">Crear el primero</a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const otrosisData = {{ otrosis_data_json|safe }};
+    const detallesContainer = document.getElementById('otrosi-detalles-container');
+    const detallesDiv = document.getElementById('otrosi-detalles');
+    const filas = document.querySelectorAll('.otrosi-row');
+    
+    // Función para actualizar los detalles
+    function actualizarDetalles(otrosiId) {
+        const otrosi = otrosisData.find(o => o.id === otrosiId);
+        if (!otrosi) return;
+        
+        // Actualizar contenido
+        document.getElementById('otrosi-numero').textContent = otrosi.numero;
+        document.getElementById('otrosi-version').textContent = otrosi.version;
+        document.getElementById('otrosi-tipo').textContent = otrosi.tipo;
+        document.getElementById('otrosi-vigencia').textContent = otrosi.vigencia;
+        
+        // Actualizar título
+        const titulo = otrosi.es_vigente ? 'Otro Sí Vigente Actual' : `Otro Sí ${otrosi.numero}`;
+        document.getElementById('otrosi-titulo').textContent = titulo;
+        
+        // Actualizar cambios
+        const cambiosList = document.getElementById('otrosi-cambios');
+        cambiosList.innerHTML = '';
+        otrosi.cambios.forEach(cambio => {
+            const li = document.createElement('li');
+            li.textContent = cambio;
+            cambiosList.appendChild(li);
+        });
+        
+        // Actualizar clase del alert según si es vigente o no
+        if (otrosi.es_vigente) {
+            detallesDiv.className = 'alert alert-info';
+        } else {
+            detallesDiv.className = 'alert alert-secondary';
+        }
+        
+        // Mostrar el contenedor si estaba oculto
+        if (detallesContainer.style.display === 'none') {
+            detallesContainer.style.display = 'block';
+        }
+        
+        // Actualizar resaltado de filas
+        filas.forEach(fila => {
+            fila.classList.remove('table-success', 'selected-row');
+            if (parseInt(fila.getAttribute('data-otrosi-id')) === otrosiId) {
+                fila.classList.add('table-success', 'selected-row');
+            } else {
+                // Restaurar clase original si era vigente
+                const filaOtrosiId = parseInt(fila.getAttribute('data-otrosi-id'));
+                const filaOtrosi = otrosisData.find(o => o.id === filaOtrosiId);
+                if (filaOtrosi && filaOtrosi.es_vigente) {
+                    fila.classList.add('table-success');
+                }
+            }
+        });
+    }
+    
+    // Agregar event listeners a las filas
+    filas.forEach(fila => {
+        fila.addEventListener('click', function(e) {
+            // No hacer nada si se hace clic en los botones de acciones
+            if (e.target.closest('td:last-child')) {
+                return;
+            }
+            const otrosiId = parseInt(this.getAttribute('data-otrosi-id'));
+            actualizarDetalles(otrosiId);
+        });
+    });
+    
+    // Si hay un otrosi vigente, asegurarse de que esté seleccionado inicialmente
+    const otrosiVigente = otrosisData.find(o => o.es_vigente);
+    if (otrosiVigente && otrosisData.length > 0) {
+        actualizarDetalles(otrosiVigente.id);
+    } else if (otrosisData.length > 0 && !otrosiVigente) {
+        // Si no hay vigente pero hay otros sí, mostrar el primero
+        actualizarDetalles(otrosisData[0].id);
+    }
+});
+</script>
+
+<style>
+.otrosi-row:hover {
+    background-color: rgba(0, 123, 255, 0.1) !important;
+}
+.selected-row {
+    background-color: #d1e7dd !important;
+}
+</style>
+
+{% endblock %}
+

@@ -1,0 +1,174 @@
+{% extends 'base.html' %}
+
+{% block title %}Parametrizar Cláusulas - Gestión de Contratos{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="display-6">
+                    <i class="fas fa-cog text-primary"></i> Parametrizar Cláusulas Obligatorias
+                </h1>
+                <div>
+                    <a href="{% url 'gestion:gestionar_clausulas' %}" class="btn btn-info">
+                        <i class="fas fa-file-contract"></i> Gestionar Cláusulas
+                    </a>
+                    <a href="{% url 'gestion:dashboard' %}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm border-0">
+                <div class="card-header" style="background: linear-gradient(135deg, var(--avenida-cyan) 0%, var(--avenida-blue) 100%); color: white;">
+                    <h5 class="mb-0">
+                        <i class="fas fa-filter"></i> Seleccionar Tipo de Contrato
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="get" action="{% url 'gestion:parametrizar_clausulas' %}" id="formFiltro">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <label for="tipo_contrato" class="form-label">Tipo Principal</label>
+                                <select class="form-select" id="tipo_contrato" name="tipo_contrato" onchange="cambiarTipo()">
+                                    <option value="CLIENTE" {% if tipo_seleccionado == 'CLIENTE' %}selected{% endif %}>Cliente</option>
+                                    <option value="PROVEEDOR" {% if tipo_seleccionado == 'PROVEEDOR' %}selected{% endif %}>Proveedor</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4" id="div_tipo_contrato" style="display: {% if tipo_seleccionado == 'CLIENTE' %}block{% else %}none{% endif %};">
+                                <label for="tipo_contrato_id" class="form-label">Tipo de Contrato (Cliente)</label>
+                                <select class="form-select" id="tipo_contrato_id" name="tipo_contrato_id" onchange="document.getElementById('formFiltro').submit();">
+                                    <option value="">Todos los tipos</option>
+                                    {% for tipo in tipos_contrato %}
+                                        <option value="{{ tipo.id }}" {% if tipo_contrato_id and tipo.id|stringformat:"s" == tipo_contrato_id %}selected{% endif %}>{{ tipo.nombre }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-4" id="div_tipo_servicio" style="display: {% if tipo_seleccionado == 'PROVEEDOR' %}block{% else %}none{% endif %};">
+                                <label for="tipo_servicio_id" class="form-label">Tipo de Servicio (Proveedor)</label>
+                                <select class="form-select" id="tipo_servicio_id" name="tipo_servicio_id" onchange="document.getElementById('formFiltro').submit();">
+                                    <option value="">Todos los tipos</option>
+                                    {% for tipo in tipos_servicio %}
+                                        <option value="{{ tipo.id }}" {% if tipo_servicio_id and tipo.id|stringformat:"s" == tipo_servicio_id %}selected{% endif %}>{{ tipo.nombre }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card shadow-sm border-0">
+                <div class="card-header" style="background: linear-gradient(135deg, var(--avenida-green) 0%, var(--avenida-cyan) 100%); color: white;">
+                    <h5 class="mb-0">
+                        <i class="fas fa-check-circle"></i> Cláusulas Obligatorias
+                        <span class="badge bg-light text-dark ms-2">
+                            {% if tipo_seleccionado == 'CLIENTE' %}
+                                {% if tipo_contrato_id %}
+                                    Cliente - 
+                                    {% for tipo in tipos_contrato %}
+                                        {% if tipo.id|stringformat:"s" == tipo_contrato_id %}
+                                            {{ tipo.nombre }}
+                                        {% endif %}
+                                    {% endfor %}
+                                {% else %}
+                                    Cliente - Todos los tipos
+                                {% endif %}
+                            {% else %}
+                                {% if tipo_servicio_id %}
+                                    Proveedor - 
+                                    {% for tipo in tipos_servicio %}
+                                        {% if tipo.id|stringformat:"s" == tipo_servicio_id %}
+                                            {{ tipo.nombre }}
+                                        {% endif %}
+                                    {% endfor %}
+                                {% else %}
+                                    Proveedor - Todos los tipos
+                                {% endif %}
+                            {% endif %}
+                        </span>
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" action="{% url 'gestion:guardar_parametrizacion_clausulas' %}" id="formParametrizacion">
+                        {% csrf_token %}
+                        <input type="hidden" name="tipo_contrato" value="{{ tipo_seleccionado }}">
+                        <input type="hidden" name="tipo_contrato_id" value="{{ tipo_contrato_id|default:'' }}">
+                        <input type="hidden" name="tipo_servicio_id" value="{{ tipo_servicio_id|default:'' }}">
+                        
+                        <div class="mb-3">
+                            <p class="text-muted">
+                                <i class="fas fa-info-circle"></i> 
+                                Seleccione las cláusulas que son obligatorias para este tipo de contrato.
+                                Las cláusulas marcadas como obligatorias aparecerán en la auditoría al guardar contratos.
+                            </p>
+                        </div>
+
+                        {% if clausulas_disponibles %}
+                            <div class="row">
+                                {% for clausula in clausulas_disponibles %}
+                                <div class="col-md-6 mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" 
+                                               name="clausulas[]" 
+                                               value="{{ clausula.id }}" 
+                                               id="clausula_{{ clausula.id }}"
+                                               {% if clausula.id in clausulas_obligatorias_ids %}checked{% endif %}>
+                                        <label class="form-check-label" for="clausula_{{ clausula.id }}">
+                                            <strong>{{ clausula.titulo }}</strong>
+                                        </label>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <div class="alert alert-warning">
+                                <i class="fas fa-exclamation-triangle"></i> 
+                                No hay cláusulas disponibles. 
+                                <a href="{% url 'gestion:gestionar_clausulas' %}">Crear cláusulas</a> primero.
+                            </div>
+                        {% endif %}
+
+                        <div class="mt-4">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Guardar Parametrización
+                            </button>
+                            <a href="{% url 'gestion:parametrizar_clausulas' %}" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Cancelar
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function cambiarTipo() {
+    const tipo = document.getElementById('tipo_contrato').value;
+    const divTipoContrato = document.getElementById('div_tipo_contrato');
+    const divTipoServicio = document.getElementById('div_tipo_servicio');
+    
+    if (tipo === 'CLIENTE') {
+        divTipoContrato.style.display = 'block';
+        divTipoServicio.style.display = 'none';
+        document.getElementById('tipo_servicio_id').value = '';
+    } else {
+        divTipoContrato.style.display = 'none';
+        divTipoServicio.style.display = 'block';
+        document.getElementById('tipo_contrato_id').value = '';
+    }
+    document.getElementById('formFiltro').submit();
+}
+</script>
+{% endblock %}

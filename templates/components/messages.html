@@ -1,0 +1,20 @@
+{% if messages %}
+<div class="messages-container {{ wrapper_class|default:'mb-4' }}">
+    {% for message in messages %}
+        {% with tags=message.tags|default:'' %}
+            {% if 'success' in tags %}
+                {% include 'components/message_item.html' with message=message variant='success' icon='fa-check-circle' %}
+            {% elif 'warning' in tags %}
+                {% include 'components/message_item.html' with message=message variant='warning' icon='fa-exclamation-triangle' %}
+            {% elif 'error' in tags or 'danger' in tags %}
+                {% include 'components/message_item.html' with message=message variant='danger' icon='fa-exclamation-circle' %}
+            {% elif 'info' in tags %}
+                {% include 'components/message_item.html' with message=message variant='info' icon='fa-info-circle' %}
+            {% else %}
+                {% include 'components/message_item.html' with message=message variant='secondary' icon='fa-info-circle' %}
+            {% endif %}
+        {% endwith %}
+    {% endfor %}
+</div>
+{% endif %}
+

@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+
+{% block title %}Eliminar Renovación Automática - Gestión de Contratos{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="display-6">
+                    <i class="fas fa-trash-alt text-danger"></i> Eliminar Renovación Automática
+                </h1>
+                <div>
+                    <a href="{% url 'gestion:gestion_renovaciones_automaticas' %}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Volver
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6 offset-md-3">
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0"><i class="fas fa-exclamation-triangle"></i> Confirmar Eliminación</h5>
+                </div>
+                <div class="card-body">
+                    <p class="lead">
+                        Está a punto de <strong>ELIMINAR PERMANENTEMENTE</strong> la siguiente Renovación Automática:
+                    </p>
+                    
+                    <div class="alert alert-warning">
+                        <strong>Número:</strong> {{ renovacion.numero_renovacion }}<br>
+                        <strong>Versión:</strong> v{{ renovacion.version }}<br>
+                        <strong>Estado:</strong> {{ renovacion.get_estado_display }}<br>
+                        <strong>Contrato:</strong> {{ contrato.num_contrato }}<br>
+                        <strong>Arrendatario:</strong> {{ contrato.arrendatario.razon_social }}<br>
+                        <strong>Fecha Renovación:</strong> {{ renovacion.fecha_renovacion|date:"d/m/Y" }}<br>
+                        <strong>Vigencia Desde:</strong> {{ renovacion.effective_from|date:"d/m/Y" }}<br>
+                        {% if renovacion.effective_to %}
+                        <strong>Vigencia Hasta:</strong> {{ renovacion.effective_to|date:"d/m/Y" }}<br>
+                        {% endif %}
+                        <strong>Meses:</strong> {{ renovacion.meses_renovacion }} meses<br>
+                        {% if renovacion.aprobado_por %}
+                        <strong>Aprobado Por:</strong> {{ renovacion.aprobado_por }}<br>
+                        <strong>Fecha Aprobación:</strong> {{ renovacion.fecha_aprobacion|date:"d/m/Y H:i" }}
+                        {% endif %}
+                    </div>
+
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-circle"></i> 
+                        <strong>¡ADVERTENCIA CRÍTICA!</strong> Esta acción <strong>ELIMINARÁ PERMANENTEMENTE</strong> la renovación automática de la base de datos. 
+                        Esta acción <strong>NO SE PUEDE DESHACER</strong>.
+                    </div>
+                    
+                    {% if renovacion.estado == 'APROBADO' %}
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <strong>ATENCIÓN:</strong> Esta Renovación Automática está <strong>APROBADA</strong> y puede estar vigente. 
+                        Al eliminarla, se dejará de considerar en el efecto cadena y los valores del contrato podrían cambiar.
+                    </div>
+                    {% endif %}
+
+                    <form method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="accion" value="confirmar">
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-danger btn-lg">
+                                <i class="fas fa-trash-alt"></i> SÍ, ELIMINAR PERMANENTEMENTE
+                            </button>
+                            <a href="{% url 'gestion:gestion_renovaciones_automaticas' %}" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> NO, Cancelar y Volver
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

@@ -1,0 +1,116 @@
+{% extends 'base.html' %}
+
+{% block title %}Histórico de IPC - Gestión de Contratos{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1 class="display-6 mb-0">
+                        <i class="fas fa-chart-line text-primary"></i> Histórico de IPC
+                    </h1>
+                    <small class="text-muted">Valores certificados por el DANE</small>
+                </div>
+                <div>
+                    {% if user.is_staff %}
+                    <a href="{% url 'gestion:nuevo_ipc_historico' %}" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Nuevo IPC
+                    </a>
+                    {% endif %}
+                    <a href="{% url 'gestion:lista_ipc_historico' %}" class="btn btn-success">
+                        <i class="fas fa-calculator"></i> Ver Contratos
+                    </a>
+                    <a href="{% url 'gestion:dashboard' %}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-list"></i> Valores Históricos del IPC
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if ipc_historico %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Año</th>
+                                        <th>Valor IPC (%)</th>
+                                        <th>Fecha Certificación</th>
+                                        <th>Observaciones</th>
+                                        <th>Creado Por</th>
+                                        <th>Fecha Creación</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for ipc in ipc_historico %}
+                                        <tr>
+                                            <td><strong>{{ ipc.año }}</strong></td>
+                                            <td>
+                                                <span class="badge bg-primary" style="font-size: 1rem;">
+                                                    {{ ipc.valor_ipc }}%
+                                                </span>
+                                            </td>
+                                            <td>
+                                                {% if ipc.fecha_certificacion %}
+                                                    {{ ipc.fecha_certificacion|date:"d/m/Y" }}
+                                                {% else %}
+                                                    <span class="text-muted">-</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if ipc.observaciones %}
+                                                    <small>{{ ipc.observaciones|truncatewords:10 }}</small>
+                                                {% else %}
+                                                    <span class="text-muted">-</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <small>{{ ipc.creado_por|default:"-" }}</small>
+                                            </td>
+                                            <td>
+                                                <small>{{ ipc.fecha_creacion|date:"d/m/Y H:i" }}</small>
+                                            </td>
+                                            <td>
+                                                {% if user.is_staff %}
+                                                <a href="{% url 'gestion:editar_ipc_historico' ipc.id %}" class="btn btn-sm btn-warning" title="Editar">
+                                                    <i class="fas fa-edit"></i>
+                                                </a>
+                                                <a href="{% url 'gestion:eliminar_ipc_historico' ipc.id %}" class="btn btn-sm btn-danger" title="Eliminar">
+                                                    <i class="fas fa-trash"></i>
+                                                </a>
+                                                {% else %}
+                                                <span class="text-muted">Solo lectura</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i> No hay valores de IPC registrados.
+                            {% if user.is_staff %}
+                            <a href="{% url 'gestion:nuevo_ipc_historico' %}">Agregar el primero</a>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

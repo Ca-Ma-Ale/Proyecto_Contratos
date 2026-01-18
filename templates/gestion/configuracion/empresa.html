@@ -1,0 +1,283 @@
+{% extends 'base.html' %}
+{% load formato_filters %}
+
+{% block title %}{{ titulo }} - Gestión de Contratos{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex flex-wrap justify-content-between align-items-center">
+                <nav aria-label="breadcrumb" class="mb-2 mb-md-0">
+                    <ol class="breadcrumb mb-0">
+                        <li class="breadcrumb-item">
+                            <a href="{% url 'gestion:dashboard' %}" class="text-decoration-none">
+                                <i class="fas fa-home"></i> Dashboard
+                            </a>
+                        </li>
+                        <li class="breadcrumb-item active" aria-current="page">{{ titulo }}</li>
+                    </ol>
+                </nav>
+                <div class="btn-group btn-group-sm" role="group">
+                    <a href="{% url 'gestion:dashboard' %}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left"></i> Volver
+                    </a>
+                </div>
+            </div>
+            <div class="d-flex flex-wrap justify-content-between align-items-center mt-3">
+                <h1 class="display-5 mb-0">
+                    <i class="fas fa-building text-primary"></i> {{ titulo }}
+                </h1>
+                <span class="badge bg-light text-dark fw-semibold">
+                    <i class="fas fa-shield-alt text-primary me-1"></i> Datos institucionales
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header py-3" style="background: linear-gradient(135deg, var(--avenida-dark) 0%, #34495e 100%); color: white;">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+                        <h5 class="mb-0">
+                            <i class="fas fa-edit me-2"></i> Actualizar información corporativa
+                        </h5>
+                        <span class="badge bg-light text-dark">
+                            <i class="fas fa-info-circle me-1"></i> Campos obligatorios
+                        </span>
+                    </div>
+                </div>
+                <div class="card-body p-4">
+                    <form method="post" novalidate>
+                        {% csrf_token %}
+
+                        <section class="mb-4">
+                            <h6 class="text-muted text-uppercase fw-semibold small mb-3">
+                                <i class="fas fa-building text-primary me-2"></i>Identidad corporativa
+                            </h6>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label for="{{ form.nombre_empresa.id_for_label }}" class="form-label fw-semibold">
+                                        {{ form.nombre_empresa.label }}
+                                    </label>
+                                    <div class="input-group input-group-lg">
+                                        <span class="input-group-text bg-transparent text-primary">
+                                            <i class="fas fa-city"></i>
+                                        </span>
+                                        {{ form.nombre_empresa|add_class:'form-control form-control-lg' }}
+                                    </div>
+                                    {% if form.nombre_empresa.errors %}
+                                        <div class="alert alert-danger mt-2 mb-0 py-2">
+                                            <i class="fas fa-exclamation-circle me-2"></i>{{ form.nombre_empresa.errors }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="{{ form.nit_empresa.id_for_label }}" class="form-label fw-semibold">
+                                        {{ form.nit_empresa.label }}
+                                    </label>
+                                    <div class="input-group input-group-lg">
+                                        <span class="input-group-text bg-transparent text-primary">
+                                            <i class="fas fa-id-card"></i>
+                                        </span>
+                                        {{ form.nit_empresa|add_class:'form-control form-control-lg' }}
+                                    </div>
+                                    {% if form.nit_empresa.errors %}
+                                        <div class="alert alert-danger mt-2 mb-0 py-2">
+                                            <i class="fas fa-exclamation-circle me-2"></i>{{ form.nit_empresa.errors }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </section>
+
+                        <section class="mb-4">
+                            <h6 class="text-muted text-uppercase fw-semibold small mb-3">
+                                <i class="fas fa-user-tie text-primary me-2"></i>Representación legal y contacto
+                            </h6>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label for="{{ form.representante_legal.id_for_label }}" class="form-label fw-semibold">
+                                        {{ form.representante_legal.label }}
+                                    </label>
+                                    <div class="input-group input-group-lg">
+                                        <span class="input-group-text bg-transparent text-primary">
+                                            <i class="fas fa-user-tie"></i>
+                                        </span>
+                                        {{ form.representante_legal|add_class:'form-control form-control-lg' }}
+                                    </div>
+                                    {% if form.representante_legal.errors %}
+                                        <div class="alert alert-danger mt-2 mb-0 py-2">
+                                            <i class="fas fa-exclamation-circle me-2"></i>{{ form.representante_legal.errors }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="{{ form.telefono.id_for_label }}" class="form-label fw-semibold">
+                                        {{ form.telefono.label }}
+                                    </label>
+                                    <div class="input-group input-group-lg">
+                                        <span class="input-group-text bg-transparent text-primary">
+                                            <i class="fas fa-phone"></i>
+                                        </span>
+                                        {{ form.telefono|add_class:'form-control form-control-lg' }}
+                                    </div>
+                                    {% if form.telefono.errors %}
+                                        <div class="alert alert-danger mt-2 mb-0 py-2">
+                                            <i class="fas fa-exclamation-circle me-2"></i>{{ form.telefono.errors }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="{{ form.email.id_for_label }}" class="form-label fw-semibold">
+                                        {{ form.email.label }}
+                                    </label>
+                                    <div class="input-group input-group-lg">
+                                        <span class="input-group-text bg-transparent text-primary">
+                                            <i class="fas fa-envelope"></i>
+                                        </span>
+                                        {{ form.email|add_class:'form-control form-control-lg' }}
+                                    </div>
+                                    {% if form.email.errors %}
+                                        <div class="alert alert-danger mt-2 mb-0 py-2">
+                                            <i class="fas fa-exclamation-circle me-2"></i>{{ form.email.errors }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </section>
+
+                        <section>
+                            <h6 class="text-muted text-uppercase fw-semibold small mb-3">
+                                <i class="fas fa-map-marker-alt text-primary me-2"></i>Ubicación institucional
+                            </h6>
+                            <div class="row g-3">
+                                <div class="col-12">
+                                    <label for="{{ form.direccion.id_for_label }}" class="form-label fw-semibold">
+                                        {{ form.direccion.label }}
+                                    </label>
+                                    <div class="input-group input-group-lg">
+                                        <span class="input-group-text bg-transparent text-primary">
+                                            <i class="fas fa-location-dot"></i>
+                                        </span>
+                                        {{ form.direccion|add_class:'form-control form-control-lg' }}
+                                    </div>
+                                    {% if form.direccion.errors %}
+                                        <div class="alert alert-danger mt-2 mb-0 py-2">
+                                            <i class="fas fa-exclamation-circle me-2"></i>{{ form.direccion.errors }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </section>
+
+                        <div class="border-top pt-4 mt-4">
+                            <div class="d-grid gap-3 d-md-flex justify-content-md-end">
+                                <a href="{% url 'gestion:dashboard' %}" class="btn btn-outline-secondary btn-lg">
+                                    <i class="fas fa-times"></i> Cancelar
+                                </a>
+                                <button type="submit" class="btn btn-primary btn-lg">
+                                    <i class="fas fa-save"></i> Guardar configuración
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card shadow-sm border-0 mb-3">
+                <div class="card-header" style="background-color: var(--avenida-light); border-bottom: 3px solid var(--avenida-orange);">
+                    <h5 class="mb-0">
+                        <i class="fas fa-info-circle text-info me-2"></i> Información de referencia
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted mb-3">
+                        Estos datos alimentan automáticamente los contratos, pólizas y reportes generados desde el sistema.
+                    </p>
+                    <div class="alert alert-info border-0" style="background-color: rgba(0, 188, 212, 0.15);">
+                        <h6 class="alert-heading mb-3">
+                            <i class="fas fa-lightbulb text-info me-2"></i> Datos por defecto
+                        </h6>
+                        <ul class="list-unstyled mb-0 small">
+                            <li class="mb-2">
+                                <i class="fas fa-building text-primary me-2"></i>
+                                <strong>Empresa:</strong> EMPRESA DEMO S.A.S.
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-id-badge text-primary me-2"></i>
+                                <strong>NIT:</strong> 900.000.000-0
+                            </li>
+                            <li>
+                                <i class="fas fa-user-tie text-primary me-2"></i>
+                                <strong>Representante:</strong> JUANA EJEMPLO GARCÍA
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="alert alert-warning border-0 mt-3" style="background-color: rgba(233, 30, 99, 0.1);">
+                        <h6 class="alert-heading mb-2">
+                            <i class="fas fa-exclamation-triangle text-warning me-2"></i> Importante
+                        </h6>
+                        <p class="mb-0 small">
+                            Solo puede existir una configuración activa. Al guardar cambios se despublicará la anterior y se aplicará la nueva de forma inmediata.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            {% if configuracion %}
+            <div class="card shadow-sm border-0">
+                <div class="card-header" style="background-color: var(--avenida-light); border-bottom: 3px solid var(--avenida-green);">
+                    <h5 class="mb-0">
+                        <i class="fas fa-check-circle text-success me-2"></i> Configuración actual
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="list-group list-group-flush">
+                        <div class="list-group-item px-0 border-0 d-flex justify-content-between align-items-start">
+                            <span class="text-muted small">Empresa</span>
+                            <span class="fw-semibold text-dark text-end">{{ configuracion.nombre_empresa }}</span>
+                        </div>
+                        <div class="list-group-item px-0 border-0 d-flex justify-content-between align-items-start">
+                            <span class="text-muted small">NIT</span>
+                            <span class="fw-semibold text-dark text-end">{{ configuracion.nit_empresa }}</span>
+                        </div>
+                        <div class="list-group-item px-0 border-0 d-flex justify-content-between align-items-start">
+                            <span class="text-muted small">Representante</span>
+                            <span class="fw-semibold text-dark text-end">{{ configuracion.representante_legal }}</span>
+                        </div>
+                        {% if configuracion.telefono %}
+                        <div class="list-group-item px-0 border-0 d-flex justify-content-between align-items-start">
+                            <span class="text-muted small">Teléfono</span>
+                            <span class="fw-semibold text-dark text-end">{{ configuracion.telefono }}</span>
+                        </div>
+                        {% endif %}
+                        {% if configuracion.email %}
+                        <div class="list-group-item px-0 border-0 d-flex justify-content-between align-items-start">
+                            <span class="text-muted small">Email</span>
+                            <span class="fw-semibold text-dark text-end">{{ configuracion.email }}</span>
+                        </div>
+                        {% endif %}
+                        <div class="list-group-item px-0 border-0 d-flex justify-content-between align-items-start">
+                            <span class="text-muted small">Dirección</span>
+                            <span class="fw-semibold text-dark text-end">{{ configuracion.direccion }}</span>
+                        </div>
+                    </div>
+                    <div class="mt-3 d-flex justify-content-between align-items-center">
+                        <span class="badge bg-success text-uppercase">
+                            <i class="fas fa-toggle-on me-1"></i> Activa
+                        </span>
+                        <small class="text-muted">
+                            <i class="fas fa-clock me-1"></i> {{ configuracion.fecha_creacion|date:"d/m/Y H:i" }}
+                        </small>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

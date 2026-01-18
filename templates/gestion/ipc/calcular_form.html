@@ -1,0 +1,488 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load humanize %}
+
+{% block title %}{{ titulo }} - Gestión de Contratos{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="display-6">
+                    <i class="fas fa-calculator text-primary"></i> {{ titulo }}
+                </h1>
+                <div>
+                    <a href="{% url 'gestion:lista_calculos_ipc' %}" class="btn btn-info">
+                        <i class="fas fa-list"></i> Ver Cálculos
+                    </a>
+                    <a href="{% url 'gestion:contratos_pendientes_ipc' %}" class="btn btn-warning">
+                        <i class="fas fa-exclamation-triangle"></i> Contratos Pendientes
+                    </a>
+                    <a href="{% url 'gestion:dashboard' %}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-10 offset-md-1">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-file-alt"></i> Datos para el Cálculo
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" id="calculo-ipc-form">
+                        {% csrf_token %}
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.contrato.id_for_label }}" class="form-label fw-bold">
+                                    <i class="fas fa-file-contract text-primary"></i> {{ form.contrato.label }}
+                                </label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light">
+                                        <i class="fas fa-building text-muted"></i>
+                                    </span>
+                                    {{ form.contrato }}
+                                </div>
+                                {% if form.contrato.help_text %}
+                                    <small class="form-text text-muted">{{ form.contrato.help_text }}</small>
+                                {% endif %}
+                                {% if form.contrato.errors %}
+                                    <div class="text-danger">{{ form.contrato.errors }}</div>
+                                {% endif %}
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.fecha_aplicacion.id_for_label }}" class="form-label fw-bold">
+                                    <i class="fas fa-calendar-alt text-info"></i> {{ form.fecha_aplicacion.label }}
+                                </label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light">
+                                        <i class="fas fa-calendar text-muted"></i>
+                                    </span>
+                                    {{ form.fecha_aplicacion }}
+                                </div>
+                                {% if form.fecha_aplicacion.help_text %}
+                                    <small class="form-text text-muted">{{ form.fecha_aplicacion.help_text }}</small>
+                                {% endif %}
+                                {% if form.fecha_aplicacion.errors %}
+                                    <div class="text-danger">{{ form.fecha_aplicacion.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.ipc_historico.id_for_label }}" class="form-label fw-bold">
+                                <i class="fas fa-chart-line text-warning"></i> {{ form.ipc_historico.label }}
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light">
+                                    <i class="fas fa-percentage text-muted"></i>
+                                </span>
+                                {{ form.ipc_historico }}
+                            </div>
+                            {% if form.ipc_historico.help_text %}
+                                <small class="form-text text-muted">{{ form.ipc_historico.help_text }}</small>
+                            {% endif %}
+                            {% if form.ipc_historico.errors %}
+                                <div class="text-danger">{{ form.ipc_historico.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        {% if user.is_staff %}
+                        <div class="mb-3">
+                            <div class="card border-info">
+                                <div class="card-body py-2">
+                                    <div class="form-check">
+                                        {{ form.canon_anterior_manual }}
+                                        <label class="form-check-label fw-bold" for="{{ form.canon_anterior_manual.id_for_label }}">
+                                            <i class="fas fa-edit text-info"></i> {{ form.canon_anterior_manual.label }}
+                                        </label>
+                                        {% if form.canon_anterior_manual.help_text %}
+                                            <small class="form-text text-muted d-block mt-1">{{ form.canon_anterior_manual.help_text }}</small>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <div class="mb-3">
+                            <label for="{{ form.canon_anterior.id_for_label }}" class="form-label fw-bold">
+                                <i class="fas fa-dollar-sign text-success"></i> {{ form.canon_anterior.label }}
+                            </label>
+                            <div class="input-group input-group-lg" id="canon-input-group">
+                                <span class="input-group-text bg-light">
+                                    <i class="fas fa-money-bill-wave text-muted"></i>
+                                </span>
+                                {{ form.canon_anterior }}
+                                <span class="input-group-text" id="canon-lock-icon">
+                                    <i class="fas fa-lock" id="lock-icon"></i>
+                                    <span class="ms-2" id="lock-text">Bloqueado</span>
+                                </span>
+                            </div>
+                            {% if form.canon_anterior.help_text %}
+                                <small class="form-text text-muted">{{ form.canon_anterior.help_text }}</small>
+                            {% endif %}
+                            {% if form.canon_anterior.errors %}
+                                <div class="text-danger">{{ form.canon_anterior.errors }}</div>
+                            {% endif %}
+                            <div class="mt-2" id="canon-fuente"></div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.observaciones.id_for_label }}" class="form-label fw-bold">
+                                <i class="fas fa-sticky-note text-secondary"></i> {{ form.observaciones.label }}
+                            </label>
+                            {{ form.observaciones }}
+                            {% if form.observaciones.help_text %}
+                                <small class="form-text text-muted">{{ form.observaciones.help_text }}</small>
+                            {% endif %}
+                            {% if form.observaciones.errors %}
+                                <div class="text-danger">{{ form.observaciones.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'gestion:dashboard' %}" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Cancelar
+                            </a>
+                            <button type="submit" name="accion" value="calcular" class="btn btn-primary">
+                                <i class="fas fa-calculator"></i> Calcular
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            {% if mostrar_resultado %}
+            <div class="card mt-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-calculator"></i> Resultado del Cálculo
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h6>Canon Anterior</h6>
+                                    <h4>${{ canon_anterior|floatformat:2|intcomma }}</h4>
+                                    <small class="text-muted">
+                                        Fuente: 
+                                        <span class="badge bg-info ms-1" title="Fuente del canon anterior">
+                                            {{ fuente_canon }}
+                                        </span>
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h6>Porcentaje Total a Aplicar</h6>
+                                    <h4>{{ resultado.porcentaje_total }}%</h4>
+                                    <small class="text-muted">
+                                        IPC: {{ ipc_historico.valor_ipc }}% + 
+                                        Puntos: {{ puntos_adicionales }}%
+                                        <span class="badge bg-info ms-2" title="Fuente de los puntos adicionales">
+                                            {{ fuente_puntos.fuente }}
+                                        </span>
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card bg-info text-white">
+                                <div class="card-body text-center">
+                                    <h6>Incremento</h6>
+                                    <h3>${{ resultado.valor_incremento|floatformat:2|intcomma }}</h3>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card bg-success text-white">
+                                <div class="card-body text-center">
+                                    <h6>Nuevo Canon</h6>
+                                    <h3>${{ resultado.nuevo_canon|floatformat:2|intcomma }}</h3>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <form method="post" id="guardar-calculo-form">
+                            {% csrf_token %}
+                            <input type="hidden" name="contrato" value="{{ contrato.id }}">
+                            <input type="hidden" name="fecha_aplicacion" value="{{ fecha_aplicacion|date:'Y-m-d' }}">
+                            <input type="hidden" name="ipc_historico" value="{{ ipc_historico.id }}">
+                            <input type="hidden" name="canon_anterior" value="{{ canon_anterior }}">
+                            <input type="hidden" name="canon_anterior_manual" value="{% if canon_anterior_manual %}on{% endif %}">
+                            <input type="hidden" name="observaciones" value="{{ observaciones }}">
+                            <input type="hidden" name="accion" value="guardar">
+                            
+                            <div class="card border-warning mb-3">
+                                <div class="card-header bg-warning text-dark">
+                                    <i class="fas fa-exclamation-triangle"></i> <strong>Aplicar Cálculo</strong>
+                                </div>
+                                <div class="card-body">
+                                    <p class="mb-3">¿Desea aplicar este cálculo de IPC al contrato de inmediato?</p>
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input" type="radio" name="aplicar_calculo" id="aplicar_si" value="si" required>
+                                        <label class="form-check-label" for="aplicar_si">
+                                            <strong>Sí, aplicar ahora</strong> - El cálculo quedará marcado como aplicado y registrado en el sistema
+                                        </label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="aplicar_calculo" id="aplicar_no" value="no" required>
+                                        <label class="form-check-label" for="aplicar_no">
+                                            <strong>No, solo guardar</strong> - El cálculo quedará pendiente para aplicar después
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Guardar Cálculo
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script src="{% static 'js/formatMiles.js' %}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const contratoSelect = document.getElementById('{{ form.contrato.id_for_label }}');
+    const fechaAplicacionInput = document.getElementById('{{ form.fecha_aplicacion.id_for_label }}');
+    const canonInput = document.getElementById('{{ form.canon_anterior.id_for_label }}');
+    const canonManualCheck = document.getElementById('{{ form.canon_anterior_manual.id_for_label }}');
+    const canonFuente = document.getElementById('canon-fuente');
+    const lockIcon = document.getElementById('lock-icon');
+    const isStaff = {% if user.is_staff %}true{% else %}false{% endif %};
+    
+    // Inicializar formateo de miles DESPUÉS de que el DOM esté listo
+    // Esperar un momento para asegurar que el input esté completamente renderizado
+    let formateadorInicializado = false;
+    setTimeout(function() {
+        if (typeof initMoneyFormatter === 'function') {
+            initMoneyFormatter('.money-input');
+            formateadorInicializado = true;
+            console.log('Formateador de dinero inicializado');
+        }
+    }, 100);
+    
+    function actualizarEstadoCanon(esManual) {
+        const canonInputGroup = document.getElementById('canon-input-group');
+        const lockText = document.getElementById('lock-text');
+        
+        if (esManual) {
+            // Modo manual: editable
+            canonInput.readOnly = false;
+            canonInput.classList.remove('bg-light', 'border-secondary', 'border-2');
+            canonInput.classList.add('border-success', 'border-2');
+            canonInput.style.cursor = 'text';
+            lockIcon.className = 'fas fa-unlock text-success';
+            lockIcon.parentElement.classList.remove('bg-secondary', 'text-white');
+            lockIcon.parentElement.classList.add('bg-success', 'text-white', 'fw-bold');
+            if (lockText) lockText.textContent = 'Desbloqueado';
+            canonFuente.innerHTML = '<div class="alert alert-warning alert-dismissible fade show mb-0" role="alert">' +
+                '<i class="fas fa-exclamation-triangle"></i> <strong>Modo Manual:</strong> El canon será ingresado manualmente bajo su responsabilidad.' +
+                '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>' +
+                '</div>';
+            if (canonInputGroup) {
+                canonInputGroup.classList.remove('border-secondary', 'border-2');
+                canonInputGroup.classList.add('border-success', 'border-2');
+            }
+        } else {
+            // Modo automático: solo lectura (pero editable si no es staff y no hay checkbox)
+            if (!isStaff || !canonManualCheck) {
+                // Si no es staff o no existe el checkbox, el campo debe ser de solo lectura pero visible
+                canonInput.readOnly = true;
+                canonInput.classList.remove('border-success', 'border-2');
+                canonInput.classList.add('bg-light', 'border-secondary', 'border-2');
+                canonInput.style.cursor = 'not-allowed';
+            } else {
+                // Si es staff y existe checkbox, aplicar bloqueo normal
+                canonInput.readOnly = true;
+                canonInput.classList.remove('border-success', 'border-2');
+                canonInput.classList.add('bg-light', 'border-secondary', 'border-2');
+                canonInput.style.cursor = 'not-allowed';
+            }
+            if (lockIcon) {
+                lockIcon.className = 'fas fa-lock text-white';
+                lockIcon.parentElement.classList.remove('bg-success', 'text-white', 'fw-bold');
+                lockIcon.parentElement.classList.add('bg-secondary', 'text-white', 'fw-bold');
+            }
+            if (lockText) lockText.textContent = 'Bloqueado';
+            if (canonInputGroup) {
+                canonInputGroup.classList.remove('border-success', 'border-2');
+                canonInputGroup.classList.add('border-secondary', 'border-2');
+            }
+        }
+    }
+    
+    function obtenerCanonAnterior() {
+        const contratoId = contratoSelect.value;
+        const fechaAplicacion = fechaAplicacionInput ? fechaAplicacionInput.value : '';
+        
+        console.log('obtenerCanonAnterior - Contrato:', contratoId, 'Fecha:', fechaAplicacion);
+        
+        if (!contratoId || !fechaAplicacion) {
+            canonInput.value = '';
+            canonFuente.textContent = '';
+            return;
+        }
+        
+        if (canonManualCheck && canonManualCheck.checked) {
+            actualizarEstadoCanon(true);
+            return;
+        }
+        
+        // Mostrar loading
+        canonFuente.innerHTML = '<div class="alert alert-info mb-0" role="alert">' +
+            '<i class="fas fa-spinner fa-spin"></i> Obteniendo canon anterior...' +
+            '</div>';
+        
+        const url = `{% url 'gestion:obtener_canon_anterior_ajax' %}?contrato_id=${contratoId}&fecha_aplicacion=${fechaAplicacion}`;
+        console.log('Llamando AJAX:', url);
+        
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                if (data.canon) {
+                    // El valor viene del servidor como número limpio (ej: 6800000)
+                    const valorNumerico = parseFloat(data.canon);
+                    if (!isNaN(valorNumerico) && valorNumerico > 0) {
+                        // Redondear a entero
+                        const valorEntero = Math.round(valorNumerico);
+                        
+                        // Limpiar el input primero
+                        canonInput.value = '';
+                        
+                        // Asignar el valor numérico limpio (sin formato)
+                        canonInput.value = valorEntero.toString();
+                        
+                        // Esperar a que el formateador esté inicializado antes de formatear
+                        const formatearValor = function() {
+                            if (formateadorInicializado && canonInput.value) {
+                                // El formateador de formatMiles.js maneja el formateo en el evento blur
+                                const blurEvent = new Event('blur', { bubbles: true, cancelable: true });
+                                canonInput.dispatchEvent(blurEvent);
+                            } else if (!formateadorInicializado) {
+                                // Si aún no está inicializado, esperar un poco más
+                                setTimeout(formatearValor, 50);
+                            }
+                        };
+                        setTimeout(formatearValor, 150);
+                        
+                        canonFuente.innerHTML = `<div class="alert alert-success alert-dismissible fade show mb-0" role="alert">` +
+                            `<i class="fas fa-check-circle"></i> <strong>Fuente:</strong> ${data.fuente}` +
+                            `<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>` +
+                            `</div>`;
+                    } else {
+                        canonInput.value = '';
+                        canonFuente.innerHTML = '<div class="alert alert-danger alert-dismissible fade show mb-0" role="alert">' +
+                            '<i class="fas fa-exclamation-circle"></i> <strong>Error:</strong> Valor de canon inválido.' +
+                            '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>' +
+                            '</div>';
+                    }
+                    actualizarEstadoCanon(false);
+                } else {
+                    canonInput.value = '';
+                    canonFuente.innerHTML = '<div class="alert alert-warning alert-dismissible fade show mb-0" role="alert">' +
+                        '<i class="fas fa-exclamation-triangle"></i> <strong>Atención:</strong> No se pudo obtener el canon anterior automáticamente. Por favor, marque "Ingresar Canon Anterior Manualmente" e ingrese el valor.' +
+                        '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>' +
+                        '</div>';
+                    actualizarEstadoCanon(true); // Permitir edición manual
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                canonFuente.innerHTML = '<div class="alert alert-danger alert-dismissible fade show mb-0" role="alert">' +
+                    '<i class="fas fa-exclamation-circle"></i> <strong>Error:</strong> No se pudo obtener el canon anterior. Por favor, ingréselo manualmente.' +
+                    '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>' +
+                    '</div>';
+                actualizarEstadoCanon(true); // Permitir edición manual en caso de error
+            });
+    }
+    
+    contratoSelect.addEventListener('change', function() {
+        console.log('Contrato cambiado');
+        obtenerCanonAnterior();
+    });
+    if (fechaAplicacionInput) {
+        fechaAplicacionInput.addEventListener('change', function() {
+            console.log('Fecha de aplicación cambiada a:', fechaAplicacionInput.value);
+            obtenerCanonAnterior();
+        });
+        fechaAplicacionInput.addEventListener('input', function() {
+            console.log('Fecha de aplicación input cambiado a:', fechaAplicacionInput.value);
+            obtenerCanonAnterior();
+        });
+    }
+    
+    if (canonManualCheck) {
+        canonManualCheck.addEventListener('change', function() {
+            actualizarEstadoCanon(this.checked);
+            if (!this.checked) {
+                obtenerCanonAnterior();
+            }
+        });
+    }
+    
+    // Limpiar valores antes de enviar el formulario
+    const form = document.getElementById('calculo-ipc-form');
+    const formGuardar = document.getElementById('guardar-calculo-form');
+    
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            if (typeof cleanFormValues === 'function') {
+                cleanFormValues();
+                console.log('Valores limpiados correctamente');
+            } else {
+                // Fallback: limpiar manualmente
+                if (canonInput && canonInput.value) {
+                    canonInput.value = canonInput.value.replace(/\./g, '').replace(',', '.');
+                }
+            }
+        });
+    }
+    
+    if (formGuardar) {
+        formGuardar.addEventListener('submit', function(e) {
+            if (typeof cleanFormValues === 'function') {
+                cleanFormValues();
+                console.log('Valores limpiados correctamente (formulario guardar)');
+            }
+        });
+    }
+    
+    // Obtener canon inicial si hay valores
+    // Esperar un momento para asegurar que todos los campos estén completamente renderizados
+    setTimeout(function() {
+        if (contratoSelect.value && fechaAplicacionInput && fechaAplicacionInput.value) {
+            console.log('Inicializando canon - Contrato:', contratoSelect.value, 'Fecha:', fechaAplicacionInput.value);
+            obtenerCanonAnterior();
+        } else {
+            // Inicializar estado por defecto
+            actualizarEstadoCanon(canonManualCheck ? canonManualCheck.checked : false);
+        }
+    }, 500);
+});
+</script>
+{% endblock %}
+
+

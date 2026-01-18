@@ -1,0 +1,118 @@
+{% extends 'base.html' %}
+
+{% block title %}Calcular Facturación por Ventas - Gestión de Contratos{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="display-6">
+                    <i class="fas fa-calculator text-primary"></i> {{ titulo }}
+                </h1>
+                <a href="{% url 'gestion:lista_informes_ventas' %}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Volver
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-file-alt"></i> Datos del Cálculo
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        {% if informe %}
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i> 
+                            <strong>Informe asociado:</strong> {{ informe.contrato.num_contrato }} - {{ informe.get_mes_display }}/{{ informe.año }}
+                        </div>
+                        {% endif %}
+
+                        <div class="mb-3">
+                            {{ form.contrato.label_tag }}
+                            {{ form.contrato }}
+                            {% if form.contrato.errors %}
+                                <div class="text-danger">{{ form.contrato.errors }}</div>
+                            {% endif %}
+                            <small class="form-text text-muted">Solo se muestran contratos que reportan ventas</small>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                {{ form.mes.label_tag }}
+                                {{ form.mes }}
+                                {% if form.mes.errors %}
+                                    <div class="text-danger">{{ form.mes.errors }}</div>
+                                {% endif %}
+                                <small class="form-text text-muted">Mes al que corresponden las ventas</small>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                {{ form.año.label_tag }}
+                                {{ form.año }}
+                                {% if form.año.errors %}
+                                    <div class="text-danger">{{ form.año.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                {{ form.ventas_totales.label_tag }}
+                                {{ form.ventas_totales }}
+                                {% if form.ventas_totales.errors %}
+                                    <div class="text-danger">{{ form.ventas_totales.errors }}</div>
+                                {% endif %}
+                                <small class="form-text text-muted">Ingrese el valor con formato (ej: 1.000.000)</small>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                {{ form.devoluciones.label_tag }}
+                                {{ form.devoluciones }}
+                                {% if form.devoluciones.errors %}
+                                    <div class="text-danger">{{ form.devoluciones.errors }}</div>
+                                {% endif %}
+                                <small class="form-text text-muted">Ingrese el valor con formato (ej: 50.000)</small>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            {{ form.observaciones.label_tag }}
+                            {{ form.observaciones }}
+                            {% if form.observaciones.errors %}
+                                <div class="text-danger">{{ form.observaciones.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i> 
+                            <strong>Nota:</strong> El sistema calculará automáticamente:
+                            <ul class="mb-0">
+                                <li>Base neta = Ventas totales - Devoluciones</li>
+                                <li>Valor calculado = Base neta × Porcentaje vigente</li>
+                                <li>Para Híbrido: Se comparará con el mínimo garantizado</li>
+                            </ul>
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'gestion:lista_informes_ventas' %}" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-calculator"></i> Calcular
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

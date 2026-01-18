@@ -1,0 +1,719 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load formato_filters %}
+
+{% block title %}Editar Renovación Automática - Gestión de Contratos{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/formatMiles.js' %}"></script>
+<script src="{% static 'js/auto_format_new.js' %}"></script>
+<script src="{% static 'js/format_edit_view.js' %}"></script>
+<script src="{% static 'js/utils_fechas.js' %}"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Configurar formateo automático para campos de dinero
+    const moneyInputs = document.querySelectorAll('.money-input');
+    moneyInputs.forEach(function(input) {
+        input.addEventListener('input', function() {
+            let value = this.value.replace(/[^\d]/g, '');
+            if (value) {
+                value = parseInt(value).toLocaleString('es-CO');
+                this.value = value;
+            }
+        });
+        
+        input.addEventListener('focus', function() {
+            this.value = this.value.replace(/[^\d]/g, '');
+        });
+        
+        input.addEventListener('blur', function() {
+            if (this.value) {
+                let value = this.value.replace(/[^\d]/g, '');
+                if (value) {
+                    this.value = parseInt(value).toLocaleString('es-CO');
+                }
+            }
+        });
+    });
+    
+    // Toggle para mostrar/ocultar campos de pólizas
+    const modificaPolizasCheck = document.getElementById('{{ form.modifica_polizas.id_for_label }}');
+    const modificacionPolizasDetails = document.getElementById('modificacion-polizas-details');
+    
+    if (modificaPolizasCheck && modificacionPolizasDetails) {
+        function togglePolizasDetails() {
+            modificacionPolizasDetails.style.display = modificaPolizasCheck.checked ? 'block' : 'none';
+        }
+        
+        modificaPolizasCheck.addEventListener('change', togglePolizasDetails);
+        togglePolizasDetails();
+    }
+    
+    // Configurar cálculo automático de fechas para pólizas
+    const configuracionesPolizas = [
+        {
+            tipo: 'rce',
+            fechaInicioId: '{{ form.nuevo_fecha_inicio_vigencia_rce.id_for_label }}',
+            mesesId: '{{ form.nuevo_meses_vigencia_rce.id_for_label }}',
+            fechaFinId: '{{ form.nuevo_fecha_fin_vigencia_rce.id_for_label }}',
+            checkId: '{{ form.nuevo_exige_poliza_rce.id_for_label }}',
+            detailsId: 'poliza-rce-details'
+        },
+        {
+            tipo: 'cumplimiento',
+            fechaInicioId: '{{ form.nuevo_fecha_inicio_vigencia_cumplimiento.id_for_label }}',
+            mesesId: '{{ form.nuevo_meses_vigencia_cumplimiento.id_for_label }}',
+            fechaFinId: '{{ form.nuevo_fecha_fin_vigencia_cumplimiento.id_for_label }}',
+            checkId: '{{ form.nuevo_exige_poliza_cumplimiento.id_for_label }}',
+            detailsId: 'poliza-cumplimiento-details'
+        },
+        {
+            tipo: 'arrendamiento',
+            fechaInicioId: '{{ form.nuevo_fecha_inicio_vigencia_arrendamiento.id_for_label }}',
+            mesesId: '{{ form.nuevo_meses_vigencia_arrendamiento.id_for_label }}',
+            fechaFinId: '{{ form.nuevo_fecha_fin_vigencia_arrendamiento.id_for_label }}',
+            checkId: '{{ form.nuevo_exige_poliza_arrendamiento.id_for_label }}',
+            detailsId: 'poliza-arrendamiento-details'
+        },
+        {
+            tipo: 'todo_riesgo',
+            fechaInicioId: '{{ form.nuevo_fecha_inicio_vigencia_todo_riesgo.id_for_label }}',
+            mesesId: '{{ form.nuevo_meses_vigencia_todo_riesgo.id_for_label }}',
+            fechaFinId: '{{ form.nuevo_fecha_fin_vigencia_todo_riesgo.id_for_label }}',
+            checkId: '{{ form.nuevo_exige_poliza_todo_riesgo.id_for_label }}',
+            detailsId: 'poliza-todo-riesgo-details'
+        },
+        {
+            tipo: 'otra',
+            fechaInicioId: '{{ form.nuevo_fecha_inicio_vigencia_otra_1.id_for_label }}',
+            mesesId: '{{ form.nuevo_meses_vigencia_otra_1.id_for_label }}',
+            fechaFinId: '{{ form.nuevo_fecha_fin_vigencia_otra_1.id_for_label }}',
+            checkId: '{{ form.nuevo_exige_poliza_otra_1.id_for_label }}',
+            detailsId: 'poliza-otra-details'
+        }
+    ];
+    
+    // Función para calcular fecha fin automáticamente
+    configuracionesPolizas.forEach(function(config) {
+        const fechaInicio = document.getElementById(config.fechaInicioId);
+        const meses = document.getElementById(config.mesesId);
+        const fechaFin = document.getElementById(config.fechaFinId);
+        const check = document.getElementById(config.checkId);
+        const details = document.getElementById(config.detailsId);
+        
+        if (fechaInicio && meses && fechaFin) {
+            function calcularFechaFin() {
+                if (fechaInicio.value && meses.value) {
+                    const fecha = new Date(fechaInicio.value);
+                    fecha.setMonth(fecha.getMonth() + parseInt(meses.value));
+                    fechaFin.value = fecha.toISOString().split('T')[0];
+                }
+            }
+            
+            fechaInicio.addEventListener('change', calcularFechaFin);
+            meses.addEventListener('change', calcularFechaFin);
+        }
+        
+        // Toggle para mostrar/ocultar detalles de cada póliza
+        if (check && details) {
+            function togglePolizaDetails() {
+                if (check.checked && modificaPolizasCheck && modificaPolizasCheck.checked) {
+                    details.style.display = 'block';
+                } else {
+                    details.style.display = 'none';
+                }
+            }
+            
+            check.addEventListener('change', togglePolizaDetails);
+            togglePolizaDetails(); // Ejecutar al cargar la página
+        }
+    });
+});
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="display-6">
+                    <i class="fas fa-edit text-warning"></i> Editar Renovación Automática
+                </h1>
+                <div>
+                    <a href="{% url 'gestion:gestion_renovaciones_automaticas' %}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Volver
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header" style="background-color: var(--avenida-orange); color: white;">
+                    <h5 class="mb-0">
+                        <i class="fas fa-sync-alt"></i> Renovación: {{ renovacion.numero_renovacion }} - Contrato: {{ contrato.num_contrato }}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <div class="mb-4">
+                            <h6>Información de la Renovación</h6>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="{{ form.numero_renovacion.id_for_label }}" class="form-label">{{ form.numero_renovacion.label }}</label>
+                                        {{ form.numero_renovacion }}
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="{{ form.estado.id_for_label }}" class="form-label">{{ form.estado.label }}</label>
+                                        {{ form.estado }}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="mb-3">
+                                        <label for="{{ form.fecha_renovacion.id_for_label }}" class="form-label">{{ form.fecha_renovacion.label }}</label>
+                                        {{ form.fecha_renovacion }}
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="mb-3">
+                                        <label for="{{ form.effective_from.id_for_label }}" class="form-label">{{ form.effective_from.label }}</label>
+                                        {{ form.effective_from }}
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="mb-3">
+                                        <label for="{{ form.effective_to.id_for_label }}" class="form-label">{{ form.effective_to.label }}</label>
+                                        {{ form.effective_to }}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="{{ form.meses_renovacion.id_for_label }}" class="form-label">{{ form.meses_renovacion.label }}</label>
+                                        {{ form.meses_renovacion }}
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="{{ form.nueva_fecha_final_actualizada.id_for_label }}" class="form-label">{{ form.nueva_fecha_final_actualizada.label }}</label>
+                                        {{ form.nueva_fecha_final_actualizada }}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="{{ form.descripcion.id_for_label }}" class="form-label">{{ form.descripcion.label }}</label>
+                                {{ form.descripcion }}
+                            </div>
+                            <div class="mb-3">
+                                <label for="{{ form.observaciones.id_for_label }}" class="form-label">{{ form.observaciones.label }}</label>
+                                {{ form.observaciones }}
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <div class="form-check">
+                                {{ form.modifica_polizas }}
+                                <label class="form-check-label" for="{{ form.modifica_polizas.id_for_label }}">
+                                    {{ form.modifica_polizas.label }}
+                                </label>
+                            </div>
+                        </div>
+
+                        <div id="modificacion-polizas-details" style="display: {% if form.modifica_polizas.value %}block{% else %}none{% endif %};">
+                            <div class="alert alert-info mb-3">
+                                <i class="fas fa-info-circle"></i>
+                                <strong>Instrucciones:</strong> 
+                                Marque el check de cada póliza que desee modificar. Se mostrarán todos los campos editables.
+                                Los valores se inicializarán desde el contrato inicial o el último evento aprobado.
+                            </div>
+                            
+                            <!-- Póliza RCE -->
+                            <div class="card mb-3 border-primary">
+                                <div class="card-header bg-light">
+                                    <div class="form-check">
+                                        {{ form.nuevo_exige_poliza_rce }}
+                                        <label class="form-check-label" for="{{ form.nuevo_exige_poliza_rce.id_for_label }}">
+                                            <i class="fas fa-shield-alt text-primary"></i> <strong>RCE - Responsabilidad Civil</strong>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="card-body" id="poliza-rce-details" style="display: none;">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_valor_asegurado_rce.label_tag }}
+                                                {{ form.nuevo_valor_asegurado_rce }}
+                                                {% if form.nuevo_valor_asegurado_rce.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_valor_asegurado_rce.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_meses_vigencia_rce.label_tag }}
+                                                {{ form.nuevo_meses_vigencia_rce }}
+                                                {% if form.nuevo_meses_vigencia_rce.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_meses_vigencia_rce.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_fecha_inicio_vigencia_rce.label_tag }}
+                                                {{ form.nuevo_fecha_inicio_vigencia_rce }}
+                                                {% if form.nuevo_fecha_inicio_vigencia_rce.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_fecha_inicio_vigencia_rce.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_fecha_fin_vigencia_rce.label_tag }}
+                                                {{ form.nuevo_fecha_fin_vigencia_rce }}
+                                                {% if form.nuevo_fecha_fin_vigencia_rce.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_fecha_fin_vigencia_rce.errors }}</div>
+                                                {% endif %}
+                                                <small class="form-text text-success">
+                                                    <i class="fas fa-calculator"></i> Calculada automáticamente
+                                                </small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-3">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_valor_propietario_locatario_ocupante_rce.label_tag }}
+                                                {{ form.nuevo_valor_propietario_locatario_ocupante_rce }}
+                                                {% if form.nuevo_valor_propietario_locatario_ocupante_rce.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_valor_propietario_locatario_ocupante_rce.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_valor_patronal_rce.label_tag }}
+                                                {{ form.nuevo_valor_patronal_rce }}
+                                                {% if form.nuevo_valor_patronal_rce.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_valor_patronal_rce.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_valor_gastos_medicos_rce.label_tag }}
+                                                {{ form.nuevo_valor_gastos_medicos_rce }}
+                                                {% if form.nuevo_valor_gastos_medicos_rce.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_valor_gastos_medicos_rce.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_valor_vehiculos_rce.label_tag }}
+                                                {{ form.nuevo_valor_vehiculos_rce }}
+                                                {% if form.nuevo_valor_vehiculos_rce.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_valor_vehiculos_rce.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-3">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_valor_contratistas_rce.label_tag }}
+                                                {{ form.nuevo_valor_contratistas_rce }}
+                                                {% if form.nuevo_valor_contratistas_rce.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_valor_contratistas_rce.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_valor_perjuicios_extrapatrimoniales_rce.label_tag }}
+                                                {{ form.nuevo_valor_perjuicios_extrapatrimoniales_rce }}
+                                                {% if form.nuevo_valor_perjuicios_extrapatrimoniales_rce.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_valor_perjuicios_extrapatrimoniales_rce.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_valor_dano_moral_rce.label_tag }}
+                                                {{ form.nuevo_valor_dano_moral_rce }}
+                                                {% if form.nuevo_valor_dano_moral_rce.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_valor_dano_moral_rce.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_valor_lucro_cesante_rce.label_tag }}
+                                                {{ form.nuevo_valor_lucro_cesante_rce }}
+                                                {% if form.nuevo_valor_lucro_cesante_rce.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_valor_lucro_cesante_rce.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Póliza Cumplimiento -->
+                            <div class="card mb-3 border-primary">
+                                <div class="card-header bg-light">
+                                    <div class="form-check">
+                                        {{ form.nuevo_exige_poliza_cumplimiento }}
+                                        <label class="form-check-label" for="{{ form.nuevo_exige_poliza_cumplimiento.id_for_label }}">
+                                            <i class="fas fa-shield-alt text-primary"></i> <strong>Cumplimiento</strong>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="card-body" id="poliza-cumplimiento-details" style="display: none;">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_valor_asegurado_cumplimiento.label_tag }}
+                                                {{ form.nuevo_valor_asegurado_cumplimiento }}
+                                                {% if form.nuevo_valor_asegurado_cumplimiento.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_valor_asegurado_cumplimiento.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_meses_vigencia_cumplimiento.label_tag }}
+                                                {{ form.nuevo_meses_vigencia_cumplimiento }}
+                                                {% if form.nuevo_meses_vigencia_cumplimiento.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_meses_vigencia_cumplimiento.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_fecha_inicio_vigencia_cumplimiento.label_tag }}
+                                                {{ form.nuevo_fecha_inicio_vigencia_cumplimiento }}
+                                                {% if form.nuevo_fecha_inicio_vigencia_cumplimiento.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_fecha_inicio_vigencia_cumplimiento.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_fecha_fin_vigencia_cumplimiento.label_tag }}
+                                                {{ form.nuevo_fecha_fin_vigencia_cumplimiento }}
+                                                {% if form.nuevo_fecha_fin_vigencia_cumplimiento.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_fecha_fin_vigencia_cumplimiento.errors }}</div>
+                                                {% endif %}
+                                                <small class="form-text text-success">
+                                                    <i class="fas fa-calculator"></i> Calculada automáticamente
+                                                </small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-3">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_valor_remuneraciones_cumplimiento.label_tag }}
+                                                {{ form.nuevo_valor_remuneraciones_cumplimiento }}
+                                                {% if form.nuevo_valor_remuneraciones_cumplimiento.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_valor_remuneraciones_cumplimiento.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_valor_servicios_publicos_cumplimiento.label_tag }}
+                                                {{ form.nuevo_valor_servicios_publicos_cumplimiento }}
+                                                {% if form.nuevo_valor_servicios_publicos_cumplimiento.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_valor_servicios_publicos_cumplimiento.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_valor_iva_cumplimiento.label_tag }}
+                                                {{ form.nuevo_valor_iva_cumplimiento }}
+                                                {% if form.nuevo_valor_iva_cumplimiento.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_valor_iva_cumplimiento.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_valor_otros_cumplimiento.label_tag }}
+                                                {{ form.nuevo_valor_otros_cumplimiento }}
+                                                {% if form.nuevo_valor_otros_cumplimiento.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_valor_otros_cumplimiento.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Póliza Arrendamiento -->
+                            <div class="card mb-3 border-primary">
+                                <div class="card-header bg-light">
+                                    <div class="form-check">
+                                        {{ form.nuevo_exige_poliza_arrendamiento }}
+                                        <label class="form-check-label" for="{{ form.nuevo_exige_poliza_arrendamiento.id_for_label }}">
+                                            <i class="fas fa-shield-alt text-primary"></i> <strong>Póliza de Arrendamiento</strong>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="card-body" id="poliza-arrendamiento-details" style="display: none;">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_valor_asegurado_arrendamiento.label_tag }}
+                                                {{ form.nuevo_valor_asegurado_arrendamiento }}
+                                                {% if form.nuevo_valor_asegurado_arrendamiento.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_valor_asegurado_arrendamiento.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_meses_vigencia_arrendamiento.label_tag }}
+                                                {{ form.nuevo_meses_vigencia_arrendamiento }}
+                                                {% if form.nuevo_meses_vigencia_arrendamiento.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_meses_vigencia_arrendamiento.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_fecha_inicio_vigencia_arrendamiento.label_tag }}
+                                                {{ form.nuevo_fecha_inicio_vigencia_arrendamiento }}
+                                                {% if form.nuevo_fecha_inicio_vigencia_arrendamiento.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_fecha_inicio_vigencia_arrendamiento.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_fecha_fin_vigencia_arrendamiento.label_tag }}
+                                                {{ form.nuevo_fecha_fin_vigencia_arrendamiento }}
+                                                {% if form.nuevo_fecha_fin_vigencia_arrendamiento.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_fecha_fin_vigencia_arrendamiento.errors }}</div>
+                                                {% endif %}
+                                                <small class="form-text text-success">
+                                                    <i class="fas fa-calculator"></i> Calculada automáticamente
+                                                </small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-3">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_valor_remuneraciones_arrendamiento.label_tag }}
+                                                {{ form.nuevo_valor_remuneraciones_arrendamiento }}
+                                                {% if form.nuevo_valor_remuneraciones_arrendamiento.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_valor_remuneraciones_arrendamiento.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_valor_servicios_publicos_arrendamiento.label_tag }}
+                                                {{ form.nuevo_valor_servicios_publicos_arrendamiento }}
+                                                {% if form.nuevo_valor_servicios_publicos_arrendamiento.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_valor_servicios_publicos_arrendamiento.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_valor_iva_arrendamiento.label_tag }}
+                                                {{ form.nuevo_valor_iva_arrendamiento }}
+                                                {% if form.nuevo_valor_iva_arrendamiento.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_valor_iva_arrendamiento.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_valor_otros_arrendamiento.label_tag }}
+                                                {{ form.nuevo_valor_otros_arrendamiento }}
+                                                {% if form.nuevo_valor_otros_arrendamiento.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_valor_otros_arrendamiento.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Póliza Todo Riesgo -->
+                            <div class="card mb-3 border-primary">
+                                <div class="card-header bg-light">
+                                    <div class="form-check">
+                                        {{ form.nuevo_exige_poliza_todo_riesgo }}
+                                        <label class="form-check-label" for="{{ form.nuevo_exige_poliza_todo_riesgo.id_for_label }}">
+                                            <i class="fas fa-shield-alt text-primary"></i> <strong>Todo Riesgo para Equipos</strong>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="card-body" id="poliza-todo-riesgo-details" style="display: none;">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_valor_asegurado_todo_riesgo.label_tag }}
+                                                {{ form.nuevo_valor_asegurado_todo_riesgo }}
+                                                {% if form.nuevo_valor_asegurado_todo_riesgo.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_valor_asegurado_todo_riesgo.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_meses_vigencia_todo_riesgo.label_tag }}
+                                                {{ form.nuevo_meses_vigencia_todo_riesgo }}
+                                                {% if form.nuevo_meses_vigencia_todo_riesgo.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_meses_vigencia_todo_riesgo.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_fecha_inicio_vigencia_todo_riesgo.label_tag }}
+                                                {{ form.nuevo_fecha_inicio_vigencia_todo_riesgo }}
+                                                {% if form.nuevo_fecha_inicio_vigencia_todo_riesgo.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_fecha_inicio_vigencia_todo_riesgo.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_fecha_fin_vigencia_todo_riesgo.label_tag }}
+                                                {{ form.nuevo_fecha_fin_vigencia_todo_riesgo }}
+                                                {% if form.nuevo_fecha_fin_vigencia_todo_riesgo.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_fecha_fin_vigencia_todo_riesgo.errors }}</div>
+                                                {% endif %}
+                                                <small class="form-text text-success">
+                                                    <i class="fas fa-calculator"></i> Calculada automáticamente
+                                                </small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Otras Pólizas -->
+                            <div class="card mb-3 border-primary">
+                                <div class="card-header bg-light">
+                                    <div class="form-check">
+                                        {{ form.nuevo_exige_poliza_otra_1 }}
+                                        <label class="form-check-label" for="{{ form.nuevo_exige_poliza_otra_1.id_for_label }}">
+                                            <i class="fas fa-shield-alt text-primary"></i> <strong>Otras Pólizas</strong>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="card-body" id="poliza-otra-details" style="display: none;">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_nombre_poliza_otra_1.label_tag }}
+                                                {{ form.nuevo_nombre_poliza_otra_1 }}
+                                                {% if form.nuevo_nombre_poliza_otra_1.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_nombre_poliza_otra_1.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_valor_asegurado_otra_1.label_tag }}
+                                                {{ form.nuevo_valor_asegurado_otra_1 }}
+                                                {% if form.nuevo_valor_asegurado_otra_1.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_valor_asegurado_otra_1.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_meses_vigencia_otra_1.label_tag }}
+                                                {{ form.nuevo_meses_vigencia_otra_1 }}
+                                                {% if form.nuevo_meses_vigencia_otra_1.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_meses_vigencia_otra_1.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_fecha_inicio_vigencia_otra_1.label_tag }}
+                                                {{ form.nuevo_fecha_inicio_vigencia_otra_1 }}
+                                                {% if form.nuevo_fecha_inicio_vigencia_otra_1.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_fecha_inicio_vigencia_otra_1.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_fecha_fin_vigencia_otra_1.label_tag }}
+                                                {{ form.nuevo_fecha_fin_vigencia_otra_1 }}
+                                                {% if form.nuevo_fecha_fin_vigencia_otra_1.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_fecha_fin_vigencia_otra_1.errors }}</div>
+                                                {% endif %}
+                                                <small class="form-text text-success">
+                                                    <i class="fas fa-calculator"></i> Calculada automáticamente
+                                                </small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="alert alert-success mt-3">
+                                <i class="fas fa-check-circle"></i>
+                                <strong>Resumen:</strong> Los valores modificados se guardarán en esta renovación automática.
+                                No afectarán el contrato base ni otros eventos previos.
+                            </div>
+                        </div>
+
+                        {% if form.errors %}
+                        <div class="alert alert-danger">
+                            <h6><i class="fas fa-exclamation-triangle"></i> Errores en el formulario:</h6>
+                            {{ form.errors }}
+                        </div>
+                        {% endif %}
+
+                        <div class="d-flex justify-content-between mt-4">
+                            <a href="{% url 'gestion:gestion_renovaciones_automaticas' %}" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Guardar Cambios
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

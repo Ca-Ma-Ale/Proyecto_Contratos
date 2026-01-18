@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h1 class="display-5 mb-0">
+                    <i class="fas fa-file-excel text-primary"></i> {{ titulo }}
+                </h1>
+                <a href="{% url 'gestion:exportaciones' %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left"></i> Volver a Exportaciones
+                </a>
+            </div>
+            <p class="text-muted mt-2 mb-0">
+                {{ descripcion }}
+            </p>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-6 col-xl-5">
+            <div class="card shadow-sm border-0">
+                <div class="card-body">
+                    <form method="post" action="{% url url_exportacion %}">
+                        {% csrf_token %}
+                        
+                        <div class="mb-4">
+                            <label for="{{ form.tipo_contrato_cliente_proveedor.id_for_label }}" class="form-label">
+                                <i class="fas fa-filter text-primary me-2"></i>{{ form.tipo_contrato_cliente_proveedor.label }}
+                            </label>
+                            {{ form.tipo_contrato_cliente_proveedor }}
+                            {% if form.tipo_contrato_cliente_proveedor.errors %}
+                                <div class="text-danger small mt-2">{{ form.tipo_contrato_cliente_proveedor.errors }}</div>
+                            {% endif %}
+                            <small class="form-text text-muted">
+                                Seleccione si desea exportar alertas de Clientes, Proveedores o Todos.
+                            </small>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between mt-4">
+                            <a href="{% url 'gestion:exportaciones' %}" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-download"></i> Continuar con la Exportación
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

@@ -1,0 +1,1381 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Autorizar Renovación Automática - Gestión de Contratos{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="display-6">
+                    <i class="fas fa-sync-alt text-primary"></i> Autorizar Renovación Automática
+                </h1>
+                <div>
+                    <a href="{% url 'gestion:gestion_renovaciones_automaticas' %}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Volver
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header" style="background-color: var(--avenida-orange); color: white;">
+                    <h5 class="mb-0">
+                        <i class="fas fa-file-contract"></i> Contrato: {{ contrato.num_contrato }}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-4">
+                        <h6>Información del Contrato</h6>
+                        <table class="table table-sm">
+                            <tr>
+                                <th>Tipo:</th>
+                                <td>
+                                    {% if contrato.tipo_contrato_cliente_proveedor == 'PROVEEDOR' %}
+                                        <span class="badge bg-success">Proveedor</span>
+                                    {% else %}
+                                        <span class="badge bg-primary">Cliente</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% if contrato.tipo_contrato_cliente_proveedor == 'CLIENTE' %}
+                            <tr>
+                                <th>Arrendatario:</th>
+                                <td>{{ contrato.arrendatario.razon_social|default:"-" }}</td>
+                            </tr>
+                            <tr>
+                                <th>Local:</th>
+                                <td>{{ contrato.local.nombre_comercial_stand|default:"-" }}</td>
+                            </tr>
+                            {% elif contrato.tipo_contrato_cliente_proveedor == 'PROVEEDOR' %}
+                            <tr>
+                                <th>Proveedor:</th>
+                                <td>{{ contrato.proveedor.razon_social|default:"-" }}</td>
+                            </tr>
+                            <tr>
+                                <th>Tipo de Servicio:</th>
+                                <td>{{ contrato.tipo_servicio.nombre|default:"-" }}</td>
+                            </tr>
+                            {% endif %}
+                            <tr>
+                                <th>Fecha Final Actual:</th>
+                                <td>
+                                    <strong>{{ fecha_final_actual|date:"d \d\e F \d\e Y" }}</strong>
+                                    {% if dias_restantes < 0 %}
+                                        <span class="badge bg-danger ms-2">Vencido hace {{ dias_abs }} días</span>
+                                    {% elif dias_restantes == 0 %}
+                                        <span class="badge bg-danger ms-2">Vence hoy</span>
+                                    {% else %}
+                                        <span class="badge bg-warning ms-2">{{ dias_restantes }} días restantes</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>Duración Inicial:</th>
+                                <td><span class="badge bg-secondary">{{ duracion_inicial_meses }} meses</span></td>
+                            </tr>
+                            <tr>
+                                <th>Total Renovaciones:</th>
+                                <td><span class="badge bg-primary">{{ contrato.total_renovaciones_automaticas }}</span></td>
+                            </tr>
+                        </table>
+                    </div>
+
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="mb-4">
+                            <h6>Opciones de Renovación</h6>
+                            <div class="mb-3">
+                                {{ form.usar_duracion_inicial.label_tag }}
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="radio" name="usar_duracion_inicial" id="usar_duracion_inicial_si" value="si" {% if form.usar_duracion_inicial.value == 'si' or not form.usar_duracion_inicial.value %}checked{% endif %}>
+                                    <label class="form-check-label" for="usar_duracion_inicial_si">
+                                        <strong>Renovar por el mismo tiempo inicial</strong> ({{ duracion_inicial_meses }} meses)
+                                        <br><small class="text-muted">La renovación será por {{ duracion_inicial_meses }} meses, igual que la duración inicial del contrato.</small>
+                                    </label>
+                                </div>
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="radio" name="usar_duracion_inicial" id="usar_duracion_inicial_no" value="no" {% if form.usar_duracion_inicial.value == 'no' %}checked{% endif %}>
+                                    <label class="form-check-label" for="usar_duracion_inicial_no">
+                                        <strong>Renovar por un tiempo personalizado</strong>
+                                        <br><small class="text-muted">Especifique el número de meses para la renovación.</small>
+                                    </label>
+                                </div>
+                                {% if form.usar_duracion_inicial.errors %}
+                                    <div class="text-danger">{{ form.usar_duracion_inicial.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="mb-4" id="meses_personalizados" style="display: {% if form.usar_duracion_inicial.value == 'no' %}block{% else %}none{% endif %};">
+                            <label for="{{ form.meses_renovacion.id_for_label }}" class="form-label">{{ form.meses_renovacion.label }}</label>
+                            {{ form.meses_renovacion }}
+                            <small class="form-text text-muted">Ingrese el número de meses para la renovación (mínimo 1 mes).</small>
+                            {% if form.meses_renovacion.errors %}
+                                <div class="text-danger">{{ form.meses_renovacion.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-4">
+                            <div class="form-check">
+                                {{ form.modifica_polizas }}
+                                <label class="form-check-label" for="{{ form.modifica_polizas.id_for_label }}">
+                                    <i class="fas fa-shield-alt text-primary"></i> <strong>{{ form.modifica_polizas.label }}</strong>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div id="modificacion-polizas-details" style="display: {% if form.modifica_polizas.value %}block{% else %}none{% endif %};">
+                            <div class="alert alert-info mb-3">
+                                <i class="fas fa-info-circle"></i>
+                                <strong>Instrucciones:</strong> 
+                                Marque el check de cada póliza que desee modificar. Se mostrarán todos los campos editables.
+                                Los valores se inicializarán desde el contrato inicial o el último evento aprobado.
+                            </div>
+                            
+                            <!-- Póliza RCE -->
+                            <div class="card mb-3 border-primary">
+                                <div class="card-header bg-light">
+                                    <div class="form-check">
+                                        {{ form.nuevo_exige_poliza_rce }}
+                                        <label class="form-check-label" for="{{ form.nuevo_exige_poliza_rce.id_for_label }}">
+                                            <i class="fas fa-shield-alt text-primary"></i> <strong>RCE - Responsabilidad Civil</strong>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="card-body" id="poliza-rce-details" style="display: none;">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_valor_asegurado_rce.label_tag }}
+                                                {{ form.nuevo_valor_asegurado_rce }}
+                                                {% if form.nuevo_valor_asegurado_rce.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_valor_asegurado_rce.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_meses_vigencia_rce.label_tag }}
+                                                {{ form.nuevo_meses_vigencia_rce }}
+                                                {% if form.nuevo_meses_vigencia_rce.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_meses_vigencia_rce.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_fecha_inicio_vigencia_rce.label_tag }}
+                                                {{ form.nuevo_fecha_inicio_vigencia_rce }}
+                                                {% if form.nuevo_fecha_inicio_vigencia_rce.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_fecha_inicio_vigencia_rce.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_fecha_fin_vigencia_rce.label_tag }}
+                                                {{ form.nuevo_fecha_fin_vigencia_rce }}
+                                                {% if form.nuevo_fecha_fin_vigencia_rce.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_fecha_fin_vigencia_rce.errors }}</div>
+                                                {% endif %}
+                                                <small class="form-text text-success">
+                                                    <i class="fas fa-calculator"></i> Calculada automáticamente
+                                                </small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% if contrato.tipo_contrato_cliente_proveedor == 'CLIENTE' %}
+                                    <div class="row">
+                                        <div class="col-md-3">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_valor_propietario_locatario_ocupante_rce.label_tag }}
+                                                {{ form.nuevo_valor_propietario_locatario_ocupante_rce }}
+                                                {% if form.nuevo_valor_propietario_locatario_ocupante_rce.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_valor_propietario_locatario_ocupante_rce.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_valor_patronal_rce.label_tag }}
+                                                {{ form.nuevo_valor_patronal_rce }}
+                                                {% if form.nuevo_valor_patronal_rce.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_valor_patronal_rce.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_valor_gastos_medicos_rce.label_tag }}
+                                                {{ form.nuevo_valor_gastos_medicos_rce }}
+                                                {% if form.nuevo_valor_gastos_medicos_rce.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_valor_gastos_medicos_rce.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_valor_vehiculos_rce.label_tag }}
+                                                {{ form.nuevo_valor_vehiculos_rce }}
+                                                {% if form.nuevo_valor_vehiculos_rce.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_valor_vehiculos_rce.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-3">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_valor_contratistas_rce.label_tag }}
+                                                {{ form.nuevo_valor_contratistas_rce }}
+                                                {% if form.nuevo_valor_contratistas_rce.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_valor_contratistas_rce.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_valor_perjuicios_extrapatrimoniales_rce.label_tag }}
+                                                {{ form.nuevo_valor_perjuicios_extrapatrimoniales_rce }}
+                                                {% if form.nuevo_valor_perjuicios_extrapatrimoniales_rce.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_valor_perjuicios_extrapatrimoniales_rce.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_valor_dano_moral_rce.label_tag }}
+                                                {{ form.nuevo_valor_dano_moral_rce }}
+                                                {% if form.nuevo_valor_dano_moral_rce.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_valor_dano_moral_rce.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_valor_lucro_cesante_rce.label_tag }}
+                                                {{ form.nuevo_valor_lucro_cesante_rce }}
+                                                {% if form.nuevo_valor_lucro_cesante_rce.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_valor_lucro_cesante_rce.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% elif contrato.tipo_contrato_cliente_proveedor == 'PROVEEDOR' %}
+                                    <div class="row">
+                                        <div class="col-md-4">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_rce_cobertura_danos_materiales.label_tag }}
+                                                {{ form.nuevo_rce_cobertura_danos_materiales }}
+                                                {% if form.nuevo_rce_cobertura_danos_materiales.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_rce_cobertura_danos_materiales.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_rce_cobertura_lesiones_personales.label_tag }}
+                                                {{ form.nuevo_rce_cobertura_lesiones_personales }}
+                                                {% if form.nuevo_rce_cobertura_lesiones_personales.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_rce_cobertura_lesiones_personales.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_rce_cobertura_muerte_terceros.label_tag }}
+                                                {{ form.nuevo_rce_cobertura_muerte_terceros }}
+                                                {% if form.nuevo_rce_cobertura_muerte_terceros.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_rce_cobertura_muerte_terceros.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-4">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_rce_cobertura_danos_bienes_terceros.label_tag }}
+                                                {{ form.nuevo_rce_cobertura_danos_bienes_terceros }}
+                                                {% if form.nuevo_rce_cobertura_danos_bienes_terceros.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_rce_cobertura_danos_bienes_terceros.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_rce_cobertura_responsabilidad_patronal.label_tag }}
+                                                {{ form.nuevo_rce_cobertura_responsabilidad_patronal }}
+                                                {% if form.nuevo_rce_cobertura_responsabilidad_patronal.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_rce_cobertura_responsabilidad_patronal.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_rce_cobertura_responsabilidad_cruzada.label_tag }}
+                                                {{ form.nuevo_rce_cobertura_responsabilidad_cruzada }}
+                                                {% if form.nuevo_rce_cobertura_responsabilidad_cruzada.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_rce_cobertura_responsabilidad_cruzada.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-4">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_rce_cobertura_danos_contratistas.label_tag }}
+                                                {{ form.nuevo_rce_cobertura_danos_contratistas }}
+                                                {% if form.nuevo_rce_cobertura_danos_contratistas.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_rce_cobertura_danos_contratistas.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_rce_cobertura_danos_ejecucion_contrato.label_tag }}
+                                                {{ form.nuevo_rce_cobertura_danos_ejecucion_contrato }}
+                                                {% if form.nuevo_rce_cobertura_danos_ejecucion_contrato.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_rce_cobertura_danos_ejecucion_contrato.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_rce_cobertura_danos_predios_vecinos.label_tag }}
+                                                {{ form.nuevo_rce_cobertura_danos_predios_vecinos }}
+                                                {% if form.nuevo_rce_cobertura_danos_predios_vecinos.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_rce_cobertura_danos_predios_vecinos.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-4">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_rce_cobertura_gastos_medicos.label_tag }}
+                                                {{ form.nuevo_rce_cobertura_gastos_medicos }}
+                                                {% if form.nuevo_rce_cobertura_gastos_medicos.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_rce_cobertura_gastos_medicos.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_rce_cobertura_gastos_defensa.label_tag }}
+                                                {{ form.nuevo_rce_cobertura_gastos_defensa }}
+                                                {% if form.nuevo_rce_cobertura_gastos_defensa.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_rce_cobertura_gastos_defensa.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_rce_cobertura_perjuicios_patrimoniales.label_tag }}
+                                                {{ form.nuevo_rce_cobertura_perjuicios_patrimoniales }}
+                                                {% if form.nuevo_rce_cobertura_perjuicios_patrimoniales.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_rce_cobertura_perjuicios_patrimoniales.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <!-- Póliza Cumplimiento -->
+                            <div class="card mb-3 border-primary">
+                                <div class="card-header bg-light">
+                                    <div class="form-check">
+                                        {{ form.nuevo_exige_poliza_cumplimiento }}
+                                        <label class="form-check-label" for="{{ form.nuevo_exige_poliza_cumplimiento.id_for_label }}">
+                                            <i class="fas fa-shield-alt text-primary"></i> <strong>Cumplimiento</strong>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="card-body" id="poliza-cumplimiento-details" style="display: none;">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_valor_asegurado_cumplimiento.label_tag }}
+                                                {{ form.nuevo_valor_asegurado_cumplimiento }}
+                                                {% if form.nuevo_valor_asegurado_cumplimiento.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_valor_asegurado_cumplimiento.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_meses_vigencia_cumplimiento.label_tag }}
+                                                {{ form.nuevo_meses_vigencia_cumplimiento }}
+                                                {% if form.nuevo_meses_vigencia_cumplimiento.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_meses_vigencia_cumplimiento.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_fecha_inicio_vigencia_cumplimiento.label_tag }}
+                                                {{ form.nuevo_fecha_inicio_vigencia_cumplimiento }}
+                                                {% if form.nuevo_fecha_inicio_vigencia_cumplimiento.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_fecha_inicio_vigencia_cumplimiento.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_fecha_fin_vigencia_cumplimiento.label_tag }}
+                                                {{ form.nuevo_fecha_fin_vigencia_cumplimiento }}
+                                                {% if form.nuevo_fecha_fin_vigencia_cumplimiento.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_fecha_fin_vigencia_cumplimiento.errors }}</div>
+                                                {% endif %}
+                                                <small class="form-text text-success">
+                                                    <i class="fas fa-calculator"></i> Calculada automáticamente
+                                                </small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% if contrato.tipo_contrato_cliente_proveedor == 'CLIENTE' %}
+                                    <div class="row">
+                                        <div class="col-md-3">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_valor_remuneraciones_cumplimiento.label_tag }}
+                                                {{ form.nuevo_valor_remuneraciones_cumplimiento }}
+                                                {% if form.nuevo_valor_remuneraciones_cumplimiento.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_valor_remuneraciones_cumplimiento.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_valor_servicios_publicos_cumplimiento.label_tag }}
+                                                {{ form.nuevo_valor_servicios_publicos_cumplimiento }}
+                                                {% if form.nuevo_valor_servicios_publicos_cumplimiento.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_valor_servicios_publicos_cumplimiento.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_valor_iva_cumplimiento.label_tag }}
+                                                {{ form.nuevo_valor_iva_cumplimiento }}
+                                                {% if form.nuevo_valor_iva_cumplimiento.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_valor_iva_cumplimiento.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_valor_otros_cumplimiento.label_tag }}
+                                                {{ form.nuevo_valor_otros_cumplimiento }}
+                                                {% if form.nuevo_valor_otros_cumplimiento.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_valor_otros_cumplimiento.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% elif contrato.tipo_contrato_cliente_proveedor == 'PROVEEDOR' %}
+                                    <div class="row">
+                                        <div class="col-md-4">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_cumplimiento_amparo_cumplimiento_contrato.label_tag }}
+                                                {{ form.nuevo_cumplimiento_amparo_cumplimiento_contrato }}
+                                                {% if form.nuevo_cumplimiento_amparo_cumplimiento_contrato.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_cumplimiento_amparo_cumplimiento_contrato.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_cumplimiento_amparo_buen_manejo_anticipo.label_tag }}
+                                                {{ form.nuevo_cumplimiento_amparo_buen_manejo_anticipo }}
+                                                {% if form.nuevo_cumplimiento_amparo_buen_manejo_anticipo.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_cumplimiento_amparo_buen_manejo_anticipo.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_cumplimiento_amparo_amortizacion_anticipo.label_tag }}
+                                                {{ form.nuevo_cumplimiento_amparo_amortizacion_anticipo }}
+                                                {% if form.nuevo_cumplimiento_amparo_amortizacion_anticipo.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_cumplimiento_amparo_amortizacion_anticipo.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-4">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_cumplimiento_amparo_salarios_prestaciones.label_tag }}
+                                                {{ form.nuevo_cumplimiento_amparo_salarios_prestaciones }}
+                                                {% if form.nuevo_cumplimiento_amparo_salarios_prestaciones.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_cumplimiento_amparo_salarios_prestaciones.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_cumplimiento_amparo_aportes_seguridad_social.label_tag }}
+                                                {{ form.nuevo_cumplimiento_amparo_aportes_seguridad_social }}
+                                                {% if form.nuevo_cumplimiento_amparo_aportes_seguridad_social.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_cumplimiento_amparo_aportes_seguridad_social.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_cumplimiento_amparo_calidad_servicio.label_tag }}
+                                                {{ form.nuevo_cumplimiento_amparo_calidad_servicio }}
+                                                {% if form.nuevo_cumplimiento_amparo_calidad_servicio.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_cumplimiento_amparo_calidad_servicio.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-4">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_cumplimiento_amparo_estabilidad_obra.label_tag }}
+                                                {{ form.nuevo_cumplimiento_amparo_estabilidad_obra }}
+                                                {% if form.nuevo_cumplimiento_amparo_estabilidad_obra.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_cumplimiento_amparo_estabilidad_obra.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_cumplimiento_amparo_calidad_bienes.label_tag }}
+                                                {{ form.nuevo_cumplimiento_amparo_calidad_bienes }}
+                                                {% if form.nuevo_cumplimiento_amparo_calidad_bienes.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_cumplimiento_amparo_calidad_bienes.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_cumplimiento_amparo_multas.label_tag }}
+                                                {{ form.nuevo_cumplimiento_amparo_multas }}
+                                                {% if form.nuevo_cumplimiento_amparo_multas.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_cumplimiento_amparo_multas.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-4">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_cumplimiento_amparo_clausula_penal.label_tag }}
+                                                {{ form.nuevo_cumplimiento_amparo_clausula_penal }}
+                                                {% if form.nuevo_cumplimiento_amparo_clausula_penal.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_cumplimiento_amparo_clausula_penal.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_cumplimiento_amparo_sanciones_incumplimiento.label_tag }}
+                                                {{ form.nuevo_cumplimiento_amparo_sanciones_incumplimiento }}
+                                                {% if form.nuevo_cumplimiento_amparo_sanciones_incumplimiento.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_cumplimiento_amparo_sanciones_incumplimiento.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <!-- Póliza Arrendamiento -->
+                            <div class="card mb-3 border-primary">
+                                <div class="card-header bg-light">
+                                    <div class="form-check">
+                                        {{ form.nuevo_exige_poliza_arrendamiento }}
+                                        <label class="form-check-label" for="{{ form.nuevo_exige_poliza_arrendamiento.id_for_label }}">
+                                            <i class="fas fa-shield-alt text-primary"></i> <strong>Póliza de Arrendamiento</strong>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="card-body" id="poliza-arrendamiento-details" style="display: none;">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_valor_asegurado_arrendamiento.label_tag }}
+                                                {{ form.nuevo_valor_asegurado_arrendamiento }}
+                                                {% if form.nuevo_valor_asegurado_arrendamiento.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_valor_asegurado_arrendamiento.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_meses_vigencia_arrendamiento.label_tag }}
+                                                {{ form.nuevo_meses_vigencia_arrendamiento }}
+                                                {% if form.nuevo_meses_vigencia_arrendamiento.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_meses_vigencia_arrendamiento.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_fecha_inicio_vigencia_arrendamiento.label_tag }}
+                                                {{ form.nuevo_fecha_inicio_vigencia_arrendamiento }}
+                                                {% if form.nuevo_fecha_inicio_vigencia_arrendamiento.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_fecha_inicio_vigencia_arrendamiento.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_fecha_fin_vigencia_arrendamiento.label_tag }}
+                                                {{ form.nuevo_fecha_fin_vigencia_arrendamiento }}
+                                                {% if form.nuevo_fecha_fin_vigencia_arrendamiento.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_fecha_fin_vigencia_arrendamiento.errors }}</div>
+                                                {% endif %}
+                                                <small class="form-text text-success">
+                                                    <i class="fas fa-calculator"></i> Calculada automáticamente
+                                                </small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-3">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_valor_remuneraciones_arrendamiento.label_tag }}
+                                                {{ form.nuevo_valor_remuneraciones_arrendamiento }}
+                                                {% if form.nuevo_valor_remuneraciones_arrendamiento.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_valor_remuneraciones_arrendamiento.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_valor_servicios_publicos_arrendamiento.label_tag }}
+                                                {{ form.nuevo_valor_servicios_publicos_arrendamiento }}
+                                                {% if form.nuevo_valor_servicios_publicos_arrendamiento.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_valor_servicios_publicos_arrendamiento.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_valor_iva_arrendamiento.label_tag }}
+                                                {{ form.nuevo_valor_iva_arrendamiento }}
+                                                {% if form.nuevo_valor_iva_arrendamiento.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_valor_iva_arrendamiento.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_valor_otros_arrendamiento.label_tag }}
+                                                {{ form.nuevo_valor_otros_arrendamiento }}
+                                                {% if form.nuevo_valor_otros_arrendamiento.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_valor_otros_arrendamiento.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Póliza Todo Riesgo -->
+                            <div class="card mb-3 border-primary">
+                                <div class="card-header bg-light">
+                                    <div class="form-check">
+                                        {{ form.nuevo_exige_poliza_todo_riesgo }}
+                                        <label class="form-check-label" for="{{ form.nuevo_exige_poliza_todo_riesgo.id_for_label }}">
+                                            <i class="fas fa-shield-alt text-primary"></i> <strong>Todo Riesgo para Equipos</strong>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="card-body" id="poliza-todo-riesgo-details" style="display: none;">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_valor_asegurado_todo_riesgo.label_tag }}
+                                                {{ form.nuevo_valor_asegurado_todo_riesgo }}
+                                                {% if form.nuevo_valor_asegurado_todo_riesgo.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_valor_asegurado_todo_riesgo.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_meses_vigencia_todo_riesgo.label_tag }}
+                                                {{ form.nuevo_meses_vigencia_todo_riesgo }}
+                                                {% if form.nuevo_meses_vigencia_todo_riesgo.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_meses_vigencia_todo_riesgo.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_fecha_inicio_vigencia_todo_riesgo.label_tag }}
+                                                {{ form.nuevo_fecha_inicio_vigencia_todo_riesgo }}
+                                                {% if form.nuevo_fecha_inicio_vigencia_todo_riesgo.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_fecha_inicio_vigencia_todo_riesgo.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_fecha_fin_vigencia_todo_riesgo.label_tag }}
+                                                {{ form.nuevo_fecha_fin_vigencia_todo_riesgo }}
+                                                {% if form.nuevo_fecha_fin_vigencia_todo_riesgo.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_fecha_fin_vigencia_todo_riesgo.errors }}</div>
+                                                {% endif %}
+                                                <small class="form-text text-success">
+                                                    <i class="fas fa-calculator"></i> Calculada automáticamente
+                                                </small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Otras Pólizas -->
+                            <div class="card mb-3 border-primary">
+                                <div class="card-header bg-light">
+                                    <div class="form-check">
+                                        {{ form.nuevo_exige_poliza_otra_1 }}
+                                        <label class="form-check-label" for="{{ form.nuevo_exige_poliza_otra_1.id_for_label }}">
+                                            <i class="fas fa-shield-alt text-primary"></i> <strong>Otras Pólizas</strong>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="card-body" id="poliza-otra-details" style="display: none;">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_nombre_poliza_otra_1.label_tag }}
+                                                {{ form.nuevo_nombre_poliza_otra_1 }}
+                                                {% if form.nuevo_nombre_poliza_otra_1.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_nombre_poliza_otra_1.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_valor_asegurado_otra_1.label_tag }}
+                                                {{ form.nuevo_valor_asegurado_otra_1 }}
+                                                {% if form.nuevo_valor_asegurado_otra_1.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_valor_asegurado_otra_1.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_meses_vigencia_otra_1.label_tag }}
+                                                {{ form.nuevo_meses_vigencia_otra_1 }}
+                                                {% if form.nuevo_meses_vigencia_otra_1.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_meses_vigencia_otra_1.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_fecha_inicio_vigencia_otra_1.label_tag }}
+                                                {{ form.nuevo_fecha_inicio_vigencia_otra_1 }}
+                                                {% if form.nuevo_fecha_inicio_vigencia_otra_1.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_fecha_inicio_vigencia_otra_1.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                {{ form.nuevo_fecha_fin_vigencia_otra_1.label_tag }}
+                                                {{ form.nuevo_fecha_fin_vigencia_otra_1 }}
+                                                {% if form.nuevo_fecha_fin_vigencia_otra_1.errors %}
+                                                    <div class="text-danger">{{ form.nuevo_fecha_fin_vigencia_otra_1.errors }}</div>
+                                                {% endif %}
+                                                <small class="form-text text-success">
+                                                    <i class="fas fa-calculator"></i> Calculada automáticamente
+                                                </small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="alert alert-success mt-3">
+                                <i class="fas fa-check-circle"></i>
+                                <strong>Resumen:</strong> Los valores modificados se guardarán en esta renovación automática.
+                                No afectarán el contrato base ni otros eventos previos.
+                            </div>
+                        </div>
+
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i>
+                            <strong>Información:</strong> Al autorizar la renovación automática, se registrará un evento de renovación 
+                            y se actualizará directamente la fecha final del contrato desde el día siguiente a la fecha final actual 
+                            hasta la nueva fecha calculada. Este proceso crea un evento de renovación automática (no un Otro Sí).
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'gestion:gestion_renovaciones_automaticas' %}" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-check-circle"></i> Autorizar Renovación
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/formatMiles.js' %}"></script>
+<script src="{% static 'js/auto_format_new.js' %}"></script>
+<script src="{% static 'js/utils_fechas.js' %}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Configurar formateo automático para campos de dinero
+    const moneyInputs = document.querySelectorAll('.money-input');
+    moneyInputs.forEach(function(input) {
+        input.addEventListener('input', function() {
+            let value = this.value.replace(/[^\d]/g, '');
+            if (value) {
+                value = parseInt(value).toLocaleString('es-CO');
+                this.value = value;
+            }
+        });
+        
+        input.addEventListener('focus', function() {
+            this.value = this.value.replace(/[^\d]/g, '');
+        });
+        
+        input.addEventListener('blur', function() {
+            if (this.value) {
+                let value = this.value.replace(/[^\d]/g, '');
+                if (value) {
+                    this.value = parseInt(value).toLocaleString('es-CO');
+                }
+            }
+        });
+    });
+    
+    // Toggle para meses personalizados
+    const usarDuracionInicialSi = document.getElementById('usar_duracion_inicial_si');
+    const usarDuracionInicialNo = document.getElementById('usar_duracion_inicial_no');
+    const mesesPersonalizados = document.getElementById('meses_personalizados');
+    const mesesRenovacion = document.getElementById('{{ form.meses_renovacion.id_for_label }}');
+
+    function toggleMesesPersonalizados() {
+        if (usarDuracionInicialNo && usarDuracionInicialNo.checked) {
+            mesesPersonalizados.style.display = 'block';
+            if (mesesRenovacion) {
+                mesesRenovacion.required = true;
+                // Remover el atributo disabled si existe para que sea válido
+                mesesRenovacion.removeAttribute('disabled');
+            }
+        } else {
+            mesesPersonalizados.style.display = 'none';
+            if (mesesRenovacion) {
+                mesesRenovacion.required = false;
+                mesesRenovacion.value = '';
+                // Deshabilitar el campo cuando está oculto para evitar errores de validación
+                mesesRenovacion.setAttribute('disabled', 'disabled');
+            }
+        }
+    }
+
+    if (usarDuracionInicialSi) usarDuracionInicialSi.addEventListener('change', toggleMesesPersonalizados);
+    if (usarDuracionInicialNo) usarDuracionInicialNo.addEventListener('change', toggleMesesPersonalizados);
+    
+    // Ejecutar al cargar la página para limpiar el valor si está oculto
+    // También limpiar el valor si es "0" y está oculto
+    if (mesesRenovacion) {
+        const valorActual = mesesRenovacion.value;
+        if ((valorActual === '0' || valorActual === 0) && mesesPersonalizados && mesesPersonalizados.style.display === 'none') {
+            mesesRenovacion.value = '';
+            mesesRenovacion.setAttribute('disabled', 'disabled');
+        }
+    }
+    toggleMesesPersonalizados();
+    
+    // Valores iniciales de pólizas desde el backend
+    const valoresInicialesPolizas = {{ valores_iniciales_polizas_json|safe }};
+    
+    console.log('[RenovacionAutomatica] valoresInicialesPolizas recibidos:', valoresInicialesPolizas);
+    console.log('[RenovacionAutomatica] valoresInicialesPolizas.cumplimiento:', valoresInicialesPolizas.cumplimiento);
+    
+    // Configurar cálculo automático de fechas para pólizas
+    const configuracionesPolizas = [
+        {
+            tipo: 'rce',
+            fechaInicioId: '{{ form.nuevo_fecha_inicio_vigencia_rce.id_for_label }}',
+            mesesId: '{{ form.nuevo_meses_vigencia_rce.id_for_label }}',
+            fechaFinId: '{{ form.nuevo_fecha_fin_vigencia_rce.id_for_label }}',
+            checkId: '{{ form.nuevo_exige_poliza_rce.id_for_label }}',
+            detailsId: 'poliza-rce-details'
+        },
+        {
+            tipo: 'cumplimiento',
+            fechaInicioId: '{{ form.nuevo_fecha_inicio_vigencia_cumplimiento.id_for_label }}',
+            mesesId: '{{ form.nuevo_meses_vigencia_cumplimiento.id_for_label }}',
+            fechaFinId: '{{ form.nuevo_fecha_fin_vigencia_cumplimiento.id_for_label }}',
+            checkId: '{{ form.nuevo_exige_poliza_cumplimiento.id_for_label }}',
+            detailsId: 'poliza-cumplimiento-details'
+        },
+        {
+            tipo: 'arrendamiento',
+            fechaInicioId: '{{ form.nuevo_fecha_inicio_vigencia_arrendamiento.id_for_label }}',
+            mesesId: '{{ form.nuevo_meses_vigencia_arrendamiento.id_for_label }}',
+            fechaFinId: '{{ form.nuevo_fecha_fin_vigencia_arrendamiento.id_for_label }}',
+            checkId: '{{ form.nuevo_exige_poliza_arrendamiento.id_for_label }}',
+            detailsId: 'poliza-arrendamiento-details'
+        },
+        {
+            tipo: 'todo_riesgo',
+            fechaInicioId: '{{ form.nuevo_fecha_inicio_vigencia_todo_riesgo.id_for_label }}',
+            mesesId: '{{ form.nuevo_meses_vigencia_todo_riesgo.id_for_label }}',
+            fechaFinId: '{{ form.nuevo_fecha_fin_vigencia_todo_riesgo.id_for_label }}',
+            checkId: '{{ form.nuevo_exige_poliza_todo_riesgo.id_for_label }}',
+            detailsId: 'poliza-todo-riesgo-details'
+        },
+        {
+            tipo: 'otra',
+            fechaInicioId: '{{ form.nuevo_fecha_inicio_vigencia_otra_1.id_for_label }}',
+            mesesId: '{{ form.nuevo_meses_vigencia_otra_1.id_for_label }}',
+            fechaFinId: '{{ form.nuevo_fecha_fin_vigencia_otra_1.id_for_label }}',
+            checkId: '{{ form.nuevo_exige_poliza_otra_1.id_for_label }}',
+            detailsId: 'poliza-otra-details'
+        }
+    ];
+    
+    console.log('[RenovacionAutomatica] Configuraciones de pólizas:', configuracionesPolizas);
+    
+    // Toggle para mostrar/ocultar campos de pólizas - Obtener elementos
+    const modificaPolizasCheckId = '{{ form.modifica_polizas.id_for_label }}';
+    const modificaPolizasCheck = document.getElementById(modificaPolizasCheckId) || 
+                                  document.querySelector('input[name="modifica_polizas"]') ||
+                                  document.querySelector('#id_modifica_polizas');
+    const modificacionPolizasDetails = document.getElementById('modificacion-polizas-details');
+    
+    console.log('[RenovacionAutomatica] ID buscado:', modificaPolizasCheckId);
+    console.log('[RenovacionAutomatica] modificaPolizasCheck encontrado:', modificaPolizasCheck);
+    console.log('[RenovacionAutomatica] modificacionPolizasDetails encontrado:', modificacionPolizasDetails);
+    
+    // Variable para almacenar las funciones toggle de cada póliza
+    const togglePolizaFunctions = {};
+    
+    // Configurar toggle de modifica_polizas PRIMERO, antes de configurar las pólizas individuales
+    if (modificaPolizasCheck && modificacionPolizasDetails) {
+        function toggleModificacionPolizas() {
+            console.log('[RenovacionAutomatica] toggleModificacionPolizas ejecutado, checked:', modificaPolizasCheck.checked);
+            if (modificaPolizasCheck.checked) {
+                console.log('[RenovacionAutomatica] Mostrando sección de pólizas');
+                modificacionPolizasDetails.style.display = 'block';
+                // Actualizar los toggles individuales cuando se muestra la sección
+                configuracionesPolizas.forEach(config => {
+                    if (togglePolizaFunctions[config.tipo]) {
+                        togglePolizaFunctions[config.tipo]();
+                    }
+                });
+            } else {
+                console.log('[RenovacionAutomatica] Ocultando sección de pólizas');
+                modificacionPolizasDetails.style.display = 'none';
+                // Desmarcar todos los checks individuales cuando se oculta
+                document.querySelectorAll('input[type="checkbox"][name^="nuevo_exige_poliza"]').forEach(check => {
+                    check.checked = false;
+                });
+                // Ocultar todos los detalles
+                document.querySelectorAll('[id^="poliza-"]').forEach(detail => {
+                    detail.style.display = 'none';
+                });
+            }
+        }
+        
+        // Agregar event listener tanto para 'change' como para 'click' para asegurar que funcione
+        modificaPolizasCheck.addEventListener('change', toggleModificacionPolizas);
+        modificaPolizasCheck.addEventListener('click', function(e) {
+            // Usar setTimeout para que el estado del checkbox se actualice primero
+            setTimeout(toggleModificacionPolizas, 10);
+        });
+        toggleModificacionPolizas(); // Ejecutar al cargar la página
+    } else {
+        console.error('[RenovacionAutomatica] No se encontraron los elementos necesarios');
+        console.error('[RenovacionAutomatica] modificaPolizasCheck:', modificaPolizasCheck);
+        console.error('[RenovacionAutomatica] modificacionPolizasDetails:', modificacionPolizasDetails);
+    }
+    
+    // Función para verificar si una póliza ya tiene valores diligenciados
+    function polizaTieneValores(tipo) {
+        const config = configuracionesPolizas.find(c => c.tipo === tipo);
+        if (!config) return false;
+        
+        const fechaInicio = document.getElementById(config.fechaInicioId);
+        const meses = document.getElementById(config.mesesId);
+        const fechaFin = document.getElementById(config.fechaFinId);
+        
+        // Verificar campos principales según el tipo de póliza (excluyendo "0")
+        if (tipo === 'rce') {
+            const valorAsegurado = document.getElementById('{{ form.nuevo_valor_asegurado_rce.id_for_label }}');
+            const valorAseguradoVal = valorAsegurado ? valorAsegurado.value.trim() : '';
+            return (valorAsegurado && valorAseguradoVal && valorAseguradoVal !== '0' && valorAseguradoVal !== '') ||
+                   (fechaInicio && fechaInicio.value && fechaInicio.value.trim() !== '') ||
+                   (meses && meses.value && meses.value.trim() !== '' && meses.value !== '0') ||
+                   (fechaFin && fechaFin.value && fechaFin.value.trim() !== '');
+        } else if (tipo === 'cumplimiento') {
+            const valorAsegurado = document.getElementById('{{ form.nuevo_valor_asegurado_cumplimiento.id_for_label }}');
+            const valorRemuneraciones = document.getElementById('{{ form.nuevo_valor_remuneraciones_cumplimiento.id_for_label }}');
+            const valorAseguradoVal = valorAsegurado ? valorAsegurado.value.trim() : '';
+            const valorRemuneracionesVal = valorRemuneraciones ? valorRemuneraciones.value.trim() : '';
+            return (valorAsegurado && valorAseguradoVal && valorAseguradoVal !== '0' && valorAseguradoVal !== '') ||
+                   (valorRemuneraciones && valorRemuneracionesVal && valorRemuneracionesVal !== '0' && valorRemuneracionesVal !== '') ||
+                   (fechaInicio && fechaInicio.value && fechaInicio.value.trim() !== '') ||
+                   (meses && meses.value && meses.value.trim() !== '' && meses.value !== '0') ||
+                   (fechaFin && fechaFin.value && fechaFin.value.trim() !== '');
+        } else if (tipo === 'arrendamiento') {
+            const valorAsegurado = document.getElementById('{{ form.nuevo_valor_asegurado_arrendamiento.id_for_label }}');
+            return (valorAsegurado && valorAsegurado.value && valorAsegurado.value.trim() !== '') ||
+                   (fechaInicio && fechaInicio.value && fechaInicio.value.trim() !== '') ||
+                   (meses && meses.value && meses.value.trim() !== '') ||
+                   (fechaFin && fechaFin.value && fechaFin.value.trim() !== '');
+        } else if (tipo === 'todo_riesgo') {
+            const valorAsegurado = document.getElementById('{{ form.nuevo_valor_asegurado_todo_riesgo.id_for_label }}');
+            return (valorAsegurado && valorAsegurado.value && valorAsegurado.value.trim() !== '') ||
+                   (fechaInicio && fechaInicio.value && fechaInicio.value.trim() !== '') ||
+                   (meses && meses.value && meses.value.trim() !== '') ||
+                   (fechaFin && fechaFin.value && fechaFin.value.trim() !== '');
+        } else if (tipo === 'otra') {
+            const nombre = document.getElementById('{{ form.nuevo_nombre_poliza_otra_1.id_for_label }}');
+            const valorAsegurado = document.getElementById('{{ form.nuevo_valor_asegurado_otra_1.id_for_label }}');
+            return (nombre && nombre.value && nombre.value.trim() !== '') ||
+                   (valorAsegurado && valorAsegurado.value && valorAsegurado.value.trim() !== '') ||
+                   (fechaInicio && fechaInicio.value && fechaInicio.value.trim() !== '') ||
+                   (meses && meses.value && meses.value.trim() !== '') ||
+                   (fechaFin && fechaFin.value && fechaFin.value.trim() !== '');
+        }
+        return false;
+    }
+    
+    // Función para inicializar valores de una póliza
+    function inicializarValoresPoliza(tipo, valores) {
+        if (!valores) return;
+        
+        // Verificar si la póliza ya tiene valores diligenciados (excluyendo "0")
+        const tieneValoresReales = polizaTieneValores(tipo);
+        console.log(`[RenovacionAutomatica] Verificando si póliza ${tipo} tiene valores reales: ${tieneValoresReales}`);
+        
+        if (tieneValoresReales) {
+            console.log(`[RenovacionAutomatica] La póliza ${tipo} ya tiene valores diligenciados, no se inicializará desde el contrato inicial`);
+            return;
+        }
+        
+        console.log(`[RenovacionAutomatica] Inicializando valores de póliza ${tipo} desde el contrato inicial o último evento aprobado`);
+        
+        // Configuración del formateador para Colombia
+        const formatter = new Intl.NumberFormat('es-CO', {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 0
+        });
+        
+        // Función auxiliar para formatear valores monetarios
+        function formatearValorMonetario(valor) {
+            if (!valor || valor === '' || valor === '0') return '';
+            
+            let valorStr = String(valor).trim();
+            
+            if (valorStr.match(/^\d{1,3}(\.\d{3})+$/)) {
+                return valorStr;
+            }
+            
+            let valorSinDecimales = valorStr.split('.')[0];
+            let valorLimpio = valorSinDecimales.replace(/[^\d]/g, '');
+            
+            if (!valorLimpio || valorLimpio === '0' || valorLimpio === '00') {
+                return '';
+            }
+            
+            let valorNumerico = parseInt(valorLimpio, 10);
+            
+            if (!isNaN(valorNumerico) && valorNumerico > 0) {
+                return formatter.format(valorNumerico);
+            }
+            
+            return valorStr;
+        }
+        
+        const config = configuracionesPolizas.find(c => c.tipo === tipo);
+        if (!config) return;
+        
+        const fechaInicio = document.getElementById(config.fechaInicioId);
+        const meses = document.getElementById(config.mesesId);
+        const fechaFin = document.getElementById(config.fechaFinId);
+        const check = document.getElementById(config.checkId);
+        
+        // Si la póliza se exige, marcar el checkbox
+        if (check && valores.exige) {
+            check.checked = true;
+            // Mostrar detalles si modifica_polizas está marcado
+            if (modificaPolizasCheck && modificaPolizasCheck.checked) {
+                const details = document.getElementById(config.detailsId);
+                if (details) details.style.display = 'block';
+            }
+        }
+        
+        // Inicializar valores solo si los campos están vacíos
+        if (fechaInicio && !fechaInicio.value) {
+            if (valores.fecha_inicio) fechaInicio.value = valores.fecha_inicio;
+            if (valores.meses_vigencia && meses) meses.value = valores.meses_vigencia;
+            
+            // Calcular fecha fin si hay fecha inicio y meses
+            if (valores.fecha_inicio && valores.meses_vigencia) {
+                const fecha = new Date(valores.fecha_inicio);
+                fecha.setMonth(fecha.getMonth() + parseInt(valores.meses_vigencia));
+                if (fechaFin) fechaFin.value = fecha.toISOString().split('T')[0];
+            } else if (valores.fecha_fin && fechaFin) {
+                fechaFin.value = valores.fecha_fin;
+            }
+        }
+        
+        // Inicializar otros campos específicos según el tipo (con formateo)
+        if (tipo === 'rce') {
+            const tipoContrato = '{{ contrato.tipo_contrato_cliente_proveedor|default:"CLIENTE" }}';
+            const campos = {};
+            
+            if (tipoContrato === 'CLIENTE') {
+                Object.assign(campos, {
+                    '{{ form.nuevo_valor_asegurado_rce.id_for_label }}': formatearValorMonetario(valores.valor_asegurado),
+                    '{{ form.nuevo_valor_propietario_locatario_ocupante_rce.id_for_label }}': formatearValorMonetario(valores.valor_plo),
+                    '{{ form.nuevo_valor_patronal_rce.id_for_label }}': formatearValorMonetario(valores.valor_patronal),
+                    '{{ form.nuevo_valor_gastos_medicos_rce.id_for_label }}': formatearValorMonetario(valores.valor_gastos_medicos),
+                    '{{ form.nuevo_valor_vehiculos_rce.id_for_label }}': formatearValorMonetario(valores.valor_vehiculos),
+                    '{{ form.nuevo_valor_contratistas_rce.id_for_label }}': formatearValorMonetario(valores.valor_contratistas),
+                    '{{ form.nuevo_valor_perjuicios_extrapatrimoniales_rce.id_for_label }}': formatearValorMonetario(valores.valor_perjuicios),
+                    '{{ form.nuevo_valor_dano_moral_rce.id_for_label }}': formatearValorMonetario(valores.valor_dano_moral),
+                    '{{ form.nuevo_valor_lucro_cesante_rce.id_for_label }}': formatearValorMonetario(valores.valor_lucro_cesante)
+                });
+            } else if (tipoContrato === 'PROVEEDOR') {
+                Object.assign(campos, {
+                    '{{ form.nuevo_valor_asegurado_rce.id_for_label }}': formatearValorMonetario(valores.valor_asegurado),
+                    '{{ form.nuevo_rce_cobertura_danos_materiales.id_for_label }}': formatearValorMonetario(valores.rce_cobertura_danos_materiales),
+                    '{{ form.nuevo_rce_cobertura_lesiones_personales.id_for_label }}': formatearValorMonetario(valores.rce_cobertura_lesiones_personales),
+                    '{{ form.nuevo_rce_cobertura_muerte_terceros.id_for_label }}': formatearValorMonetario(valores.rce_cobertura_muerte_terceros),
+                    '{{ form.nuevo_rce_cobertura_danos_bienes_terceros.id_for_label }}': formatearValorMonetario(valores.rce_cobertura_danos_bienes_terceros),
+                    '{{ form.nuevo_rce_cobertura_responsabilidad_patronal.id_for_label }}': formatearValorMonetario(valores.rce_cobertura_responsabilidad_patronal),
+                    '{{ form.nuevo_rce_cobertura_responsabilidad_cruzada.id_for_label }}': formatearValorMonetario(valores.rce_cobertura_responsabilidad_cruzada),
+                    '{{ form.nuevo_rce_cobertura_danos_contratistas.id_for_label }}': formatearValorMonetario(valores.rce_cobertura_danos_contratistas),
+                    '{{ form.nuevo_rce_cobertura_danos_ejecucion_contrato.id_for_label }}': formatearValorMonetario(valores.rce_cobertura_danos_ejecucion_contrato),
+                    '{{ form.nuevo_rce_cobertura_danos_predios_vecinos.id_for_label }}': formatearValorMonetario(valores.rce_cobertura_danos_predios_vecinos),
+                    '{{ form.nuevo_rce_cobertura_gastos_medicos.id_for_label }}': formatearValorMonetario(valores.rce_cobertura_gastos_medicos),
+                    '{{ form.nuevo_rce_cobertura_gastos_defensa.id_for_label }}': formatearValorMonetario(valores.rce_cobertura_gastos_defensa),
+                    '{{ form.nuevo_rce_cobertura_perjuicios_patrimoniales.id_for_label }}': formatearValorMonetario(valores.rce_cobertura_perjuicios_patrimoniales)
+                });
+            }
+            
+            Object.keys(campos).forEach(id => {
+                const campo = document.getElementById(id);
+                if (campo && !campo.value && campos[id]) {
+                    campo.value = campos[id];
+                }
+            });
+        } else if (tipo === 'cumplimiento') {
+            console.log(`[RenovacionAutomatica] Inicializando campos de cumplimiento con valores:`, valores);
+            const tipoContrato = '{{ contrato.tipo_contrato_cliente_proveedor|default:"CLIENTE" }}';
+            const campos = {};
+            
+            if (tipoContrato === 'CLIENTE') {
+                Object.assign(campos, {
+                    '{{ form.nuevo_valor_asegurado_cumplimiento.id_for_label }}': formatearValorMonetario(valores.valor_asegurado),
+                    '{{ form.nuevo_valor_remuneraciones_cumplimiento.id_for_label }}': formatearValorMonetario(valores.valor_remuneraciones),
+                    '{{ form.nuevo_valor_servicios_publicos_cumplimiento.id_for_label }}': formatearValorMonetario(valores.valor_servicios_publicos),
+                    '{{ form.nuevo_valor_iva_cumplimiento.id_for_label }}': formatearValorMonetario(valores.valor_iva),
+                    '{{ form.nuevo_valor_otros_cumplimiento.id_for_label }}': formatearValorMonetario(valores.valor_otros)
+                });
+            } else if (tipoContrato === 'PROVEEDOR') {
+                Object.assign(campos, {
+                    '{{ form.nuevo_valor_asegurado_cumplimiento.id_for_label }}': formatearValorMonetario(valores.valor_asegurado),
+                    '{{ form.nuevo_cumplimiento_amparo_cumplimiento_contrato.id_for_label }}': formatearValorMonetario(valores.cumplimiento_amparo_cumplimiento_contrato),
+                    '{{ form.nuevo_cumplimiento_amparo_buen_manejo_anticipo.id_for_label }}': formatearValorMonetario(valores.cumplimiento_amparo_buen_manejo_anticipo),
+                    '{{ form.nuevo_cumplimiento_amparo_amortizacion_anticipo.id_for_label }}': formatearValorMonetario(valores.cumplimiento_amparo_amortizacion_anticipo),
+                    '{{ form.nuevo_cumplimiento_amparo_salarios_prestaciones.id_for_label }}': formatearValorMonetario(valores.cumplimiento_amparo_salarios_prestaciones),
+                    '{{ form.nuevo_cumplimiento_amparo_aportes_seguridad_social.id_for_label }}': formatearValorMonetario(valores.cumplimiento_amparo_aportes_seguridad_social),
+                    '{{ form.nuevo_cumplimiento_amparo_calidad_servicio.id_for_label }}': formatearValorMonetario(valores.cumplimiento_amparo_calidad_servicio),
+                    '{{ form.nuevo_cumplimiento_amparo_estabilidad_obra.id_for_label }}': formatearValorMonetario(valores.cumplimiento_amparo_estabilidad_obra),
+                    '{{ form.nuevo_cumplimiento_amparo_calidad_bienes.id_for_label }}': formatearValorMonetario(valores.cumplimiento_amparo_calidad_bienes),
+                    '{{ form.nuevo_cumplimiento_amparo_multas.id_for_label }}': formatearValorMonetario(valores.cumplimiento_amparo_multas),
+                    '{{ form.nuevo_cumplimiento_amparo_clausula_penal.id_for_label }}': formatearValorMonetario(valores.cumplimiento_amparo_clausula_penal),
+                    '{{ form.nuevo_cumplimiento_amparo_sanciones_incumplimiento.id_for_label }}': formatearValorMonetario(valores.cumplimiento_amparo_sanciones_incumplimiento)
+                });
+            }
+            
+            Object.keys(campos).forEach(id => {
+                const campo = document.getElementById(id);
+                if (campo) {
+                    // Inicializar si el campo está vacío o tiene valor "0"
+                    const valorActual = campo.value.trim();
+                    const valorNuevo = campos[id];
+                    if ((!valorActual || valorActual === '0' || valorActual === '') && valorNuevo) {
+                        console.log(`[RenovacionAutomatica] Inicializando ${id}: "${valorActual}" -> "${valorNuevo}"`);
+                        campo.value = valorNuevo;
+                    } else {
+                        console.log(`[RenovacionAutomatica] Saltando ${id}: valor actual="${valorActual}", valor nuevo="${valorNuevo}"`);
+                    }
+                }
+            });
+        } else if (tipo === 'arrendamiento') {
+            const campos = {
+                '{{ form.nuevo_valor_asegurado_arrendamiento.id_for_label }}': formatearValorMonetario(valores.valor_asegurado),
+                '{{ form.nuevo_valor_remuneraciones_arrendamiento.id_for_label }}': formatearValorMonetario(valores.valor_remuneraciones),
+                '{{ form.nuevo_valor_servicios_publicos_arrendamiento.id_for_label }}': formatearValorMonetario(valores.valor_servicios_publicos),
+                '{{ form.nuevo_valor_iva_arrendamiento.id_for_label }}': formatearValorMonetario(valores.valor_iva),
+                '{{ form.nuevo_valor_otros_arrendamiento.id_for_label }}': formatearValorMonetario(valores.valor_otros)
+            };
+            Object.keys(campos).forEach(id => {
+                const campo = document.getElementById(id);
+                if (campo && !campo.value && campos[id]) {
+                    campo.value = campos[id];
+                }
+            });
+        } else if (tipo === 'todo_riesgo') {
+            const campo = document.getElementById('{{ form.nuevo_valor_asegurado_todo_riesgo.id_for_label }}');
+            if (campo && !campo.value) {
+                campo.value = formatearValorMonetario(valores.valor_asegurado);
+            }
+        } else if (tipo === 'otra') {
+            const nombre = document.getElementById('{{ form.nuevo_nombre_poliza_otra_1.id_for_label }}');
+            const valorAsegurado = document.getElementById('{{ form.nuevo_valor_asegurado_otra_1.id_for_label }}');
+            if (nombre && !nombre.value && valores.nombre) {
+                nombre.value = valores.nombre;
+            }
+            if (valorAsegurado && !valorAsegurado.value) {
+                valorAsegurado.value = formatearValorMonetario(valores.valor_asegurado);
+            }
+        }
+    }
+    
+    // Manejar checks individuales de cada póliza
+    configuracionesPolizas.forEach(config => {
+        // Intentar múltiples formas de obtener el checkbox
+        let check = document.getElementById(config.checkId);
+        if (!check) {
+            // Fallback: buscar por name attribute
+            check = document.querySelector(`input[name="${config.checkId.replace('id_', '')}"]`);
+        }
+        if (!check) {
+            // Fallback: buscar por tipo y nombre
+            const fieldName = config.checkId.replace('id_', '');
+            check = document.querySelector(`input[type="checkbox"][name="${fieldName}"]`);
+        }
+        
+        const details = document.getElementById(config.detailsId);
+        const fechaInicio = document.getElementById(config.fechaInicioId);
+        const meses = document.getElementById(config.mesesId);
+        const fechaFin = document.getElementById(config.fechaFinId);
+        
+        if (!check) {
+            console.error(`[RenovacionAutomatica] No se encontró el checkbox para ${config.tipo} con ID: ${config.checkId}`);
+            console.log(`[RenovacionAutomatica] Intentando buscar por name: ${config.checkId.replace('id_', '')}`);
+            return;
+        }
+        
+        if (!details) {
+            console.error(`[RenovacionAutomatica] No se encontró el elemento details para ${config.tipo} con ID: ${config.detailsId}`);
+            return;
+        }
+        
+        console.log(`[RenovacionAutomatica] Elementos encontrados para ${config.tipo}:`, {
+            check: check,
+            details: details,
+            checkId: config.checkId,
+            checkChecked: check.checked
+        });
+        
+        // Configurar cálculo automático de fecha fin
+        if (fechaInicio && meses && fechaFin) {
+            function calcularFechaFin() {
+                if (fechaInicio.value && meses.value) {
+                    const fecha = new Date(fechaInicio.value);
+                    fecha.setMonth(fecha.getMonth() + parseInt(meses.value));
+                    fechaFin.value = fecha.toISOString().split('T')[0];
+                }
+            }
+            
+            fechaInicio.addEventListener('change', calcularFechaFin);
+            meses.addEventListener('change', calcularFechaFin);
+        }
+        
+        // Manejar toggle de detalles e inicialización de valores
+        function togglePolizaDetails() {
+            const isModificaPolizasChecked = modificaPolizasCheck && modificaPolizasCheck.checked;
+            const isCheckChecked = check.checked;
+            
+            console.log(`[RenovacionAutomatica] togglePolizaDetails para ${config.tipo}:`, {
+                checkChecked: isCheckChecked,
+                modificaPolizasChecked: isModificaPolizasChecked
+            });
+            
+            if (isCheckChecked && isModificaPolizasChecked) {
+                details.style.display = 'block';
+                // Inicializar valores cuando se marca el check (si no tiene valores reales)
+                const valores = valoresInicialesPolizas && valoresInicialesPolizas[config.tipo];
+                if (valores) {
+                    console.log(`[RenovacionAutomatica] Check marcado para ${config.tipo}, intentando inicializar valores`);
+                    // Solo inicializar si no tiene valores reales (excluyendo "0")
+                    if (!polizaTieneValores(config.tipo)) {
+                        console.log(`[RenovacionAutomatica] No tiene valores reales, inicializando...`);
+                        inicializarValoresPoliza(config.tipo, valores);
+                    } else {
+                        console.log(`[RenovacionAutomatica] Ya tiene valores reales, no se inicializará`);
+                    }
+                } else {
+                    console.log(`[RenovacionAutomatica] No hay valores iniciales para ${config.tipo}`);
+                }
+            } else {
+                details.style.display = 'none';
+            }
+        }
+        
+        // Almacenar la función toggle para poder llamarla desde el toggle principal
+        togglePolizaFunctions[config.tipo] = togglePolizaDetails;
+        
+        // Agregar event listeners
+        check.addEventListener('change', togglePolizaDetails);
+        check.addEventListener('click', function(e) {
+            // Usar setTimeout para asegurar que el estado del checkbox se actualice primero
+            setTimeout(togglePolizaDetails, 10);
+        });
+        
+        // Ejecutar al cargar la página para mostrar campos si el check ya está marcado (edición)
+        togglePolizaDetails();
+    });
+    
+    // Inicializar valores de pólizas desde valores_iniciales_polizas (solo si modifica_polizas está marcado)
+    if (valoresInicialesPolizas && modificaPolizasCheck && modificaPolizasCheck.checked) {
+        Object.keys(valoresInicialesPolizas).forEach(function(tipo) {
+            const config = configuracionesPolizas.find(c => c.tipo === tipo);
+            if (config) {
+                const check = document.getElementById(config.checkId);
+                if (check && check.checked) {
+                    inicializarValoresPoliza(tipo, valoresInicialesPolizas[tipo]);
+                }
+            }
+        });
+    }
+});
+</script>
+{% endblock %}
+

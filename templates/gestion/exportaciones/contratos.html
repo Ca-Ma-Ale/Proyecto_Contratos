@@ -1,0 +1,181 @@
+{% extends 'base.html' %}
+
+{% block title %}Exportar Contratos{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h1 class="display-5 mb-0">
+                    <i class="fas fa-file-excel text-primary"></i> Exportar Contratos a Excel
+                </h1>
+                <a href="{% url 'gestion:exportaciones' %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left"></i> Volver a Exportaciones
+                </a>
+            </div>
+            <p class="text-muted mt-2 mb-0">
+                Configure los filtros para exportar los contratos. La exportación incluye todos los datos relevantes del contrato y sus pólizas.
+            </p>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-10 col-xl-8">
+            <div class="card shadow-sm border-0">
+                <div class="card-body">
+                    <form method="post" id="form-exportacion">
+                        {% csrf_token %}
+                        
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="{{ form.estado.id_for_label }}" class="form-label">
+                                    {{ form.estado.label }}
+                                </label>
+                                {{ form.estado }}
+                                {% if form.estado.errors %}
+                                    <div class="text-danger small">{{ form.estado.errors }}</div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <label for="{{ form.tipo_contrato_cliente_proveedor.id_for_label }}" class="form-label">
+                                    {{ form.tipo_contrato_cliente_proveedor.label }}
+                                </label>
+                                {{ form.tipo_contrato_cliente_proveedor }}
+                                {% if form.tipo_contrato_cliente_proveedor.errors %}
+                                    <div class="text-danger small">{{ form.tipo_contrato_cliente_proveedor.errors }}</div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <label for="{{ form.tipo_contrato.id_for_label }}" class="form-label">
+                                    {{ form.tipo_contrato.label }}
+                                </label>
+                                {{ form.tipo_contrato }}
+                                {% if form.tipo_contrato.errors %}
+                                    <div class="text-danger small">{{ form.tipo_contrato.errors }}</div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="col-12">
+                                <hr class="my-4">
+                                <h5 class="mb-3">
+                                    <i class="fas fa-calendar-alt text-primary"></i> Filtros por Fechas
+                                </h5>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <label for="{{ form.fecha_inicio_desde.id_for_label }}" class="form-label">
+                                    {{ form.fecha_inicio_desde.label }}
+                                </label>
+                                {{ form.fecha_inicio_desde }}
+                                {% if form.fecha_inicio_desde.errors %}
+                                    <div class="text-danger small">{{ form.fecha_inicio_desde.errors }}</div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <label for="{{ form.fecha_inicio_hasta.id_for_label }}" class="form-label">
+                                    {{ form.fecha_inicio_hasta.label }}
+                                </label>
+                                {{ form.fecha_inicio_hasta }}
+                                {% if form.fecha_inicio_hasta.errors %}
+                                    <div class="text-danger small">{{ form.fecha_inicio_hasta.errors }}</div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <label for="{{ form.fecha_final_desde.id_for_label }}" class="form-label">
+                                    {{ form.fecha_final_desde.label }}
+                                </label>
+                                {{ form.fecha_final_desde }}
+                                {% if form.fecha_final_desde.errors %}
+                                    <div class="text-danger small">{{ form.fecha_final_desde.errors }}</div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <label for="{{ form.fecha_final_hasta.id_for_label }}" class="form-label">
+                                    {{ form.fecha_final_hasta.label }}
+                                </label>
+                                {{ form.fecha_final_hasta }}
+                                {% if form.fecha_final_hasta.errors %}
+                                    <div class="text-danger small">{{ form.fecha_final_hasta.errors }}</div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="col-12">
+                                <hr class="my-4">
+                                <h5 class="mb-3">
+                                    <i class="fas fa-filter text-primary"></i> Otros Filtros
+                                </h5>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <label for="{{ form.arrendatario.id_for_label }}" class="form-label">
+                                    {{ form.arrendatario.label }}
+                                </label>
+                                {{ form.arrendatario }}
+                                {% if form.arrendatario.errors %}
+                                    <div class="text-danger small">{{ form.arrendatario.errors }}</div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <label for="{{ form.local.id_for_label }}" class="form-label">
+                                    {{ form.local.label }}
+                                </label>
+                                {{ form.local }}
+                                {% if form.local.errors %}
+                                    <div class="text-danger small">{{ form.local.errors }}</div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <label for="{{ form.modalidad_pago.id_for_label }}" class="form-label">
+                                    {{ form.modalidad_pago.label }}
+                                </label>
+                                {{ form.modalidad_pago }}
+                                {% if form.modalidad_pago.errors %}
+                                    <div class="text-danger small">{{ form.modalidad_pago.errors }}</div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <label for="{{ form.prorroga_automatica.id_for_label }}" class="form-label">
+                                    {{ form.prorroga_automatica.label }}
+                                </label>
+                                {{ form.prorroga_automatica }}
+                                {% if form.prorroga_automatica.errors %}
+                                    <div class="text-danger small">{{ form.prorroga_automatica.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <div class="row mt-4">
+                            <div class="col-12">
+                                <div class="alert alert-info">
+                                    <i class="fas fa-info-circle"></i>
+                                    <strong>Nota:</strong> Si no selecciona ningún filtro, se exportarán todos los contratos del sistema.
+                                    La exportación incluye aproximadamente el 95% de los datos más relevantes de cada contrato.
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between mt-4">
+                            <a href="{% url 'gestion:exportaciones' %}" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-download"></i> Exportar a Excel
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

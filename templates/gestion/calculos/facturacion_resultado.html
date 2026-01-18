@@ -1,0 +1,170 @@
+{% extends 'base.html' %}
+{% load formato_filters %}
+
+{% block title %}Resultado del Cálculo - Gestión de Contratos{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="display-6">
+                    <i class="fas fa-chart-bar text-primary"></i> Resultado del Cálculo
+                </h1>
+                <a href="{% url 'gestion:lista_informes_ventas' %}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Volver
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-10 offset-md-1">
+            <!-- Información del Contrato -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-file-contract"></i> Información del Contrato
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Contrato:</strong> {{ calculo.contrato.num_contrato }}</p>
+                            <p><strong>Arrendatario:</strong> {{ calculo.contrato.arrendatario.razon_social }}</p>
+                            <p><strong>Local:</strong> {{ calculo.contrato.local.nombre_comercial_stand }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Mes/Año:</strong> {{ calculo.get_mes_display }}/{{ calculo.año }}</p>
+                            <p><strong>Modalidad:</strong> {{ calculo.get_modalidad_contrato_display }}</p>
+                            <p><strong>Fecha de Cálculo:</strong> {{ calculo.fecha_calculo|date:"d/m/Y H:i" }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Desglose del Cálculo -->
+            <div class="card mb-4">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-calculator"></i> Desglose del Cálculo
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <tbody>
+                                <tr>
+                                    <td class="fw-bold" style="width: 40%;">Ventas Totales</td>
+                                    <td class="text-end">${{ calculo.ventas_totales|formato_moneda }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold">Devoluciones</td>
+                                    <td class="text-end">${{ calculo.devoluciones|formato_moneda }}</td>
+                                </tr>
+                                <tr class="table-info">
+                                    <td class="fw-bold"><strong>Base Neta</strong></td>
+                                    <td class="text-end"><strong>${{ calculo.base_neta|formato_moneda }}</strong></td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold">Porcentaje de Ventas Vigente
+                                        {% if porcentaje_modificado %}
+                                            <span class="badge bg-info text-dark ms-2" title="Del documento {{ calculo.otrosi_referencia.numero_otrosi }} vigente desde {{ calculo.otrosi_referencia.effective_from|date:'d/m/Y' }}">
+                                                {{ calculo.otrosi_referencia.numero_otrosi }}
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-secondary text-white ms-2" title="Valores tomados del contrato base">
+                                                Contrato base
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end">{{ calculo.porcentaje_ventas_vigente|formato_porcentaje }}</td>
+                                </tr>
+                                <tr class="table-warning">
+                                    <td class="fw-bold"><strong>Valor Calculado (Base × %)</strong></td>
+                                    <td class="text-end"><strong>${{ calculo.valor_calculado_porcentaje|formato_moneda }}</strong></td>
+                                </tr>
+                                {% if calculo.modalidad_contrato == 'HIBRIDO_MIN_GARANTIZADO' %}
+                                <tr>
+                                    <td class="fw-bold">Canon Mínimo Garantizado Vigente
+                                        {% if canon_min_modificado %}
+                                            <span class="badge bg-info text-dark ms-2" title="Del documento {{ calculo.otrosi_referencia.numero_otrosi }} vigente desde {{ calculo.otrosi_referencia.effective_from|date:'d/m/Y' }}">
+                                                {{ calculo.otrosi_referencia.numero_otrosi }}
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-secondary text-white ms-2" title="Valores tomados del contrato base">
+                                                Contrato base
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end">${{ calculo.canon_minimo_garantizado_vigente|formato_moneda }}</td>
+                                </tr>
+                                {% if calculo.excedente_sobre_minimo %}
+                                <tr class="table-success">
+                                    <td class="fw-bold"><strong>Excedente sobre Mínimo</strong></td>
+                                    <td class="text-end"><strong>${{ calculo.excedente_sobre_minimo|formato_moneda }}</strong></td>
+                                </tr>
+                                {% endif %}
+                                <tr>
+                                    <td class="fw-bold">¿Aplica Variable?</td>
+                                    <td class="text-end">
+                                        {% if calculo.aplica_variable %}
+                                            <span class="badge bg-success">Sí</span>
+                                        {% else %}
+                                            <span class="badge bg-warning">No (Solo Mínimo)</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endif %}
+                                <tr class="table-success">
+                                    <td class="fw-bold"><h4 class="mb-0">Valor a Facturar Variable</h4></td>
+                                    <td class="text-end"><h4 class="mb-0 text-success">${{ calculo.valor_a_facturar_variable|formato_moneda }}</h4></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Información Adicional -->
+            {% if calculo.otrosi_referencia %}
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-info-circle"></i> Información de Referencia
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p><strong>Otro Sí de Referencia:</strong> {{ calculo.otrosi_referencia.numero_otrosi }}</p>
+                    <p><strong>Vigencia desde:</strong> {{ calculo.otrosi_referencia.effective_from|date:"d/m/Y" }}</p>
+                    {% if calculo.observaciones %}
+                    <p><strong>Observaciones:</strong> {{ calculo.observaciones }}</p>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Botones de Acción -->
+            <div class="card">
+                <div class="card-body text-center">
+                    <a href="{% url 'gestion:descargar_pdf_calculo' calculo.id %}" class="btn btn-danger">
+                        <i class="fas fa-file-pdf"></i> Descargar PDF
+                    </a>
+                    <a href="{% url 'gestion:descargar_excel_calculo' calculo.id %}" class="btn btn-success">
+                        <i class="fas fa-file-excel"></i> Descargar Excel
+                    </a>
+                    {% if informe and informe.estado == 'PENDIENTE' %}
+                    <a href="{% url 'gestion:finalizar_informe_ventas' informe.id %}" class="btn btn-primary">
+                        <i class="fas fa-check-circle"></i> Finalizar Informe
+                    </a>
+                    {% endif %}
+                    <a href="{% url 'gestion:lista_informes_ventas' %}" class="btn btn-secondary">
+                        <i class="fas fa-list"></i> Ver Contratos
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

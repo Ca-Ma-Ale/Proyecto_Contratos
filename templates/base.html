@@ -1,0 +1,456 @@
+{% load static %}
+{% load humanize %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{% if empresa_config %}{{ empresa_config.nombre_empresa }} - {% endif %}Gestión de Contratos de Arrendamiento{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        /* Colores corporativos de Avenida Chile */
+        :root {
+            --avenida-green: #8BC34A;
+            --avenida-orange: #FF9800;
+            --avenida-cyan: #00BCD4;
+            --avenida-magenta: #E91E63;
+            --avenida-dark: #2C3E50;
+            --avenida-light: #F8F9FA;
+        }
+        
+        .alert-card {
+            border-left: 4px solid;
+            transition: transform 0.2s;
+        }
+        .alert-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .alert-vencimiento { border-left-color: var(--avenida-orange); }
+        .alert-poliza { border-left-color: var(--avenida-magenta); }
+        .alert-preaviso { border-left-color: var(--avenida-cyan); }
+        .alert-reporte { border-left-color: var(--avenida-green); }
+        
+        .stat-card {
+            background: linear-gradient(135deg, var(--avenida-orange) 0%, var(--avenida-magenta) 100%);
+            color: white;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(255, 152, 0, 0.3);
+        }
+        .stat-card h3 {
+            font-size: 2rem;
+            font-weight: bold;
+        }
+        
+        .stat-card-alt {
+            background: linear-gradient(135deg, var(--avenida-green) 0%, var(--avenida-cyan) 100%);
+            color: white;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(139, 195, 74, 0.3);
+        }
+        
+        .badge-estado {
+            font-size: 0.8rem;
+            padding: 0.4em 0.6em;
+        }
+        
+        .navbar-brand {
+            font-weight: bold;
+            color: var(--avenida-orange) !important;
+        }
+        
+        .btn-primary {
+            background-color: var(--avenida-orange);
+            border-color: var(--avenida-orange);
+        }
+        .btn-primary:hover {
+            background-color: #e68900;
+            border-color: #e68900;
+        }
+        
+        .btn-success {
+            background-color: var(--avenida-green);
+            border-color: var(--avenida-green);
+        }
+        .btn-success:hover {
+            background-color: #7cb342;
+            border-color: #7cb342;
+        }
+        
+        .btn-info {
+            background-color: var(--avenida-cyan);
+            border-color: var(--avenida-cyan);
+        }
+        .btn-info:hover {
+            background-color: #00acc1;
+            border-color: #00acc1;
+        }
+        
+        .btn-warning {
+            background-color: var(--avenida-magenta);
+            border-color: var(--avenida-magenta);
+            color: white;
+        }
+        .btn-warning:hover {
+            background-color: #d81b60;
+            border-color: #d81b60;
+            color: white;
+        }
+        
+        .text-primary {
+            color: var(--avenida-orange) !important;
+        }
+        
+        .text-success {
+            color: var(--avenida-green) !important;
+        }
+        
+        .text-info {
+            color: var(--avenida-cyan) !important;
+        }
+        
+        .text-warning {
+            color: var(--avenida-magenta) !important;
+        }
+        
+        .bg-primary {
+            background-color: var(--avenida-orange) !important;
+        }
+        
+        .bg-success {
+            background-color: var(--avenida-green) !important;
+        }
+        
+        .bg-info {
+            background-color: var(--avenida-cyan) !important;
+        }
+        
+        .bg-warning {
+            background-color: var(--avenida-magenta) !important;
+        }
+        
+        .sidebar {
+            min-height: 100vh;
+            background-color: var(--avenida-light);
+        }
+        
+        .card-header {
+            background-color: var(--avenida-light);
+            border-bottom: 2px solid var(--avenida-orange);
+        }
+        
+        .navbar {
+            background: linear-gradient(135deg, var(--avenida-dark) 0%, #34495e 100%) !important;
+        }
+        
+        .form-control:focus {
+            border-color: var(--avenida-orange);
+            box-shadow: 0 0 0 0.2rem rgba(255, 152, 0, 0.25);
+        }
+        
+        /* Estilos para deshabilitar elementos cuando la licencia está bloqueada */
+        body.license-blocked a:not(.nav-link):not(.dropdown-item):not([href^="#"]):not([href^="javascript:"]):not([href*="logout"]),
+        body.license-blocked button:not(.nav-link):not([type="submit"][form*="logout"]):not([onclick*="logout"]),
+        body.license-blocked .btn:not(.nav-link):not([href*="logout"]),
+        body.license-blocked input[type="submit"]:not([form*="logout"]),
+        body.license-blocked form:not([action*="logout"]) button[type="submit"],
+        body.license-blocked form:not([action*="logout"]) input[type="submit"] {
+            pointer-events: none;
+            opacity: 0.5;
+            cursor: not-allowed !important;
+            filter: grayscale(50%);
+        }
+        
+        body.license-blocked a:not(.nav-link):not(.dropdown-item):not([href^="#"]):not([href^="javascript:"]):not([href*="logout"])::after,
+        body.license-blocked button:not(.nav-link):not([type="submit"][form*="logout"]):not([onclick*="logout"])::after {
+            content: " (Licencia bloqueada)";
+            font-size: 0.8em;
+            color: #dc3545;
+            font-weight: bold;
+        }
+        
+        .badge.bg-primary {
+            background-color: var(--avenida-orange) !important;
+        }
+        
+        .badge.bg-success {
+            background-color: var(--avenida-green) !important;
+        }
+        
+        .badge.bg-info {
+            background-color: var(--avenida-cyan) !important;
+        }
+        
+        .badge.bg-warning {
+            background-color: var(--avenida-magenta) !important;
+        }
+
+        .messages-container {
+            margin-bottom: 1.5rem;
+        }
+
+        .message-alert {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            border-left-width: 5px;
+        }
+
+        .message-alert__icon {
+            font-size: 1.25rem;
+        }
+
+        .message-alert__body {
+            font-size: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark" style="padding: 1.5rem 0;">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="{% url 'gestion:dashboard' %}" style="flex: 1;">
+                <div class="d-flex align-items-center justify-content-center">
+                    <div class="me-3">
+                        <div class="d-flex">
+                            <div class="square-color" style="background-color: var(--avenida-green); width: 28px; height: 28px; margin: 2px; border-radius: 3px;"></div>
+                            <div class="square-color" style="background-color: var(--avenida-orange); width: 28px; height: 28px; margin: 2px; border-radius: 3px;"></div>
+                        </div>
+                        <div class="d-flex">
+                            <div class="square-color" style="background-color: var(--avenida-cyan); width: 28px; height: 28px; margin: 2px; border-radius: 3px;"></div>
+                            <div class="square-color" style="background-color: var(--avenida-magenta); width: 28px; height: 28px; margin: 2px; border-radius: 3px;"></div>
+                        </div>
+                    </div>
+                    <div class="text-center">
+                        <strong style="font-size: 1.5rem; display: block; line-height: 1.3;">{% if empresa_config %}{{ empresa_config.nombre_empresa }}{% else %}Centro Comercial Avenida de Chile - PH{% endif %}</strong>
+                        <small class="text-light" style="font-size: 0.85rem; display: block;">NIT: {% if empresa_config %}{{ empresa_config.nit_empresa }}{% else %}860.509.249-3{% endif %}</small>
+                        <small class="text-light" style="font-size: 0.9rem; display: block; margin-top: 2px;">Gestión y Control de Contratos</small>
+                    </div>
+                </div>
+            </a>
+                <div class="navbar-nav ms-auto">
+                    {% if user.is_authenticated %}
+                        {% if license_status %}
+                        <div class="nav-item dropdown me-2">
+                            <a class="nav-link text-light d-flex align-items-center" href="#" id="licenseStatusDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Estado de Licencia" style="padding: 0.5rem 1rem; border: 1px solid rgba(255,255,255,0.3); border-radius: 5px; background: rgba(255,255,255,0.1);">
+                                <i class="fas {{ license_status.icon }} text-{{ license_status.color }}" style="font-size: 1.3rem; margin-right: 0.5rem;"></i>
+                                <span class="badge bg-{{ license_status.color }} ms-1" style="font-size: 0.8rem; padding: 0.35em 0.65em; font-weight: bold;">
+                                    {% if license_status.status == 'valid' %}
+                                        Válida
+                                    {% elif license_status.status == 'expired' %}
+                                        Expirada
+                                    {% elif license_status.status == 'revoked' %}
+                                        Revocada
+                                    {% elif license_status.status == 'warning' %}
+                                        Por Vencer
+                                    {% elif license_status.status == 'invalid' %}
+                                        Inválida
+                                    {% else %}
+                                        Pendiente
+                                    {% endif %}
+                                </span>
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="licenseStatusDropdown">
+                                {% if license_status %}
+                                <li>
+                                    <h6 class="dropdown-header">
+                                        <i class="fas fa-key"></i> Estado de Licencia
+                                    </h6>
+                                </li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <span class="dropdown-item-text">
+                                        <strong>Estado:</strong> 
+                                        <span class="badge bg-{{ license_status.color }}">{{ license_status.text }}</span>
+                                    </span>
+                                </li>
+                                {% if license_status.dias_restantes is not None %}
+                                <li>
+                                    <span class="dropdown-item-text">
+                                        <strong>Días Restantes:</strong> {{ license_status.dias_restantes }} días
+                                    </span>
+                                </li>
+                                {% endif %}
+                                {% if license_status.expiration_date %}
+                                <li>
+                                    <span class="dropdown-item-text">
+                                        <strong>Expiración:</strong> {{ license_status.expiration_date|date:"d/m/Y" }}
+                                    </span>
+                                </li>
+                                {% endif %}
+                                {% if license_status.customer_name %}
+                                <li>
+                                    <span class="dropdown-item-text">
+                                        <strong>Cliente:</strong> {{ license_status.customer_name }}
+                                    </span>
+                                </li>
+                                {% endif %}
+                                {% endif %}
+                            </ul>
+                        </div>
+                        {% endif %}
+                        {% if user.is_staff %}
+                            <a class="nav-link" href="{% url 'gestion:configuracion_empresa' %}">
+                                <i class="fas fa-building"></i> Configuración
+                            </a>
+                            <a class="nav-link" href="/admin/">
+                                <i class="fas fa-cog"></i> Administración
+                            </a>
+                        {% endif %}
+                        <span class="nav-link text-warning">
+                            <i class="fas fa-user-circle"></i> {{ user.get_full_name|default:user.username }}
+                        </span>
+                        <form method="post" action="{% url 'logout' %}" style="display: inline;" onsubmit="return confirm('¿Deseas cerrar sesión?');">
+                            {% csrf_token %}
+                            <button type="submit" class="nav-link btn btn-link text-light" style="border: none; background: none; cursor: pointer; padding: 0.5rem 1rem;" title="Cerrar Sesión">
+                                <i class="fas fa-sign-out-alt"></i> Salir
+                            </button>
+                        </form>
+                    {% else %}
+                        <a class="nav-link" href="{% url 'login' %}">
+                            <i class="fas fa-sign-in-alt"></i> Iniciar Sesión
+                        </a>
+                    {% endif %}
+                </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-12">
+                <main class="py-4">
+                    {% include 'components/messages.html' %}
+                    
+                    {# Alerta de licencia bloqueada #}
+                    {% if user.is_authenticated and license_blocked %}
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert" style="margin-bottom: 2rem; border-left: 5px solid #dc3545; font-size: 1.1rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1);" no-auto-dismiss>
+                        <div class="d-flex align-items-start">
+                            <i class="fas fa-exclamation-triangle fa-2x me-3 mt-1"></i>
+                            <div class="flex-grow-1">
+                                <h5 class="alert-heading mb-2">
+                                    <strong>⚠️ Licencia No Válida - Acceso Restringido</strong>
+                                </h5>
+                                <p class="mb-2" style="font-size: 1.05rem;">
+                                    {{ license_alert_message|default:"Su licencia no está activa. Por favor, contacte al administrador." }}
+                                </p>
+                                {% if request.session.license_status == 'expired' or request.session.license_status == 'revoked' or request.session.license_status == 'invalid' %}
+                                <hr class="my-2">
+                                <div class="mt-2">
+                                    <p class="mb-1 small">
+                                        <i class="fas fa-info-circle"></i> 
+                                        <strong>Estado actual:</strong> 
+                                        {% if request.session.license_status == 'expired' %}
+                                            Licencia Expirada
+                                        {% elif request.session.license_status == 'revoked' %}
+                                            Licencia Revocada o Cancelada
+                                        {% elif request.session.license_status == 'invalid' %}
+                                            Licencia Inválida
+                                        {% endif %}
+                                    </p>
+                                    <p class="mb-0 small text-muted">
+                                        El acceso a las funcionalidades del sistema está restringido hasta que se resuelva el problema con su licencia.
+                                    </p>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% block content %}
+                    {% endblock %}
+                </main>
+            </div>
+        </div>
+    </div>
+
+    {% if user.is_authenticated and license_blocked %}
+    <script>
+        // Agregar clase al body inmediatamente para deshabilitar elementos
+        (function() {
+            if (document.body) {
+                document.body.classList.add('license-blocked');
+            } else {
+                document.addEventListener('DOMContentLoaded', function() {
+                    document.body.classList.add('license-blocked');
+                });
+            }
+        })();
+    </script>
+    {% endif %}
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{% static 'js/formatMiles.js' %}"></script>
+    <script src="{% static 'js/auto_format_new.js' %}"></script>
+    <script>
+        // Auto-cerrar alertas después de 5 segundos (5000ms)
+        document.addEventListener('DOMContentLoaded', function() {
+            // Asegurar que la clase esté agregada si la licencia está bloqueada
+            {% if user.is_authenticated and license_blocked %}
+            document.body.classList.add('license-blocked');
+            {% endif %}
+            
+            // Prevenir clics en elementos deshabilitados cuando la licencia está bloqueada
+            if (document.body.classList.contains('license-blocked')) {
+                // Prevenir clics en todos los links excepto logout
+                document.querySelectorAll('a:not([href*="logout"]):not(.nav-link):not(.dropdown-item):not([href^="#"]):not([href^="javascript:"])').forEach(function(link) {
+                    link.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        return false;
+                    });
+                });
+                
+                // Prevenir clics en todos los botones excepto logout
+                document.querySelectorAll('button:not([form*="logout"]):not([onclick*="logout"]):not(.nav-link), input[type="submit"]:not([form*="logout"])').forEach(function(btn) {
+                    btn.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        return false;
+                    });
+                });
+                
+                // Prevenir envío de formularios excepto logout
+                document.querySelectorAll('form:not([action*="logout"])').forEach(function(form) {
+                    form.addEventListener('submit', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        alert('Su licencia no está activa. Por favor, contacte al administrador.');
+                        return false;
+                    });
+                });
+            }
+            
+            const alerts = document.querySelectorAll('.alert.alert-dismissible');
+            alerts.forEach(function(alert) {
+                // Solo auto-cerrar si no tiene el atributo no-auto-dismiss
+                if (!alert.hasAttribute('no-auto-dismiss')) {
+                    setTimeout(function() {
+                        try {
+                            const bsAlert = new bootstrap.Alert(alert);
+                            bsAlert.close();
+                        } catch (e) {
+                            // Si Bootstrap no está disponible, ocultar manualmente
+                            alert.style.display = 'none';
+                        }
+                    }, 5000); // 5 segundos
+                }
+            });
+            
+            // Agregar limpieza automática a todos los formularios que tengan campos de porcentaje
+            // Solo si el formulario no tiene ya un onsubmit definido
+            const forms = document.querySelectorAll('form[method="post"]');
+            forms.forEach(function(form) {
+                // Verificar si tiene campos de porcentaje
+                const tienePorcentaje = form.querySelector('.percentage-input');
+                if (tienePorcentaje && !form.hasAttribute('onsubmit')) {
+                    form.addEventListener('submit', function(e) {
+                        if (typeof cleanFormValues === 'function') {
+                            cleanFormValues();
+                        }
+                    });
+                }
+            });
+        });
+    </script>
+    {% block extra_js %}
+    {% endblock %}
+</body>
+</html>

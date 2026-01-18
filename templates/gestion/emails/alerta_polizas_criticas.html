@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ nombre_alerta }}</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background-color: #dc3545;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-radius: 5px 5px 0 0;
+        }
+        .content {
+            background-color: #f9f9f9;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-top: none;
+        }
+        .alert-danger {
+            background-color: #f8d7da;
+            border-left: 4px solid #dc3545;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .footer {
+            background-color: #ecf0f1;
+            padding: 15px;
+            text-align: center;
+            font-size: 12px;
+            color: #7f8c8d;
+            border-radius: 0 0 5px 5px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+        th, td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #34495e;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>{{ nombre_alerta }}</h1>
+    </div>
+    
+    <div class="content">
+        <div class="alert-danger">
+            <strong>⚠️ ATENCIÓN:</strong> Se encontraron <strong>{{ cantidad }}</strong> póliza(s) crítica(s) que requieren atención inmediata.
+        </div>
+        
+        <p><strong>Fecha de referencia:</strong> {{ fecha_referencia|date:"d/m/Y" }}<br>
+        <strong>Fecha de generación:</strong> {{ fecha_actual|date:"d/m/Y H:i" }}</p>
+        
+        {% if alertas %}
+            <h3>Pólizas Críticas:</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Contrato</th>
+                        <th>Arrendatario</th>
+                        <th>Tipo Póliza</th>
+                        <th>Fecha Vencimiento</th>
+                        <th>Estado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for poliza in alertas %}
+                        <tr>
+                            <td>{{ poliza.contrato.num_contrato }}</td>
+                            <td>{{ poliza.contrato.arrendatario.razon_social }}</td>
+                            <td>{{ poliza.get_tipo_display }}</td>
+                            <td>
+                                {% if poliza.fecha_vencimiento %}
+                                    {{ poliza.fecha_vencimiento|date:"d/m/Y" }}
+                                {% else %}
+                                    No definida
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if poliza.fecha_vencimiento and poliza.fecha_vencimiento < fecha_referencia %}
+                                    <strong style="color: #dc3545;">VENCIDA</strong>
+                                {% else %}
+                                    <strong style="color: #ff9800;">Por Vencer</strong>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p>No hay pólizas críticas.</p>
+        {% endif %}
+    </div>
+    
+    <div class="footer">
+        <p>Este es un correo automático generado por el Sistema de Gestión de Contratos.</p>
+        <p>Por favor, no responda a este correo.</p>
+    </div>
+</body>
+</html>
+

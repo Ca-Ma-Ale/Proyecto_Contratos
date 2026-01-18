@@ -1,0 +1,1056 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load formato_filters %}
+
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/format_view_readonly.js' %}"></script>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="display-6">
+                    <i class="fas fa-eye text-primary"></i> Vista Vigente - Contrato {{ contrato.num_contrato }}
+                </h1>
+                <div>
+                    <a href="{% url 'gestion:lista_otrosi' contrato.id %}" class="btn btn-success">
+                        <i class="fas fa-file-signature"></i> Ver Otro Sí
+                    </a>
+                    <a href="{% url 'gestion:detalle_contrato' contrato.id %}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Volver al Contrato
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Time Travel - Selector de Fecha -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-light">
+                <div class="card-body">
+                    <form method="get" action="" class="row g-3 align-items-center">
+                        <div class="col-auto">
+                            <label class="form-label mb-0"><i class="fas fa-calendar"></i> <strong>Consultar estado en fecha:</strong></label>
+                        </div>
+                        <div class="col-auto">
+                            <input type="date" name="fecha" class="form-control" value="{{ fecha_referencia|date:'Y-m-d' }}">
+                        </div>
+                        <div class="col-auto">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-search"></i> Consultar
+                            </button>
+                        </div>
+                        <div class="col-auto">
+                            <a href="{% url 'gestion:vista_vigente_contrato' contrato.id %}" class="btn btn-secondary">
+                                <i class="fas fa-redo"></i> Hoy
+                            </a>
+                        </div>
+                    </form>
+                    <div class="mt-2">
+                        <small class="text-muted">
+                            <i class="fas fa-info-circle"></i> 
+                            Mostrando el estado del contrato para la fecha: <strong>{{ fecha_referencia }}</strong>
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if not vista_vigente.vista_disponible %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="alert alert-warning">
+                <i class="fas fa-exclamation-triangle"></i>
+                {{ vista_vigente.mensaje_sin_vigencia }}
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <!-- Otro Sí Aplicado (si existe) -->
+    {% if vista_vigente.otrosi_vigente %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="alert alert-success border-success">
+                <h5 class="alert-heading">
+                    <i class="fas fa-check-circle"></i> Otro Sí Vigente Aplicado
+                </h5>
+                <div class="row">
+                    <div class="col-md-3">
+                        <strong>Número:</strong> {{ vista_vigente.otrosi_vigente.numero_otrosi }}
+                    </div>
+                    <div class="col-md-2">
+                        <strong>Versión:</strong> v{{ vista_vigente.otrosi_vigente.version }}
+                    </div>
+                    <div class="col-md-3">
+                        <strong>Tipo:</strong> {{ vista_vigente.otrosi_vigente.get_tipo_display }}
+                    </div>
+                    <div class="col-md-4">
+                        <strong>Vigencia:</strong> Desde {{ vista_vigente.otrosi_vigente.effective_from }}
+                    </div>
+                </div>
+                <hr>
+                <a href="{% url 'gestion:detalle_otrosi' vista_vigente.otrosi_vigente.id %}" class="btn btn-sm btn-success">
+                    <i class="fas fa-eye"></i> Ver Detalle del Otro Sí
+                </a>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i> 
+                No hay Otro Sí vigente para esta fecha. Se muestran los valores originales del contrato.
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Vista Vigente del Contrato -->
+    <div class="row">
+        <div class="col-lg-8">
+            <!-- Información Financiera -->
+            <div class="card mb-4">
+                <div class="card-header {% if vista_vigente.tiene_modificaciones %}bg-warning{% endif %}">
+                    <h5 class="mb-0">
+                        <i class="fas fa-dollar-sign"></i> Condiciones Financieras
+                        {% if vista_vigente.tiene_modificaciones %}
+                            <span class="badge bg-danger float-end">MODIFICADO</span>
+                        {% endif %}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm">
+                        <tr {% if 'valor_canon' in vista_vigente.campos_modificados %}class="table-warning"{% endif %}>
+                            <th>Valor Canon:</th>
+                            <td>
+                                {% if vista_vigente.valor_canon %}
+                                    ${{ vista_vigente.valor_canon|formato_moneda }}
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                                {% if 'valor_canon' in vista_vigente.campos_modificados %}
+                                    <span class="badge bg-info ms-2" title="Del documento {{ vista_vigente.campos_modificados.valor_canon.otrosi }}">
+                                        <i class="fas fa-file-signature"></i> {{ vista_vigente.campos_modificados.valor_canon.otrosi }}
+                                    </span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        
+                        <tr {% if 'modalidad_pago' in vista_vigente.campos_modificados %}class="table-warning"{% endif %}>
+                            <th>Modalidad de Pago:</th>
+                            <td>
+                                {{ vista_vigente.modalidad_pago|default:"N/A" }}
+                                {% if 'modalidad_pago' in vista_vigente.campos_modificados %}
+                                    <span class="badge bg-info ms-2" title="Del documento {{ vista_vigente.campos_modificados.modalidad_pago.otrosi }}">
+                                        <i class="fas fa-file-signature"></i> {{ vista_vigente.campos_modificados.modalidad_pago.otrosi }}
+                                    </span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        
+                        {% if contrato.tipo_contrato_cliente_proveedor == 'CLIENTE' %}
+                        <tr {% if 'canon_minimo_garantizado' in vista_vigente.campos_modificados %}class="table-warning"{% endif %}>
+                            <th>Canon Mínimo Garantizado:</th>
+                            <td>
+                                {% if vista_vigente.canon_minimo_garantizado %}
+                                    ${{ vista_vigente.canon_minimo_garantizado|formato_moneda }}
+                                    {% if 'canon_minimo_garantizado' in vista_vigente.campos_modificados %}
+                                        <span class="badge bg-info ms-2" title="Del documento {{ vista_vigente.campos_modificados.canon_minimo_garantizado.otrosi }}">
+                                            <i class="fas fa-file-signature"></i> {{ vista_vigente.campos_modificados.canon_minimo_garantizado.otrosi }}
+                                        </span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="text-muted">N/A</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        
+                        <tr {% if 'porcentaje_ventas' in vista_vigente.campos_modificados %}class="table-warning"{% endif %}>
+                            <th>Porcentaje de Ventas:</th>
+                            <td>
+                                {% if vista_vigente.porcentaje_ventas %}
+                                    {{ vista_vigente.porcentaje_ventas|formato_porcentaje }}
+                                    {% if 'porcentaje_ventas' in vista_vigente.campos_modificados %}
+                                        <span class="badge bg-info ms-2" title="Del documento {{ vista_vigente.campos_modificados.porcentaje_ventas.otrosi }}">
+                                            <i class="fas fa-file-signature"></i> {{ vista_vigente.campos_modificados.porcentaje_ventas.otrosi }}
+                                        </span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="text-muted">N/A</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% elif contrato.tipo_contrato_cliente_proveedor == 'PROVEEDOR' %}
+                        <tr {% if 'canon_minimo_garantizado' in vista_vigente.campos_modificados %}class="table-warning"{% endif %}>
+                            <th>Valor mensual:</th>
+                            <td>
+                                {% if vista_vigente.canon_minimo_garantizado %}
+                                    ${{ vista_vigente.canon_minimo_garantizado|formato_moneda }}
+                                    {% if 'canon_minimo_garantizado' in vista_vigente.campos_modificados %}
+                                        <span class="badge bg-info ms-2" title="Del documento {{ vista_vigente.campos_modificados.canon_minimo_garantizado.otrosi }}">
+                                            <i class="fas fa-file-signature"></i> {{ vista_vigente.campos_modificados.canon_minimo_garantizado.otrosi }}
+                                        </span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="text-muted">N/A</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endif %}
+                        {% if ultimo_calculo_ipc_aplicado %}
+                        <tr>
+                            <th>Último Canon por Aumento del IPC:</th>
+                            <td>
+                                ${{ ultimo_calculo_ipc_aplicado.nuevo_canon|formato_moneda }}
+                                <span class="badge bg-success ms-2" title="Fecha de cálculo del aumento por IPC">
+                                    <i class="fas fa-calendar"></i> {{ ultimo_calculo_ipc_aplicado.fecha_calculo|date:"d/m/Y" }}
+                                </span>
+                            </td>
+                        </tr>
+                        {% endif %}
+                    </table>
+                </div>
+            </div>
+
+            <!-- Información de Plazo -->
+            <div class="card mb-4">
+                <div class="card-header {% if 'fecha_final_actualizada' in vista_vigente.campos_modificados or 'duracion_meses' in vista_vigente.campos_modificados %}bg-warning{% endif %}">
+                    <h5 class="mb-0">
+                        <i class="fas fa-calendar-alt"></i> Plazos y Vigencias
+                        {% if 'fecha_final_actualizada' in vista_vigente.campos_modificados or 'duracion_meses' in vista_vigente.campos_modificados %}
+                            <span class="badge bg-danger float-end">MODIFICADO</span>
+                        {% endif %}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm">
+                        <tr>
+                            <th>Fecha Inicial:</th>
+                            <td>{{ contrato.fecha_inicial_contrato }}</td>
+                        </tr>
+                        
+                        <tr {% if 'fecha_final_actualizada' in vista_vigente.campos_modificados %}class="table-warning"{% endif %}>
+                            <th>Fecha Final:</th>
+                            <td>
+                                {% if vista_vigente.fecha_final_actualizada %}
+                                    {{ vista_vigente.fecha_final_actualizada|date:"d \d\e F \d\e Y" }}
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                                {% if 'fecha_final_actualizada' in vista_vigente.campos_modificados %}
+                                    <span class="badge bg-info ms-2" title="Del documento {{ vista_vigente.campos_modificados.fecha_final_actualizada.otrosi }}">
+                                        <i class="fas fa-file-signature"></i> {{ vista_vigente.campos_modificados.fecha_final_actualizada.otrosi }}
+                                    </span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        
+                        <tr {% if 'duracion_meses' in vista_vigente.campos_modificados %}class="table-warning"{% endif %}>
+                            <th>Duración:</th>
+                            <td>
+                                {{ vista_vigente.duracion_meses }} meses
+                                {% if 'duracion_meses' in vista_vigente.campos_modificados %}
+                                    <span class="badge bg-info ms-2" title="Del documento {{ vista_vigente.campos_modificados.duracion_meses.otrosi }}">
+                                        <i class="fas fa-file-signature"></i> {{ vista_vigente.campos_modificados.duracion_meses.otrosi }}
+                                    </span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        
+                        <tr>
+                            <th>Terminación Anticipada:</th>
+                            <td>{{ contrato.dias_terminacion_anticipada }} días</td>
+                        </tr>
+                        
+                        <tr>
+                            <th>Prórroga Automática:</th>
+                            <td>
+                                {% if contrato.prorroga_automatica %}
+                                    <span class="badge bg-success">SÍ</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">NO</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Información de IPC -->
+            <div class="card mb-4">
+                <div class="card-header {% if 'tipo_condicion_ipc' in vista_vigente.campos_modificados %}bg-warning{% endif %}">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chart-line"></i> Condiciones IPC
+                        {% if 'tipo_condicion_ipc' in vista_vigente.campos_modificados %}
+                            <span class="badge bg-danger float-end">MODIFICADO</span>
+                        {% endif %}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm">
+                        <tr {% if 'tipo_condicion_ipc' in vista_vigente.campos_modificados %}class="table-warning"{% endif %}>
+                            <th>Tipo de Condición:</th>
+                            <td>
+                                {{ vista_vigente.tipo_condicion_ipc|default:"N/A" }}
+                                {% if 'tipo_condicion_ipc' in vista_vigente.campos_modificados %}
+                                    <span class="badge bg-info ms-2" title="Del documento {{ vista_vigente.campos_modificados.tipo_condicion_ipc.otrosi }}">
+                                        <i class="fas fa-file-signature"></i> {{ vista_vigente.campos_modificados.tipo_condicion_ipc.otrosi }}
+                                    </span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        
+                        <tr {% if 'puntos_adicionales_ipc' in vista_vigente.campos_modificados %}class="table-warning"{% endif %}>
+                            <th>Puntos Adicionales:</th>
+                            <td>
+                                {% if vista_vigente.puntos_adicionales_ipc is not None %}
+                                    {{ vista_vigente.puntos_adicionales_ipc }} puntos
+                                    {% if 'puntos_adicionales_ipc' in vista_vigente.campos_modificados %}
+                                        <span class="badge bg-info ms-2" title="Del documento {{ vista_vigente.campos_modificados.puntos_adicionales_ipc.otrosi }}">
+                                            <i class="fas fa-file-signature"></i> {{ vista_vigente.campos_modificados.puntos_adicionales_ipc.otrosi }}
+                                        </span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="text-muted">N/A</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        
+                        <tr {% if 'periodicidad_ipc' in vista_vigente.campos_modificados %}class="table-warning"{% endif %}>
+                            <th>Periodicidad:</th>
+                            <td>
+                                {{ vista_vigente.periodicidad_ipc|display_periodicidad_ipc|default:"N/A" }}
+                                {% if 'periodicidad_ipc' in vista_vigente.campos_modificados %}
+                                    <span class="badge bg-info ms-2" title="Del documento {{ vista_vigente.campos_modificados.periodicidad_ipc.otrosi }}">
+                                        <i class="fas fa-file-signature"></i> {{ vista_vigente.campos_modificados.periodicidad_ipc.otrosi }}
+                                    </span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        
+                        <tr {% if 'fecha_aumento_ipc' in vista_vigente.campos_modificados %}class="table-warning"{% endif %}>
+                            <th>Fecha de Aumento IPC:</th>
+                            <td>
+                                {% if vista_vigente.periodicidad_ipc == 'ANUAL' %}
+                                    {% if vista_vigente.fecha_aumento_anual_display %}
+                                        <span class="badge bg-success">{{ vista_vigente.fecha_aumento_anual_display }} (anualmente)</span>
+                                    {% elif vista_vigente.fecha_aumento_ipc %}
+                                        <span class="badge bg-success">{{ vista_vigente.fecha_aumento_ipc|date:"d/m/Y" }} (anualmente)</span>
+                                    {% else %}
+                                        <span class="badge bg-success">{{ contrato.fecha_inicial_contrato|date:"d/m/Y" }} (anualmente)</span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="text-muted">N/A</span>
+                                {% endif %}
+                                {% if 'fecha_aumento_ipc' in vista_vigente.campos_modificados %}
+                                    <span class="badge bg-info ms-2" title="Del documento {{ vista_vigente.campos_modificados.fecha_aumento_ipc.otrosi }}">
+                                        <i class="fas fa-file-signature"></i> {{ vista_vigente.campos_modificados.fecha_aumento_ipc.otrosi }}
+                                    </span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Condiciones de Pólizas Requeridas Vigentes -->
+            {% if requisitos_polizas %}
+            <div class="card mb-4">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-shield-alt"></i> Condiciones de Pólizas Requeridas al {{ fecha_referencia|date:"d/m/Y" }}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <!-- Póliza RCE Requerida -->
+                        {% if requisitos_polizas.rce.exigida %}
+                        <div class="col-md-6 mb-3">
+                            <div class="card border-primary">
+                                <div class="card-header bg-primary text-white">
+                                    <h6 class="mb-0">
+                                        <i class="fas fa-shield-alt"></i> Póliza RCE
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <table class="table table-sm mb-0">
+                                        <tr>
+                                            <td><strong>Valor Asegurado:</strong></td>
+                                            <td>
+                                                ${{ requisitos_polizas.rce.valor|formato_moneda }}
+                                                {% if requisitos_polizas.rce.otrosi_modificador %}
+                                                    <span class="badge bg-info ms-2" title="Del documento {{ requisitos_polizas.rce.otrosi_modificador }}">
+                                                        <i class="fas fa-file-signature"></i> {{ requisitos_polizas.rce.otrosi_modificador }}
+                                                    </span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% if requisitos_polizas.rce.vigencia %}
+                                        <tr>
+                                            <td><strong>Meses de Vigencia:</strong></td>
+                                            <td>
+                                                {{ requisitos_polizas.rce.vigencia }} meses
+                                                {% if requisitos_polizas.rce.otrosi_modificador %}
+                                                    <span class="badge bg-info ms-2" title="Del documento {{ requisitos_polizas.rce.otrosi_modificador }}">
+                                                        <i class="fas fa-file-signature"></i> {{ requisitos_polizas.rce.otrosi_modificador }}
+                                                    </span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endif %}
+                                        {% if requisitos_polizas.rce.fecha_inicio %}
+                                        <tr>
+                                            <td><strong>Fecha Inicio:</strong></td>
+                                            <td>
+                                                {{ requisitos_polizas.rce.fecha_inicio|date:"d \d\e F \d\e Y" }}
+                                                {% if requisitos_polizas.rce.otrosi_modificador %}
+                                                    <span class="badge bg-info ms-2" title="Del documento {{ requisitos_polizas.rce.otrosi_modificador }}">
+                                                        <i class="fas fa-file-signature"></i> {{ requisitos_polizas.rce.otrosi_modificador }}
+                                                    </span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endif %}
+                                        {% if requisitos_polizas.rce.fecha_fin %}
+                                        <tr>
+                                            <td><strong>Fecha Fin:</strong></td>
+                                            <td>
+                                                {{ requisitos_polizas.rce.fecha_fin|date:"d \d\e F \d\e Y" }}
+                                                {% if requisitos_polizas.rce.otrosi_modificador %}
+                                                    <span class="badge bg-info ms-2" title="Del documento {{ requisitos_polizas.rce.otrosi_modificador }}">
+                                                        <i class="fas fa-file-signature"></i> {{ requisitos_polizas.rce.otrosi_modificador }}
+                                                    </span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endif %}
+                                        {% if contrato.tipo_contrato_cliente_proveedor == 'CLIENTE' %}
+                                        {% if requisitos_polizas.rce.detalles.plo is not None %}
+                                        <tr>
+                                            <td><strong>PLO (Propietario, Locatario y Ocupante):</strong></td>
+                                            <td>${{ requisitos_polizas.rce.detalles.plo|formato_moneda }}</td>
+                                        </tr>
+                                        {% endif %}
+                                        {% if requisitos_polizas.rce.detalles.patronal is not None %}
+                                        <tr>
+                                            <td><strong>Patronal:</strong></td>
+                                            <td>${{ requisitos_polizas.rce.detalles.patronal|formato_moneda }}</td>
+                                        </tr>
+                                        {% endif %}
+                                        {% if requisitos_polizas.rce.detalles.gastos_medicos is not None %}
+                                        <tr>
+                                            <td><strong>Gastos Médicos de Terceros:</strong></td>
+                                            <td>${{ requisitos_polizas.rce.detalles.gastos_medicos|formato_moneda }}</td>
+                                        </tr>
+                                        {% endif %}
+                                        {% if requisitos_polizas.rce.detalles.vehiculos is not None %}
+                                        <tr>
+                                            <td><strong>Vehículos Propios y No Propios:</strong></td>
+                                            <td>${{ requisitos_polizas.rce.detalles.vehiculos|formato_moneda }}</td>
+                                        </tr>
+                                        {% endif %}
+                                        {% if requisitos_polizas.rce.detalles.contratistas is not None %}
+                                        <tr>
+                                            <td><strong>Contratistas y Subcontratistas:</strong></td>
+                                            <td>${{ requisitos_polizas.rce.detalles.contratistas|formato_moneda }}</td>
+                                        </tr>
+                                        {% endif %}
+                                        {% if requisitos_polizas.rce.detalles.perjuicios is not None %}
+                                        <tr>
+                                            <td><strong>Perjuicios Extrapatrimoniales:</strong></td>
+                                            <td>${{ requisitos_polizas.rce.detalles.perjuicios|formato_moneda }}</td>
+                                        </tr>
+                                        {% endif %}
+                                        {% if requisitos_polizas.rce.detalles.dano_moral is not None %}
+                                        <tr>
+                                            <td><strong>Daño Moral:</strong></td>
+                                            <td>${{ requisitos_polizas.rce.detalles.dano_moral|formato_moneda }}</td>
+                                        </tr>
+                                        {% endif %}
+                                        {% if requisitos_polizas.rce.detalles.lucro_cesante is not None %}
+                                        <tr>
+                                            <td><strong>Lucro Cesante:</strong></td>
+                                            <td>${{ requisitos_polizas.rce.detalles.lucro_cesante|formato_moneda }}</td>
+                                        </tr>
+                                        {% endif %}
+                                        {% endif %}
+                                    </table>
+                                    {% if contrato.tipo_contrato_cliente_proveedor == 'PROVEEDOR' %}
+                                    <div class="mt-3 pt-3 border-top">
+                                        <h6 class="mb-2" style="color: var(--avenida-orange); font-weight: 600;">
+                                            <i class="fas fa-shield-alt me-2"></i> Coberturas RCE
+                                        </h6>
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <table class="table table-sm mb-0">
+                                                    {% if requisitos_polizas.rce.detalles.danos_materiales %}<tr><td><strong>Daños materiales a terceros:</strong></td><td>${{ requisitos_polizas.rce.detalles.danos_materiales|formato_moneda }}{% if requisitos_polizas.rce.otrosi_modificador %}<span class="badge bg-info ms-2" title="Del documento {{ requisitos_polizas.rce.otrosi_modificador }}"><i class="fas fa-file-signature"></i> {{ requisitos_polizas.rce.otrosi_modificador }}</span>{% endif %}</td></tr>{% endif %}
+                                                    {% if requisitos_polizas.rce.detalles.lesiones_personales %}<tr><td><strong>Lesiones personales a terceros:</strong></td><td>${{ requisitos_polizas.rce.detalles.lesiones_personales|formato_moneda }}{% if requisitos_polizas.rce.otrosi_modificador %}<span class="badge bg-info ms-2" title="Del documento {{ requisitos_polizas.rce.otrosi_modificador }}"><i class="fas fa-file-signature"></i> {{ requisitos_polizas.rce.otrosi_modificador }}</span>{% endif %}</td></tr>{% endif %}
+                                                    {% if requisitos_polizas.rce.detalles.muerte_terceros %}<tr><td><strong>Muerte de terceros:</strong></td><td>${{ requisitos_polizas.rce.detalles.muerte_terceros|formato_moneda }}{% if requisitos_polizas.rce.otrosi_modificador %}<span class="badge bg-info ms-2" title="Del documento {{ requisitos_polizas.rce.otrosi_modificador }}"><i class="fas fa-file-signature"></i> {{ requisitos_polizas.rce.otrosi_modificador }}</span>{% endif %}</td></tr>{% endif %}
+                                                    {% if requisitos_polizas.rce.detalles.danos_bienes_terceros %}<tr><td><strong>Daños a bienes de terceros:</strong></td><td>${{ requisitos_polizas.rce.detalles.danos_bienes_terceros|formato_moneda }}{% if requisitos_polizas.rce.otrosi_modificador %}<span class="badge bg-info ms-2" title="Del documento {{ requisitos_polizas.rce.otrosi_modificador }}"><i class="fas fa-file-signature"></i> {{ requisitos_polizas.rce.otrosi_modificador }}</span>{% endif %}</td></tr>{% endif %}
+                                                    {% if requisitos_polizas.rce.detalles.responsabilidad_patronal %}<tr><td><strong>Responsabilidad patronal:</strong></td><td>${{ requisitos_polizas.rce.detalles.responsabilidad_patronal|formato_moneda }}{% if requisitos_polizas.rce.otrosi_modificador %}<span class="badge bg-info ms-2" title="Del documento {{ requisitos_polizas.rce.otrosi_modificador }}"><i class="fas fa-file-signature"></i> {{ requisitos_polizas.rce.otrosi_modificador }}</span>{% endif %}</td></tr>{% endif %}
+                                                    {% if requisitos_polizas.rce.detalles.responsabilidad_cruzada %}<tr><td><strong>Responsabilidad cruzada:</strong></td><td>${{ requisitos_polizas.rce.detalles.responsabilidad_cruzada|formato_moneda }}{% if requisitos_polizas.rce.otrosi_modificador %}<span class="badge bg-info ms-2" title="Del documento {{ requisitos_polizas.rce.otrosi_modificador }}"><i class="fas fa-file-signature"></i> {{ requisitos_polizas.rce.otrosi_modificador }}</span>{% endif %}</td></tr>{% endif %}
+                                                </table>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <table class="table table-sm mb-0">
+                                                    {% if requisitos_polizas.rce.detalles.danos_contratistas %}<tr><td><strong>Daños por contratistas:</strong></td><td>${{ requisitos_polizas.rce.detalles.danos_contratistas|formato_moneda }}{% if requisitos_polizas.rce.otrosi_modificador %}<span class="badge bg-info ms-2" title="Del documento {{ requisitos_polizas.rce.otrosi_modificador }}"><i class="fas fa-file-signature"></i> {{ requisitos_polizas.rce.otrosi_modificador }}</span>{% endif %}</td></tr>{% endif %}
+                                                    {% if requisitos_polizas.rce.detalles.danos_ejecucion_contrato %}<tr><td><strong>Daños durante ejecución:</strong></td><td>${{ requisitos_polizas.rce.detalles.danos_ejecucion_contrato|formato_moneda }}{% if requisitos_polizas.rce.otrosi_modificador %}<span class="badge bg-info ms-2" title="Del documento {{ requisitos_polizas.rce.otrosi_modificador }}"><i class="fas fa-file-signature"></i> {{ requisitos_polizas.rce.otrosi_modificador }}</span>{% endif %}</td></tr>{% endif %}
+                                                    {% if requisitos_polizas.rce.detalles.danos_predios_vecinos %}<tr><td><strong>Daños en predios vecinos:</strong></td><td>${{ requisitos_polizas.rce.detalles.danos_predios_vecinos|formato_moneda }}{% if requisitos_polizas.rce.otrosi_modificador %}<span class="badge bg-info ms-2" title="Del documento {{ requisitos_polizas.rce.otrosi_modificador }}"><i class="fas fa-file-signature"></i> {{ requisitos_polizas.rce.otrosi_modificador }}</span>{% endif %}</td></tr>{% endif %}
+                                                    {% if requisitos_polizas.rce.detalles.gastos_medicos_cobertura %}<tr><td><strong>Gastos médicos:</strong></td><td>${{ requisitos_polizas.rce.detalles.gastos_medicos_cobertura|formato_moneda }}{% if requisitos_polizas.rce.otrosi_modificador %}<span class="badge bg-info ms-2" title="Del documento {{ requisitos_polizas.rce.otrosi_modificador }}"><i class="fas fa-file-signature"></i> {{ requisitos_polizas.rce.otrosi_modificador }}</span>{% endif %}</td></tr>{% endif %}
+                                                    {% if requisitos_polizas.rce.detalles.gastos_defensa %}<tr><td><strong>Gastos de defensa:</strong></td><td>${{ requisitos_polizas.rce.detalles.gastos_defensa|formato_moneda }}{% if requisitos_polizas.rce.otrosi_modificador %}<span class="badge bg-info ms-2" title="Del documento {{ requisitos_polizas.rce.otrosi_modificador }}"><i class="fas fa-file-signature"></i> {{ requisitos_polizas.rce.otrosi_modificador }}</span>{% endif %}</td></tr>{% endif %}
+                                                    {% if requisitos_polizas.rce.detalles.perjuicios_patrimoniales %}<tr><td><strong>Perjuicios patrimoniales:</strong></td><td>${{ requisitos_polizas.rce.detalles.perjuicios_patrimoniales|formato_moneda }}{% if requisitos_polizas.rce.otrosi_modificador %}<span class="badge bg-info ms-2" title="Del documento {{ requisitos_polizas.rce.otrosi_modificador }}"><i class="fas fa-file-signature"></i> {{ requisitos_polizas.rce.otrosi_modificador }}</span>{% endif %}</td></tr>{% endif %}
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- Póliza de Cumplimiento Requerida -->
+                        {% if requisitos_polizas.cumplimiento.exigida %}
+                        <div class="col-md-6 mb-3">
+                            <div class="card border-success">
+                                <div class="card-header bg-success text-white">
+                                    <h6 class="mb-0">
+                                        <i class="fas fa-check-circle"></i> Póliza de Cumplimiento
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <table class="table table-sm mb-0">
+                                        <tr>
+                                            <td><strong>Valor Asegurado:</strong></td>
+                                            <td>
+                                                ${{ requisitos_polizas.cumplimiento.valor|formato_moneda }}
+                                                {% if requisitos_polizas.cumplimiento.otrosi_modificador %}
+                                                    <span class="badge bg-info ms-2" title="Del documento {{ requisitos_polizas.cumplimiento.otrosi_modificador }}">
+                                                        <i class="fas fa-file-signature"></i> {{ requisitos_polizas.cumplimiento.otrosi_modificador }}
+                                                    </span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% if requisitos_polizas.cumplimiento.vigencia %}
+                                        <tr>
+                                            <td><strong>Meses de Vigencia:</strong></td>
+                                            <td>
+                                                {{ requisitos_polizas.cumplimiento.vigencia }} meses
+                                                {% if requisitos_polizas.cumplimiento.otrosi_modificador %}
+                                                    <span class="badge bg-info ms-2" title="Del documento {{ requisitos_polizas.cumplimiento.otrosi_modificador }}">
+                                                        <i class="fas fa-file-signature"></i> {{ requisitos_polizas.cumplimiento.otrosi_modificador }}
+                                                    </span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endif %}
+                                        {% if requisitos_polizas.cumplimiento.fecha_inicio %}
+                                        <tr>
+                                            <td><strong>Fecha Inicio:</strong></td>
+                                            <td>
+                                                {{ requisitos_polizas.cumplimiento.fecha_inicio|date:"d \d\e F \d\e Y" }}
+                                                {% if requisitos_polizas.cumplimiento.otrosi_modificador %}
+                                                    <span class="badge bg-info ms-2" title="Del documento {{ requisitos_polizas.cumplimiento.otrosi_modificador }}">
+                                                        <i class="fas fa-file-signature"></i> {{ requisitos_polizas.cumplimiento.otrosi_modificador }}
+                                                    </span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endif %}
+                                        {% if requisitos_polizas.cumplimiento.fecha_fin %}
+                                        <tr>
+                                            <td><strong>Fecha Fin:</strong></td>
+                                            <td>
+                                                {{ requisitos_polizas.cumplimiento.fecha_fin|date:"d \d\e F \d\e Y" }}
+                                                {% if requisitos_polizas.cumplimiento.otrosi_modificador %}
+                                                    <span class="badge bg-info ms-2" title="Del documento {{ requisitos_polizas.cumplimiento.otrosi_modificador }}">
+                                                        <i class="fas fa-file-signature"></i> {{ requisitos_polizas.cumplimiento.otrosi_modificador }}
+                                                    </span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endif %}
+                                        {% if contrato.tipo_contrato_cliente_proveedor == 'CLIENTE' %}
+                                        {% if requisitos_polizas.cumplimiento.detalles.remuneraciones is not None %}
+                                        <tr>
+                                            <td><strong>Remuneraciones Mensuales:</strong></td>
+                                            <td>${{ requisitos_polizas.cumplimiento.detalles.remuneraciones|formato_moneda }}</td>
+                                        </tr>
+                                        {% endif %}
+                                        {% if requisitos_polizas.cumplimiento.detalles.servicios_publicos is not None %}
+                                        <tr>
+                                            <td><strong>Servicios Públicos:</strong></td>
+                                            <td>${{ requisitos_polizas.cumplimiento.detalles.servicios_publicos|formato_moneda }}</td>
+                                        </tr>
+                                        {% endif %}
+                                        {% if requisitos_polizas.cumplimiento.detalles.iva is not None %}
+                                        <tr>
+                                            <td><strong>IVA:</strong></td>
+                                            <td>${{ requisitos_polizas.cumplimiento.detalles.iva|formato_moneda }}</td>
+                                        </tr>
+                                        {% endif %}
+                                        {% if requisitos_polizas.cumplimiento.detalles.cuota_admon is not None %}
+                                        <tr>
+                                            <td><strong>Cuota de Administración:</strong></td>
+                                            <td>${{ requisitos_polizas.cumplimiento.detalles.cuota_admon|formato_moneda }}</td>
+                                        </tr>
+                                        {% endif %}
+                                        {% endif %}
+                                    </table>
+                                    {% if contrato.tipo_contrato_cliente_proveedor == 'PROVEEDOR' %}
+                                    <div class="mt-3 pt-3 border-top">
+                                        <h6 class="mb-2" style="color: var(--avenida-green); font-weight: 600;">
+                                            <i class="fas fa-shield-alt me-2"></i> Amparos de Cumplimiento
+                                        </h6>
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <table class="table table-sm mb-0">
+                                                    {% if requisitos_polizas.cumplimiento.detalles.cumplimiento_contrato %}<tr><td><strong>Cumplimiento del contrato:</strong></td><td>${{ requisitos_polizas.cumplimiento.detalles.cumplimiento_contrato|formato_moneda }}{% if requisitos_polizas.cumplimiento.otrosi_modificador %}<span class="badge bg-info ms-2" title="Del documento {{ requisitos_polizas.cumplimiento.otrosi_modificador }}"><i class="fas fa-file-signature"></i> {{ requisitos_polizas.cumplimiento.otrosi_modificador }}</span>{% endif %}</td></tr>{% endif %}
+                                                    {% if requisitos_polizas.cumplimiento.detalles.buen_manejo_anticipo %}<tr><td><strong>Buen manejo anticipo:</strong></td><td>${{ requisitos_polizas.cumplimiento.detalles.buen_manejo_anticipo|formato_moneda }}{% if requisitos_polizas.cumplimiento.otrosi_modificador %}<span class="badge bg-info ms-2" title="Del documento {{ requisitos_polizas.cumplimiento.otrosi_modificador }}"><i class="fas fa-file-signature"></i> {{ requisitos_polizas.cumplimiento.otrosi_modificador }}</span>{% endif %}</td></tr>{% endif %}
+                                                    {% if requisitos_polizas.cumplimiento.detalles.amortizacion_anticipo %}<tr><td><strong>Amortización anticipo:</strong></td><td>${{ requisitos_polizas.cumplimiento.detalles.amortizacion_anticipo|formato_moneda }}{% if requisitos_polizas.cumplimiento.otrosi_modificador %}<span class="badge bg-info ms-2" title="Del documento {{ requisitos_polizas.cumplimiento.otrosi_modificador }}"><i class="fas fa-file-signature"></i> {{ requisitos_polizas.cumplimiento.otrosi_modificador }}</span>{% endif %}</td></tr>{% endif %}
+                                                    {% if requisitos_polizas.cumplimiento.detalles.salarios_prestaciones %}<tr><td><strong>Salarios y prestaciones:</strong></td><td>${{ requisitos_polizas.cumplimiento.detalles.salarios_prestaciones|formato_moneda }}{% if requisitos_polizas.cumplimiento.otrosi_modificador %}<span class="badge bg-info ms-2" title="Del documento {{ requisitos_polizas.cumplimiento.otrosi_modificador }}"><i class="fas fa-file-signature"></i> {{ requisitos_polizas.cumplimiento.otrosi_modificador }}</span>{% endif %}</td></tr>{% endif %}
+                                                    {% if requisitos_polizas.cumplimiento.detalles.aportes_seguridad_social %}<tr><td><strong>Aportes seguridad social:</strong></td><td>${{ requisitos_polizas.cumplimiento.detalles.aportes_seguridad_social|formato_moneda }}{% if requisitos_polizas.cumplimiento.otrosi_modificador %}<span class="badge bg-info ms-2" title="Del documento {{ requisitos_polizas.cumplimiento.otrosi_modificador }}"><i class="fas fa-file-signature"></i> {{ requisitos_polizas.cumplimiento.otrosi_modificador }}</span>{% endif %}</td></tr>{% endif %}
+                                                    {% if requisitos_polizas.cumplimiento.detalles.calidad_servicio %}<tr><td><strong>Calidad del servicio:</strong></td><td>${{ requisitos_polizas.cumplimiento.detalles.calidad_servicio|formato_moneda }}{% if requisitos_polizas.cumplimiento.otrosi_modificador %}<span class="badge bg-info ms-2" title="Del documento {{ requisitos_polizas.cumplimiento.otrosi_modificador }}"><i class="fas fa-file-signature"></i> {{ requisitos_polizas.cumplimiento.otrosi_modificador }}</span>{% endif %}</td></tr>{% endif %}
+                                                </table>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <table class="table table-sm mb-0">
+                                                    {% if requisitos_polizas.cumplimiento.detalles.estabilidad_obra %}<tr><td><strong>Estabilidad de la obra:</strong></td><td>${{ requisitos_polizas.cumplimiento.detalles.estabilidad_obra|formato_moneda }}{% if requisitos_polizas.cumplimiento.otrosi_modificador %}<span class="badge bg-info ms-2" title="Del documento {{ requisitos_polizas.cumplimiento.otrosi_modificador }}"><i class="fas fa-file-signature"></i> {{ requisitos_polizas.cumplimiento.otrosi_modificador }}</span>{% endif %}</td></tr>{% endif %}
+                                                    {% if requisitos_polizas.cumplimiento.detalles.calidad_bienes %}<tr><td><strong>Calidad de bienes:</strong></td><td>${{ requisitos_polizas.cumplimiento.detalles.calidad_bienes|formato_moneda }}{% if requisitos_polizas.cumplimiento.otrosi_modificador %}<span class="badge bg-info ms-2" title="Del documento {{ requisitos_polizas.cumplimiento.otrosi_modificador }}"><i class="fas fa-file-signature"></i> {{ requisitos_polizas.cumplimiento.otrosi_modificador }}</span>{% endif %}</td></tr>{% endif %}
+                                                    {% if requisitos_polizas.cumplimiento.detalles.multas %}<tr><td><strong>Multas:</strong></td><td>${{ requisitos_polizas.cumplimiento.detalles.multas|formato_moneda }}{% if requisitos_polizas.cumplimiento.otrosi_modificador %}<span class="badge bg-info ms-2" title="Del documento {{ requisitos_polizas.cumplimiento.otrosi_modificador }}"><i class="fas fa-file-signature"></i> {{ requisitos_polizas.cumplimiento.otrosi_modificador }}</span>{% endif %}</td></tr>{% endif %}
+                                                    {% if requisitos_polizas.cumplimiento.detalles.clausula_penal %}<tr><td><strong>Cláusula penal:</strong></td><td>${{ requisitos_polizas.cumplimiento.detalles.clausula_penal|formato_moneda }}{% if requisitos_polizas.cumplimiento.otrosi_modificador %}<span class="badge bg-info ms-2" title="Del documento {{ requisitos_polizas.cumplimiento.otrosi_modificador }}"><i class="fas fa-file-signature"></i> {{ requisitos_polizas.cumplimiento.otrosi_modificador }}</span>{% endif %}</td></tr>{% endif %}
+                                                    {% if requisitos_polizas.cumplimiento.detalles.sanciones_incumplimiento %}<tr><td><strong>Sanciones incumplimiento:</strong></td><td>${{ requisitos_polizas.cumplimiento.detalles.sanciones_incumplimiento|formato_moneda }}{% if requisitos_polizas.cumplimiento.otrosi_modificador %}<span class="badge bg-info ms-2" title="Del documento {{ requisitos_polizas.cumplimiento.otrosi_modificador }}"><i class="fas fa-file-signature"></i> {{ requisitos_polizas.cumplimiento.otrosi_modificador }}</span>{% endif %}</td></tr>{% endif %}
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- Póliza de Arrendamiento Requerida -->
+                        {% if requisitos_polizas.arrendamiento.exigida %}
+                        <div class="col-md-6 mb-3">
+                            <div class="card border-primary">
+                                <div class="card-header bg-primary text-white">
+                                    <h6 class="mb-0">
+                                        <i class="fas fa-home"></i> Póliza de Arrendamiento
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <table class="table table-sm mb-0">
+                                        <tr>
+                                            <td><strong>Valor Asegurado:</strong></td>
+                                            <td>${{ requisitos_polizas.arrendamiento.valor|formato_moneda }}</td>
+                                        </tr>
+                                        {% if requisitos_polizas.arrendamiento.vigencia %}
+                                        <tr>
+                                            <td><strong>Meses de Vigencia:</strong></td>
+                                            <td>{{ requisitos_polizas.arrendamiento.vigencia }} meses</td>
+                                        </tr>
+                                        {% endif %}
+                                        {% if requisitos_polizas.arrendamiento.fecha_fin %}
+                                        <tr>
+                                            <td><strong>Fecha Fin Vigencia:</strong></td>
+                                            <td>{{ requisitos_polizas.arrendamiento.fecha_fin|date:"d/m/Y" }}</td>
+                                        </tr>
+                                        {% endif %}
+                                        {% if contrato.tipo_contrato_cliente_proveedor == 'CLIENTE' %}
+                                        {% if requisitos_polizas.arrendamiento.detalles.remuneraciones is not None %}
+                                        <tr>
+                                            <td><strong>Remuneraciones Mensuales:</strong></td>
+                                            <td>${{ requisitos_polizas.arrendamiento.detalles.remuneraciones|formato_moneda }}</td>
+                                        </tr>
+                                        {% endif %}
+                                        {% if requisitos_polizas.arrendamiento.detalles.servicios_publicos is not None %}
+                                        <tr>
+                                            <td><strong>Servicios Públicos:</strong></td>
+                                            <td>${{ requisitos_polizas.arrendamiento.detalles.servicios_publicos|formato_moneda }}</td>
+                                        </tr>
+                                        {% endif %}
+                                        {% if requisitos_polizas.arrendamiento.detalles.iva is not None %}
+                                        <tr>
+                                            <td><strong>IVA:</strong></td>
+                                            <td>${{ requisitos_polizas.arrendamiento.detalles.iva|formato_moneda }}</td>
+                                        </tr>
+                                        {% endif %}
+                                        {% if requisitos_polizas.arrendamiento.detalles.cuota_admon is not None %}
+                                        <tr>
+                                            <td><strong>Cuota de Administración:</strong></td>
+                                            <td>${{ requisitos_polizas.arrendamiento.detalles.cuota_admon|formato_moneda }}</td>
+                                        </tr>
+                                        {% endif %}
+                                        {% endif %}
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- Póliza Todo Riesgo Requerida -->
+                        {% if requisitos_polizas.todo_riesgo.exigida %}
+                        <div class="col-md-6 mb-3">
+                            <div class="card border-warning">
+                                <div class="card-header bg-warning text-dark">
+                                    <h6 class="mb-0">
+                                        <i class="fas fa-tools"></i> Póliza Todo Riesgo
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <table class="table table-sm mb-0">
+                                        <tr>
+                                            <td><strong>Valor Asegurado:</strong></td>
+                                            <td>${{ requisitos_polizas.todo_riesgo.valor|formato_moneda }}</td>
+                                        </tr>
+                                        {% if requisitos_polizas.todo_riesgo.vigencia %}
+                                        <tr>
+                                            <td><strong>Meses de Vigencia:</strong></td>
+                                            <td>{{ requisitos_polizas.todo_riesgo.vigencia }} meses</td>
+                                        </tr>
+                                        {% endif %}
+                                        {% if requisitos_polizas.todo_riesgo.fecha_fin %}
+                                        <tr>
+                                            <td><strong>Fecha Fin Vigencia:</strong></td>
+                                            <td>{{ requisitos_polizas.todo_riesgo.fecha_fin|date:"d/m/Y" }}</td>
+                                        </tr>
+                                        {% endif %}
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- Otras Pólizas Requeridas -->
+                        {% if requisitos_polizas.otra.exigida %}
+                        <div class="col-md-6 mb-3">
+                            <div class="card border-warning">
+                                <div class="card-header bg-warning text-dark">
+                                    <h6 class="mb-0">
+                                        <i class="fas fa-file-alt"></i> {{ requisitos_polizas.otra.nombre|default:"Otra Póliza" }}
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <table class="table table-sm mb-0">
+                                        <tr>
+                                            <td><strong>Valor Asegurado:</strong></td>
+                                            <td>${{ requisitos_polizas.otra.valor|formato_moneda }}</td>
+                                        </tr>
+                                        {% if requisitos_polizas.otra.vigencia %}
+                                        <tr>
+                                            <td><strong>Meses de Vigencia:</strong></td>
+                                            <td>{{ requisitos_polizas.otra.vigencia }} meses</td>
+                                        </tr>
+                                        {% endif %}
+                                        {% if requisitos_polizas.otra.fecha_fin %}
+                                        <tr>
+                                            <td><strong>Fecha Fin Vigencia:</strong></td>
+                                            <td>{{ requisitos_polizas.otra.fecha_fin|date:"d/m/Y" }}</td>
+                                        </tr>
+                                        {% endif %}
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Seguimiento de Pólizas -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-shield-alt"></i> Seguimiento de Pólizas</h5>
+                </div>
+                <div class="card-body">
+                    {% if seguimientos_poliza_generales %}
+                        <div class="mb-4">
+                            <h6 class="text-uppercase text-muted fw-semibold mb-3">
+                                <i class="fas fa-list-alt me-2"></i>Notas generales por tipo de póliza
+                            </h6>
+                            <div class="list-group list-group-flush">
+                                {% for seguimiento in seguimientos_poliza_generales %}
+                                    <div class="list-group-item px-0">
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <div class="flex-grow-1">
+                                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                                    <span class="fw-semibold text-primary">{{ seguimiento.get_poliza_tipo_display }}</span>
+                                                    <small class="text-muted">
+                                                        <i class="fas fa-clock me-1"></i>{{ seguimiento.fecha_registro|date:"d/m/Y H:i" }}
+                                                    </small>
+                                                </div>
+                                                <p class="mb-1 text-muted">{{ seguimiento.detalle|linebreaksbr }}</p>
+                                                {% if seguimiento.registrado_por %}
+                                                    <small class="text-muted"><i class="fas fa-user-edit me-1"></i>{{ seguimiento.registrado_por }}</small>
+                                                {% endif %}
+                                            </div>
+                                            {% if user.is_staff %}
+                                            <div class="ms-2">
+                                                <div class="btn-group btn-group-sm" role="group">
+                                                    <a href="{% url 'gestion:editar_seguimiento_poliza' seguimiento.id %}" class="btn btn-outline-primary" title="Editar seguimiento">
+                                                        <i class="fas fa-edit"></i>
+                                                    </a>
+                                                    <a href="{% url 'gestion:eliminar_seguimiento_poliza' seguimiento.id %}" class="btn btn-outline-danger" title="Eliminar seguimiento">
+                                                        <i class="fas fa-trash-alt"></i>
+                                                    </a>
+                                                </div>
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% endif %}
+                    {% if polizas_con_seguimiento %}
+                        {% for poliza in polizas_con_seguimiento %}
+                            <div class="mb-4">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="fw-semibold text-primary">{{ poliza.numero_poliza }}</span>
+                                    <small class="text-muted">
+                                        <i class="fas fa-calendar-day me-1"></i>{{ poliza.fecha_vencimiento|date:"d/m/Y" }}
+                                    </small>
+                                </div>
+                                <p class="mb-2 text-muted">{{ poliza.get_tipo_display }}</p>
+                                {% with seguimientos=poliza.seguimientos.all %}
+                                    {% if seguimientos %}
+                                        <ul class="list-group list-group-flush">
+                                            {% for seguimiento in seguimientos %}
+                                                <li class="list-group-item px-0">
+                                                    <div class="d-flex justify-content-between align-items-start">
+                                                        <div class="flex-grow-1">
+                                                            <div class="d-flex justify-content-between mb-2">
+                                                                <span class="fw-semibold">{{ seguimiento.registrado_por|default:"Registro" }}</span>
+                                                                <small class="text-muted">
+                                                                    <i class="fas fa-clock me-1"></i>{{ seguimiento.fecha_registro|date:"d/m/Y H:i" }}
+                                                                </small>
+                                                            </div>
+                                                            <p class="mb-0 text-muted">{{ seguimiento.detalle|linebreaksbr }}</p>
+                                                        </div>
+                                                        {% if user.is_staff %}
+                                                        <div class="ms-2">
+                                                            <div class="btn-group btn-group-sm" role="group">
+                                                                <a href="{% url 'gestion:editar_seguimiento_poliza' seguimiento.id %}" class="btn btn-outline-primary" title="Editar seguimiento">
+                                                                    <i class="fas fa-edit"></i>
+                                                                </a>
+                                                                <a href="{% url 'gestion:eliminar_seguimiento_poliza' seguimiento.id %}" class="btn btn-outline-danger" title="Eliminar seguimiento">
+                                                                    <i class="fas fa-trash-alt"></i>
+                                                                </a>
+                                                            </div>
+                                                        </div>
+                                                        {% endif %}
+                                                    </div>
+                                                </li>
+                                            {% endfor %}
+                                        </ul>
+                                    {% else %}
+                                        <p class="mb-0 text-muted">Sin seguimientos registrados para esta póliza.</p>
+                                    {% endif %}
+                                {% endwith %}
+                            </div>
+                        {% endfor %}
+
+                    {% elif not seguimientos_poliza_generales %}
+                        <p class="mb-0 text-muted">Sin pólizas con seguimiento registrado.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar con Info Adicional -->
+        <div class="col-lg-4">
+            <!-- Información del Contrato -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-info-circle"></i> Información Base</h5>
+                </div>
+                <div class="card-body">
+                    <p><strong>Número:</strong> {{ contrato.num_contrato }}</p>
+                    {% if contrato.tipo_contrato_cliente_proveedor == 'CLIENTE' %}
+                    {% if contrato.arrendatario %}
+                    <p><strong>Arrendatario:</strong><br>{{ contrato.arrendatario.razon_social }}</p>
+                    <p><strong>NIT:</strong> {{ contrato.arrendatario.nit }}</p>
+                    {% endif %}
+                    {% if contrato.local %}
+                    <p><strong>Local:</strong><br>{{ contrato.local.nombre_comercial_stand }}</p>
+                    <p><strong>Área:</strong> {{ contrato.local.total_area_m2 }} m²</p>
+                    {% endif %}
+                    {% elif contrato.tipo_contrato_cliente_proveedor == 'PROVEEDOR' %}
+                    {% if contrato.proveedor %}
+                    <p><strong>Proveedor:</strong><br>{{ contrato.proveedor.razon_social }}</p>
+                    <p><strong>NIT:</strong> {{ contrato.proveedor.nit }}</p>
+                    {% endif %}
+                    {% if contrato.tipo_servicio %}
+                    <p><strong>Tipo de Servicio:</strong> {{ contrato.tipo_servicio.nombre }}</p>
+                    {% endif %}
+                    {% endif %}
+                    <p class="mb-0">
+                        <strong>Estado:</strong>
+                        {% if contrato.vigente %}
+                            <span class="badge bg-success">Vigente</span>
+                        {% else %}
+                            <span class="badge bg-secondary">No Vigente</span>
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+
+            <!-- Seguimiento General -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-clipboard-list"></i> Seguimiento General</h5>
+                </div>
+                <div class="card-body">
+                    {% if seguimientos_contrato %}
+                        <ul class="list-group list-group-flush">
+                            {% for seguimiento in seguimientos_contrato %}
+                                <li class="list-group-item px-0">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div class="flex-grow-1">
+                                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                                <span class="fw-semibold text-primary">
+                                                    {{ seguimiento.registrado_por|default:"Registro" }}
+                                                </span>
+                                                <small class="text-muted">
+                                                    <i class="fas fa-clock me-1"></i>{{ seguimiento.fecha_registro|date:"d/m/Y H:i" }}
+                                                </small>
+                                            </div>
+                                            <p class="mb-0 text-muted">{{ seguimiento.detalle|linebreaksbr }}</p>
+                                        </div>
+                                        {% if user.is_staff %}
+                                        <div class="ms-2">
+                                            <div class="btn-group btn-group-sm" role="group">
+                                                <a href="{% url 'gestion:editar_seguimiento_contrato' seguimiento.id %}" class="btn btn-outline-primary" title="Editar seguimiento">
+                                                    <i class="fas fa-edit"></i>
+                                                </a>
+                                                <a href="{% url 'gestion:eliminar_seguimiento_contrato' seguimiento.id %}" class="btn btn-outline-danger" title="Eliminar seguimiento">
+                                                    <i class="fas fa-trash-alt"></i>
+                                                </a>
+                                            </div>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="mb-0 text-muted">Sin seguimientos registrados para este contrato.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Historial de Otro Sí -->
+            {% if otrosis %}
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-history"></i> Historial de Otro Sí</h5>
+                </div>
+                <div class="card-body">
+                    <div class="timeline">
+                        {% for otrosi in otrosis %}
+                            <div class="mb-3 {% if otrosi == vista_vigente.otrosi_vigente %}bg-light p-2 rounded{% endif %}">
+                                <div>
+                                    <strong>{{ otrosi.numero_otrosi }}</strong>
+                                    {% if otrosi == vista_vigente.otrosi_vigente %}
+                                        <span class="badge bg-success">VIGENTE</span>
+                                    {% endif %}
+                                </div>
+                                <small class="text-muted">
+                                    {{ otrosi.get_tipo_display }}<br>
+                                    v{{ otrosi.version }} - {{ otrosi.effective_from }}
+                                </small>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Leyenda -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-question-circle"></i> Leyenda e Información</h5>
+                </div>
+                <div class="card-body">
+                    <h6 class="mb-3"><i class="fas fa-info-circle text-primary"></i> Información de la Vista</h6>
+                    <ul class="list-unstyled mb-3">
+                        <li class="mb-2">
+                            <i class="fas fa-calendar-alt text-primary me-2"></i>
+                            <strong>Fecha de Consulta:</strong> Esta vista muestra el estado del contrato y sus condiciones para la fecha seleccionada: <strong>{{ fecha_referencia|date:"d \d\e F \d\e Y" }}</strong>
+                        </li>
+                        {% if vista_vigente.otrosi_vigente %}
+                        <li class="mb-2">
+                            <i class="fas fa-file-signature text-success me-2"></i>
+                            <strong>Otro Sí Vigente:</strong> Para esta fecha, el contrato está bajo las condiciones del <strong>{{ vista_vigente.otrosi_vigente.numero_otrosi }}</strong> (v{{ vista_vigente.otrosi_vigente.version }}), vigente desde {{ vista_vigente.otrosi_vigente.effective_from|date:"d/m/Y" }}
+                            {% if vista_vigente.otrosi_vigente.effective_to %}
+                            hasta {{ vista_vigente.otrosi_vigente.effective_to|date:"d/m/Y" }}
+                            {% endif %}
+                        </li>
+                        {% else %}
+                        <li class="mb-2">
+                            <i class="fas fa-file-contract text-info me-2"></i>
+                            <strong>Contrato Base:</strong> Para esta fecha, se muestran los valores originales del contrato sin modificaciones de Otro Sí.
+                        </li>
+                        {% endif %}
+                    </ul>
+                    
+                    <hr>
+                    
+                    <h6 class="mb-3"><i class="fas fa-tags text-primary"></i> Símbolos y Badges</h6>
+                    <ul class="list-unstyled mb-3">
+                        <li class="mb-2">
+                            <span class="badge bg-warning text-dark me-2">MODIFICADO</span>
+                            <strong>Fila resaltada:</strong> Indica que el campo fue modificado por un Otro Sí o Renovación Automática
+                        </li>
+                        <li class="mb-2">
+                            <span class="badge bg-info me-2"><i class="fas fa-file-signature"></i> OS-2</span>
+                            <strong>Badge azul:</strong> Indica que el valor proviene de un Otro Sí específico (ej: OS-2 = Otro Sí 2). Haga clic en el badge para ver más detalles.
+                        </li>
+                        <li class="mb-2">
+                            <span class="badge bg-danger me-2">MODIFICADO</span>
+                            <strong>Badge rojo en encabezado:</strong> Indica que la sección completa tiene campos modificados
+                        </li>
+                        <li class="mb-2">
+                            <span class="text-muted">N/A</span>
+                            <strong>Campo sin valor:</strong> Indica que el campo no tiene valor asignado o no es aplicable para este tipo de contrato
+                        </li>
+                    </ul>
+                    
+                    <hr>
+                    
+                    <h6 class="mb-3"><i class="fas fa-lightbulb text-warning"></i> Notas Importantes</h6>
+                    <ul class="list-unstyled mb-0">
+                        <li class="mb-2">
+                            <i class="fas fa-check-circle text-success me-2"></i>
+                            Los valores mostrados reflejan el estado del contrato <strong>en la fecha seleccionada</strong>, considerando todos los Otros Sí vigentes hasta esa fecha.
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas fa-calendar-check text-info me-2"></i>
+                            La <strong>Fecha Final</strong> muestra el <code>effective_to</code> del Otro Sí vigente si existe, o la fecha final modificada por el último Otro Sí que la cambió.
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas fa-shield-alt text-primary me-2"></i>
+                            Las <strong>Condiciones de Pólizas</strong> muestran los requisitos vigentes según el último Otro Sí que las modificó, incluyendo coberturas y amparos específicos.
+                        </li>
+                        <li class="mb-0">
+                            <i class="fas fa-history text-secondary me-2"></i>
+                            Puede cambiar la fecha de consulta usando el selector en la parte superior para ver cómo cambian las condiciones del contrato a lo largo del tiempo.
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+

@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+
+{% block title %}Exportaciones de Informes{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h1 class="display-5 mb-0">
+                    <i class="fas fa-file-export text-primary"></i> Centro de Exportaciones
+                </h1>
+                <a href="{% url 'gestion:dashboard' %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left"></i> Volver al Dashboard
+                </a>
+            </div>
+            <p class="text-muted mt-2 mb-0">
+                Seleccione el informe que desea exportar. La información se genera en formato Excel (.xlsx).
+            </p>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        {% for reporte in reportes %}
+        <div class="col-sm-6 col-xl-4">
+            <div class="card h-100 shadow-sm border-0">
+                <div class="card-body d-flex flex-column">
+                    <div class="mb-3">
+                        <h4 class="card-title mb-1">{{ reporte.nombre }}</h4>
+                        <p class="card-text text-muted">{{ reporte.descripcion }}</p>
+                    </div>
+                    <div class="mt-auto">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <span class="badge bg-primary">
+                                {{ reporte.total_registros }} registro{% if reporte.total_registros != 1 %}s{% endif %}
+                            </span>
+                            <small class="text-muted">Actualizado al {{ fecha_actual }}</small>
+                        </div>
+                        <a
+                            href="{% url reporte.url_name %}"
+                            class="btn btn-primary w-100{% if reporte.total_registros == 0 %} disabled{% endif %}"
+                            {% if reporte.total_registros == 0 %}aria-disabled="true"{% endif %}
+                        >
+                            <i class="fas fa-download"></i> Exportar a Excel
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12">
+            <div class="alert alert-info text-center">
+                <i class="fas fa-info-circle"></i> No hay reportes disponibles para exportar.
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
+

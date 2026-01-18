@@ -1,0 +1,1311 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Detalle de Contrato {{ contrato.num_contrato }} - Gestión de Contratos{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/format_view_readonly.js' %}"></script>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="display-6">
+                    <i class="fas fa-file-contract text-primary"></i> Contrato {{ contrato.num_contrato }}
+                </h1>
+                <div>
+                    <a href="{% url 'gestion:lista_otrosi' contrato.id %}" class="btn btn-success">
+                        <i class="fas fa-file-signature"></i> Otro Sí
+                    </a>
+                    <a href="{% url 'gestion:vista_vigente_contrato' contrato.id %}" class="btn btn-primary">
+                        <i class="fas fa-eye"></i> Vista Vigente
+                    </a>
+                    <a href="{% url 'gestion:gestionar_polizas' contrato.id %}" class="btn btn-info">
+                        <i class="fas fa-shield-alt"></i> Gestionar Pólizas
+                    </a>
+                    <a href="{% url 'gestion:editar_contrato' contrato.id %}" class="btn btn-warning">
+                        <i class="fas fa-edit"></i> Editar
+                    </a>
+                    <a href="{% url 'gestion:eliminar_contrato' contrato.id %}" class="btn btn-danger">
+                        <i class="fas fa-trash-alt"></i> Eliminar
+                    </a>
+                    <a href="{% url 'gestion:lista_contratos' %}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Volver a Lista
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Información del Contrato -->
+        <div class="col-lg-8">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-info-circle"></i> Información del Contrato
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Información Básica</h6>
+                            <table class="table table-sm">
+                                <tr>
+                                    <td><strong>Número:</strong></td>
+                                    <td>{{ contrato.num_contrato }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Modalidad:</strong></td>
+                                    <td>
+                                        <span class="badge bg-info">{{ modalidad_pago_display|default:contrato.get_modalidad_pago_display }}</span>
+                                        {% if otrosi_modificadores.nueva_modalidad_pago %}
+                                            <span class="badge bg-info ms-2" title="Del documento {% if otrosi_modificadores.nueva_modalidad_pago.numero_otrosi %}{{ otrosi_modificadores.nueva_modalidad_pago.numero_otrosi }}{% else %}{{ otrosi_modificadores.nueva_modalidad_pago.numero_renovacion }}{% endif %}">
+                                                <i class="fas {% if otrosi_modificadores.nueva_modalidad_pago.numero_otrosi %}fa-file-signature{% else %}fa-sync-alt{% endif %}"></i> {% if otrosi_modificadores.nueva_modalidad_pago.numero_otrosi %}{{ otrosi_modificadores.nueva_modalidad_pago.numero_otrosi }}{% else %}{{ otrosi_modificadores.nueva_modalidad_pago.numero_renovacion }}{% endif %}
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Estado:</strong></td>
+                                    <td>
+                                        {% if estado_vigente %}
+                                            <span class="badge bg-success">Vigente</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">No Vigente</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Prórroga Automática:</strong></td>
+                                    <td>
+                                        {% if contrato.prorroga_automatica %}
+                                            <span class="badge bg-success">Sí</span>
+                                        {% else %}
+                                            <span class="badge bg-warning">No</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>URL Archivo:</strong></td>
+                                    <td>
+                                        {% if contrato.url_archivo %}
+                                            <a href="{{ contrato.url_archivo }}" target="_blank" class="text-primary" title="Abrir archivo en nueva pestaña">
+                                                <i class="fas fa-external-link-alt"></i> Ver Archivo Digital
+                                            </a>
+                                        {% else %}
+                                            <span class="text-muted">No disponible</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Fechas</h6>
+                            <table class="table table-sm">
+                                <tr>
+                                    <td><strong>Fecha Inicial:</strong></td>
+                                    <td>{% if contrato.fecha_inicial_contrato %}{{ contrato.fecha_inicial_contrato|date:"d \d\e F \d\e Y" }}{% else %}N/A{% endif %}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Fecha Final Inicial:</strong></td>
+                                    <td>{% if contrato.fecha_final_inicial %}{{ contrato.fecha_final_inicial|date:"d \d\e F \d\e Y" }}{% else %}N/A{% endif %}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Fecha Final Actualizada:</strong></td>
+                                    <td>
+                                        {% if fecha_final_actualizada %}
+                                            {{ fecha_final_actualizada|date:"d \d\e F \d\e Y" }}
+                                        {% else %}
+                                            N/A
+                                        {% endif %}
+                                        {% if otrosi_modificadores.nueva_fecha_final_actualizada %}
+                                            <span class="badge bg-info ms-2" title="Del documento {% if otrosi_modificadores.nueva_fecha_final_actualizada.numero_otrosi %}{{ otrosi_modificadores.nueva_fecha_final_actualizada.numero_otrosi }}{% else %}{{ otrosi_modificadores.nueva_fecha_final_actualizada.numero_renovacion }}{% endif %}">
+                                                <i class="fas {% if otrosi_modificadores.nueva_fecha_final_actualizada.numero_otrosi %}fa-file-signature{% else %}fa-sync-alt{% endif %}"></i> {% if otrosi_modificadores.nueva_fecha_final_actualizada.numero_otrosi %}{{ otrosi_modificadores.nueva_fecha_final_actualizada.numero_otrosi }}{% else %}{{ otrosi_modificadores.nueva_fecha_final_actualizada.numero_renovacion }}{% endif %}
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Días Preaviso:</strong></td>
+                                    <td>{{ contrato.dias_preaviso_no_renovacion }} días</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Terminación Anticipada:</strong></td>
+                                    <td>{{ contrato.dias_terminacion_anticipada }} días</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="row mt-3">
+                        <div class="col-md-6">
+                            <h6>Valores Económicos</h6>
+                            <table class="table table-sm">
+                                {% if valor_canon_fijo or contrato.valor_canon_fijo %}
+                                <tr>
+                                    <td><strong>Canon Fijo:</strong></td>
+                                    <td>
+                                        $<span class="formato-moneda">{{ valor_canon_fijo|default:contrato.valor_canon_fijo|floatformat:0 }}</span>
+                                        {% if otrosi_modificadores.nuevo_valor_canon %}
+                                            <span class="badge bg-info ms-2" title="Del documento {% if otrosi_modificadores.nuevo_valor_canon.numero_otrosi %}{{ otrosi_modificadores.nuevo_valor_canon.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_valor_canon.numero_renovacion }}{% endif %}">
+                                                <i class="fas {% if otrosi_modificadores.nuevo_valor_canon.numero_otrosi %}fa-file-signature{% else %}fa-sync-alt{% endif %}"></i> {% if otrosi_modificadores.nuevo_valor_canon.numero_otrosi %}{{ otrosi_modificadores.nuevo_valor_canon.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_valor_canon.numero_renovacion }}{% endif %}
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endif %}
+                                {% if canon_minimo_garantizado or contrato.canon_minimo_garantizado %}
+                                <tr>
+                                    <td><strong>Mínimo Garantizado:</strong></td>
+                                    <td>
+                                        $<span class="formato-moneda">{{ canon_minimo_garantizado|default:contrato.canon_minimo_garantizado|floatformat:0 }}</span>
+                                        {% if otrosi_modificadores.nuevo_canon_minimo_garantizado %}
+                                            <span class="badge bg-info ms-2" title="Del documento {% if otrosi_modificadores.nuevo_canon_minimo_garantizado.numero_otrosi %}{{ otrosi_modificadores.nuevo_canon_minimo_garantizado.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_canon_minimo_garantizado.numero_renovacion }}{% endif %}">
+                                                <i class="fas {% if otrosi_modificadores.nuevo_canon_minimo_garantizado.numero_otrosi %}fa-file-signature{% else %}fa-sync-alt{% endif %}"></i> {% if otrosi_modificadores.nuevo_canon_minimo_garantizado.numero_otrosi %}{{ otrosi_modificadores.nuevo_canon_minimo_garantizado.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_canon_minimo_garantizado.numero_renovacion }}{% endif %}
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endif %}
+                                {% if porcentaje_ventas or contrato.porcentaje_ventas %}
+                                <tr>
+                                    <td><strong>% Ventas:</strong></td>
+                                    <td>
+                                        <span class="formato-porcentaje">{{ porcentaje_ventas|default:contrato.porcentaje_ventas|floatformat:0 }}</span>%
+                                        {% if otrosi_modificadores.nuevo_porcentaje_ventas %}
+                                            <span class="badge bg-info ms-2" title="Del documento {% if otrosi_modificadores.nuevo_porcentaje_ventas.numero_otrosi %}{{ otrosi_modificadores.nuevo_porcentaje_ventas.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_porcentaje_ventas.numero_renovacion }}{% endif %}">
+                                                <i class="fas {% if otrosi_modificadores.nuevo_porcentaje_ventas.numero_otrosi %}fa-file-signature{% else %}fa-sync-alt{% endif %}"></i> {% if otrosi_modificadores.nuevo_porcentaje_ventas.numero_otrosi %}{{ otrosi_modificadores.nuevo_porcentaje_ventas.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_porcentaje_ventas.numero_renovacion }}{% endif %}
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endif %}
+                                {% if ultimo_calculo_ipc_aplicado %}
+                                <tr>
+                                    <td><strong>Último Canon por Aumento del IPC:</strong></td>
+                                    <td>
+                                        $<span class="formato-moneda">{{ ultimo_calculo_ipc_aplicado.nuevo_canon|floatformat:0 }}</span>
+                                        <span class="badge bg-success ms-2" title="Fecha de cálculo del aumento por IPC">
+                                            <i class="fas fa-calendar"></i> {{ ultimo_calculo_ipc_aplicado.fecha_calculo|date:"d/m/Y" }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% endif %}
+                                <tr>
+                                    <td><strong>Reporta Ventas:</strong></td>
+                                    <td>
+                                        {% if contrato.reporta_ventas %}
+                                            <span class="badge bg-success">Sí</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">No</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% if contrato.dia_limite_reporte_ventas %}
+                                <tr>
+                                    <td><strong>Día Límite Reporte:</strong></td>
+                                    <td>Día {{ contrato.dia_limite_reporte_ventas }}</td>
+                                </tr>
+                                {% endif %}
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Periodo de Gracia</h6>
+                            {% if contrato.fecha_inicio_periodo_gracia and contrato.fecha_fin_periodo_gracia %}
+                            <table class="table table-sm">
+                                <tr>
+                                    <td><strong>Inicio:</strong></td>
+                                    <td>{{ contrato.fecha_inicio_periodo_gracia }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Fin:</strong></td>
+                                    <td>{{ contrato.fecha_fin_periodo_gracia }}</td>
+                                </tr>
+                            </table>
+                            {% else %}
+                            <p class="text-muted">No hay periodo de gracia definido</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Condiciones IPC -->
+            {% if tipo_condicion_ipc or contrato.tipo_condicion_ipc %}
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chart-line"></i> Condiciones IPC
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Condiciones IPC</h6>
+                            <table class="table table-sm">
+                                <tr>
+                                    <td><strong>Tipo de Condición:</strong></td>
+                                    <td>
+                                        <span class="badge bg-info">{{ tipo_condicion_ipc_display|default:contrato.get_tipo_condicion_ipc_display }}</span>
+                                        {% if otrosi_modificadores.nuevo_tipo_condicion_ipc %}
+                                            <span class="badge bg-info ms-2" title="Del documento {% if otrosi_modificadores.nuevo_tipo_condicion_ipc.numero_otrosi %}{{ otrosi_modificadores.nuevo_tipo_condicion_ipc.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_tipo_condicion_ipc.numero_renovacion }}{% endif %}">
+                                                <i class="fas {% if otrosi_modificadores.nuevo_tipo_condicion_ipc.numero_otrosi %}fa-file-signature{% else %}fa-sync-alt{% endif %}"></i> {% if otrosi_modificadores.nuevo_tipo_condicion_ipc.numero_otrosi %}{{ otrosi_modificadores.nuevo_tipo_condicion_ipc.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_tipo_condicion_ipc.numero_renovacion }}{% endif %}
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Puntos Adicionales:</strong></td>
+                                    <td>
+                                        + {{ puntos_adicionales_ipc|default:contrato.puntos_adicionales_ipc|floatformat:2 }} puntos
+                                        {% if otrosi_modificadores.nuevos_puntos_adicionales_ipc %}
+                                            <span class="badge bg-info ms-2" title="Del documento {% if otrosi_modificadores.nuevos_puntos_adicionales_ipc.numero_otrosi %}{{ otrosi_modificadores.nuevos_puntos_adicionales_ipc.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevos_puntos_adicionales_ipc.numero_renovacion }}{% endif %}">
+                                                <i class="fas {% if otrosi_modificadores.nuevos_puntos_adicionales_ipc.numero_otrosi %}fa-file-signature{% else %}fa-sync-alt{% endif %}"></i> {% if otrosi_modificadores.nuevos_puntos_adicionales_ipc.numero_otrosi %}{{ otrosi_modificadores.nuevos_puntos_adicionales_ipc.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevos_puntos_adicionales_ipc.numero_renovacion }}{% endif %}
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Condiciones:</strong></td>
+                                    <td>
+                                        <strong>{{ condiciones_ipc_display|default:contrato.get_condiciones_ipc_display }}</strong>
+                                        {% if otrosi_modificadores.nuevo_tipo_condicion_ipc or otrosi_modificadores.nuevos_puntos_adicionales_ipc %}
+                                            {% with otrosi_ipc=otrosi_modificadores.nuevo_tipo_condicion_ipc|default:otrosi_modificadores.nuevos_puntos_adicionales_ipc %}
+                                                <span class="badge bg-info ms-2" title="Del documento {% if otrosi_ipc.numero_otrosi %}{{ otrosi_ipc.numero_otrosi }}{% else %}{{ otrosi_ipc.numero_renovacion }}{% endif %}">
+                                                    <i class="fas {% if otrosi_ipc.numero_otrosi %}fa-file-signature{% else %}fa-sync-alt{% endif %}"></i> {% if otrosi_ipc.numero_otrosi %}{{ otrosi_ipc.numero_otrosi }}{% else %}{{ otrosi_ipc.numero_renovacion }}{% endif %}
+                                                </span>
+                                            {% endwith %}
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Periodicidad</h6>
+                            <table class="table table-sm">
+                                <tr>
+                                    <td><strong>Periodicidad:</strong></td>
+                                    <td>
+                                        <span class="badge bg-warning">{{ periodicidad_ipc_display|default:contrato.get_periodicidad_ipc_display }}</span>
+                                        {% if otrosi_modificadores.nueva_periodicidad_ipc %}
+                                            <span class="badge bg-info ms-2" title="Del documento {% if otrosi_modificadores.nueva_periodicidad_ipc.numero_otrosi %}{{ otrosi_modificadores.nueva_periodicidad_ipc.numero_otrosi }}{% else %}{{ otrosi_modificadores.nueva_periodicidad_ipc.numero_renovacion }}{% endif %}">
+                                                <i class="fas {% if otrosi_modificadores.nueva_periodicidad_ipc.numero_otrosi %}fa-file-signature{% else %}fa-sync-alt{% endif %}"></i> {% if otrosi_modificadores.nueva_periodicidad_ipc.numero_otrosi %}{{ otrosi_modificadores.nueva_periodicidad_ipc.numero_otrosi }}{% else %}{{ otrosi_modificadores.nueva_periodicidad_ipc.numero_renovacion }}{% endif %}
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% if periodicidad_ipc == 'ANUAL' or contrato.periodicidad_ipc == 'ANUAL' %}
+                                <tr>
+                                    <td><strong>Fecha de Aumento IPC:</strong></td>
+                                    <td>
+                                        {% if fecha_aumento_ipc or contrato.fecha_aumento_ipc %}
+                                            <span class="badge bg-success">{{ fecha_aumento_ipc|date:"d/m/Y"|default:contrato.fecha_aumento_ipc|date:"d/m/Y" }} (anualmente)</span>
+                                        {% else %}
+                                            <span class="badge bg-success">{{ contrato.fecha_inicial_contrato|date:"d/m/Y" }} (anualmente)</span>
+                                        {% endif %}
+                                        {% if otrosi_modificadores.nueva_fecha_aumento_ipc %}
+                                            <span class="badge bg-info ms-2" title="Del documento {% if otrosi_modificadores.nueva_fecha_aumento_ipc.numero_otrosi %}{{ otrosi_modificadores.nueva_fecha_aumento_ipc.numero_otrosi }}{% else %}{{ otrosi_modificadores.nueva_fecha_aumento_ipc.numero_renovacion }}{% endif %}">
+                                                <i class="fas {% if otrosi_modificadores.nueva_fecha_aumento_ipc.numero_otrosi %}fa-file-signature{% else %}fa-sync-alt{% endif %}"></i> {% if otrosi_modificadores.nueva_fecha_aumento_ipc.numero_otrosi %}{{ otrosi_modificadores.nueva_fecha_aumento_ipc.numero_otrosi }}{% else %}{{ otrosi_modificadores.nueva_fecha_aumento_ipc.numero_renovacion }}{% endif %}
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endif %}
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Condiciones de Pólizas Requeridas -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-shield-alt"></i> Condiciones de Pólizas Requeridas
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <!-- Póliza RCE -->
+                        {% if exige_poliza_rce %}
+                        <div class="col-md-6 mb-3">
+                            <div class="card border-primary">
+                                <div class="card-header bg-primary text-white">
+                                    <h6 class="mb-0">
+                                        <i class="fas fa-shield-alt"></i> Póliza RCE
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <table class="table table-sm mb-0">
+                                        <tr>
+                                            <td><strong>Valor Asegurado:</strong></td>
+                                            <td>
+                                                $<span class="formato-moneda">{{ valor_asegurado_rce|default:contrato.valor_asegurado_rce|floatformat:0 }}</span>
+                                                {% if otrosi_modificadores.nuevo_valor_asegurado_rce %}
+                                                    <span class="badge bg-info ms-2" title="Del documento {% if otrosi_modificadores.nuevo_valor_asegurado_rce.numero_otrosi %}{{ otrosi_modificadores.nuevo_valor_asegurado_rce.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_valor_asegurado_rce.numero_renovacion }}{% endif %}">
+                                                        <i class="fas {% if otrosi_modificadores.nuevo_valor_asegurado_rce.numero_otrosi %}fa-file-signature{% else %}fa-sync-alt{% endif %}"></i> {% if otrosi_modificadores.nuevo_valor_asegurado_rce.numero_otrosi %}{{ otrosi_modificadores.nuevo_valor_asegurado_rce.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_valor_asegurado_rce.numero_renovacion }}{% endif %}
+                                                    </span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% if contrato.tipo_contrato_cliente_proveedor == 'CLIENTE' %}
+                                        <tr>
+                                            <td><strong>PLO (Propietario, Locatario y Ocupante):</strong></td>
+                                            <td>
+                                                {% if valor_propietario_locatario_ocupante_rce is not None or contrato.valor_propietario_locatario_ocupante_rce is not None %}
+                                                    $<span class="formato-moneda">{{ valor_propietario_locatario_ocupante_rce|default:contrato.valor_propietario_locatario_ocupante_rce|floatformat:0 }}</span>
+                                                    {% if otrosi_modificadores.nuevo_valor_propietario_locatario_ocupante_rce %}
+                                                        <span class="badge bg-info ms-2" title="Del documento {% if otrosi_modificadores.nuevo_valor_propietario_locatario_ocupante_rce.numero_otrosi %}{{ otrosi_modificadores.nuevo_valor_propietario_locatario_ocupante_rce.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_valor_propietario_locatario_ocupante_rce.numero_renovacion }}{% endif %}">
+                                                            <i class="fas {% if otrosi_modificadores.nuevo_valor_propietario_locatario_ocupante_rce.numero_otrosi %}fa-file-signature{% else %}fa-sync-alt{% endif %}"></i> {% if otrosi_modificadores.nuevo_valor_propietario_locatario_ocupante_rce.numero_otrosi %}{{ otrosi_modificadores.nuevo_valor_propietario_locatario_ocupante_rce.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_valor_propietario_locatario_ocupante_rce.numero_renovacion }}{% endif %}
+                                                        </span>
+                                                    {% endif %}
+                                                {% else %}
+                                                    <span class="text-muted">N/A</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Patronal:</strong></td>
+                                            <td>
+                                                {% if valor_patronal_rce is not None or contrato.valor_patronal_rce is not None %}
+                                                    $<span class="formato-moneda">{{ valor_patronal_rce|default:contrato.valor_patronal_rce|floatformat:0 }}</span>
+                                                    {% if otrosi_modificadores.nuevo_valor_patronal_rce %}
+                                                        <span class="badge bg-info ms-2" title="Del documento {% if otrosi_modificadores.nuevo_valor_patronal_rce.numero_otrosi %}{{ otrosi_modificadores.nuevo_valor_patronal_rce.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_valor_patronal_rce.numero_renovacion }}{% endif %}">
+                                                            <i class="fas {% if otrosi_modificadores.nuevo_valor_patronal_rce.numero_otrosi %}fa-file-signature{% else %}fa-sync-alt{% endif %}"></i> {% if otrosi_modificadores.nuevo_valor_patronal_rce.numero_otrosi %}{{ otrosi_modificadores.nuevo_valor_patronal_rce.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_valor_patronal_rce.numero_renovacion }}{% endif %}
+                                                        </span>
+                                                    {% endif %}
+                                                {% else %}
+                                                    <span class="text-muted">N/A</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Gastos Médicos de Terceros:</strong></td>
+                                            <td>
+                                                {% if valor_gastos_medicos_rce is not None or contrato.valor_gastos_medicos_rce is not None %}
+                                                    $<span class="formato-moneda">{{ valor_gastos_medicos_rce|default:contrato.valor_gastos_medicos_rce|floatformat:0 }}</span>
+                                                    {% if otrosi_modificadores.nuevo_valor_gastos_medicos_rce %}
+                                                        <span class="badge bg-info ms-2" title="Del documento {% if otrosi_modificadores.nuevo_valor_gastos_medicos_rce.numero_otrosi %}{{ otrosi_modificadores.nuevo_valor_gastos_medicos_rce.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_valor_gastos_medicos_rce.numero_renovacion }}{% endif %}">
+                                                            <i class="fas {% if otrosi_modificadores.nuevo_valor_gastos_medicos_rce.numero_otrosi %}fa-file-signature{% else %}fa-sync-alt{% endif %}"></i> {% if otrosi_modificadores.nuevo_valor_gastos_medicos_rce.numero_otrosi %}{{ otrosi_modificadores.nuevo_valor_gastos_medicos_rce.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_valor_gastos_medicos_rce.numero_renovacion }}{% endif %}
+                                                        </span>
+                                                    {% endif %}
+                                                {% else %}
+                                                    <span class="text-muted">N/A</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Vehículos Propios y No Propios:</strong></td>
+                                            <td>
+                                                {% if valor_vehiculos_rce is not None or contrato.valor_vehiculos_rce is not None %}
+                                                    $<span class="formato-moneda">{{ valor_vehiculos_rce|default:contrato.valor_vehiculos_rce|floatformat:0 }}</span>
+                                                    {% if otrosi_modificadores.nuevo_valor_vehiculos_rce %}
+                                                        <span class="badge bg-info ms-2" title="Del documento {% if otrosi_modificadores.nuevo_valor_vehiculos_rce.numero_otrosi %}{{ otrosi_modificadores.nuevo_valor_vehiculos_rce.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_valor_vehiculos_rce.numero_renovacion }}{% endif %}">
+                                                            <i class="fas {% if otrosi_modificadores.nuevo_valor_vehiculos_rce.numero_otrosi %}fa-file-signature{% else %}fa-sync-alt{% endif %}"></i> {% if otrosi_modificadores.nuevo_valor_vehiculos_rce.numero_otrosi %}{{ otrosi_modificadores.nuevo_valor_vehiculos_rce.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_valor_vehiculos_rce.numero_renovacion }}{% endif %}
+                                                        </span>
+                                                    {% endif %}
+                                                {% else %}
+                                                    <span class="text-muted">N/A</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Contratistas y Subcontratistas:</strong></td>
+                                            <td>
+                                                {% if valor_contratistas_rce is not None or contrato.valor_contratistas_rce is not None %}
+                                                    $<span class="formato-moneda">{{ valor_contratistas_rce|default:contrato.valor_contratistas_rce|floatformat:0 }}</span>
+                                                    {% if otrosi_modificadores.nuevo_valor_contratistas_rce %}
+                                                        <span class="badge bg-info ms-2" title="Del documento {% if otrosi_modificadores.nuevo_valor_contratistas_rce.numero_otrosi %}{{ otrosi_modificadores.nuevo_valor_contratistas_rce.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_valor_contratistas_rce.numero_renovacion }}{% endif %}">
+                                                            <i class="fas {% if otrosi_modificadores.nuevo_valor_contratistas_rce.numero_otrosi %}fa-file-signature{% else %}fa-sync-alt{% endif %}"></i> {% if otrosi_modificadores.nuevo_valor_contratistas_rce.numero_otrosi %}{{ otrosi_modificadores.nuevo_valor_contratistas_rce.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_valor_contratistas_rce.numero_renovacion }}{% endif %}
+                                                        </span>
+                                                    {% endif %}
+                                                {% else %}
+                                                    <span class="text-muted">N/A</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Perjuicios Extrapatrimoniales:</strong></td>
+                                            <td>
+                                                {% if valor_perjuicios_extrapatrimoniales_rce is not None or contrato.valor_perjuicios_extrapatrimoniales_rce is not None %}
+                                                    $<span class="formato-moneda">{{ valor_perjuicios_extrapatrimoniales_rce|default:contrato.valor_perjuicios_extrapatrimoniales_rce|floatformat:0 }}</span>
+                                                    {% if otrosi_modificadores.nuevo_valor_perjuicios_extrapatrimoniales_rce %}
+                                                        <span class="badge bg-info ms-2" title="Del documento {% if otrosi_modificadores.nuevo_valor_perjuicios_extrapatrimoniales_rce.numero_otrosi %}{{ otrosi_modificadores.nuevo_valor_perjuicios_extrapatrimoniales_rce.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_valor_perjuicios_extrapatrimoniales_rce.numero_renovacion }}{% endif %}">
+                                                            <i class="fas {% if otrosi_modificadores.nuevo_valor_perjuicios_extrapatrimoniales_rce.numero_otrosi %}fa-file-signature{% else %}fa-sync-alt{% endif %}"></i> {% if otrosi_modificadores.nuevo_valor_perjuicios_extrapatrimoniales_rce.numero_otrosi %}{{ otrosi_modificadores.nuevo_valor_perjuicios_extrapatrimoniales_rce.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_valor_perjuicios_extrapatrimoniales_rce.numero_renovacion }}{% endif %}
+                                                        </span>
+                                                    {% endif %}
+                                                {% else %}
+                                                    <span class="text-muted">N/A</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Daño Moral:</strong></td>
+                                            <td>
+                                                {% if valor_dano_moral_rce is not None or contrato.valor_dano_moral_rce is not None %}
+                                                    $<span class="formato-moneda">{{ valor_dano_moral_rce|default:contrato.valor_dano_moral_rce|floatformat:0 }}</span>
+                                                    {% if otrosi_modificadores.nuevo_valor_dano_moral_rce %}
+                                                        <span class="badge bg-info ms-2" title="Del documento {% if otrosi_modificadores.nuevo_valor_dano_moral_rce.numero_otrosi %}{{ otrosi_modificadores.nuevo_valor_dano_moral_rce.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_valor_dano_moral_rce.numero_renovacion }}{% endif %}">
+                                                            <i class="fas {% if otrosi_modificadores.nuevo_valor_dano_moral_rce.numero_otrosi %}fa-file-signature{% else %}fa-sync-alt{% endif %}"></i> {% if otrosi_modificadores.nuevo_valor_dano_moral_rce.numero_otrosi %}{{ otrosi_modificadores.nuevo_valor_dano_moral_rce.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_valor_dano_moral_rce.numero_renovacion }}{% endif %}
+                                                        </span>
+                                                    {% endif %}
+                                                {% else %}
+                                                    <span class="text-muted">N/A</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Lucro Cesante:</strong></td>
+                                            <td>
+                                                {% if valor_lucro_cesante_rce is not None or contrato.valor_lucro_cesante_rce is not None %}
+                                                    $<span class="formato-moneda">{{ valor_lucro_cesante_rce|default:contrato.valor_lucro_cesante_rce|floatformat:0 }}</span>
+                                                    {% if otrosi_modificadores.nuevo_valor_lucro_cesante_rce %}
+                                                        <span class="badge bg-info ms-2" title="Del documento {% if otrosi_modificadores.nuevo_valor_lucro_cesante_rce.numero_otrosi %}{{ otrosi_modificadores.nuevo_valor_lucro_cesante_rce.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_valor_lucro_cesante_rce.numero_renovacion }}{% endif %}">
+                                                            <i class="fas {% if otrosi_modificadores.nuevo_valor_lucro_cesante_rce.numero_otrosi %}fa-file-signature{% else %}fa-sync-alt{% endif %}"></i> {% if otrosi_modificadores.nuevo_valor_lucro_cesante_rce.numero_otrosi %}{{ otrosi_modificadores.nuevo_valor_lucro_cesante_rce.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_valor_lucro_cesante_rce.numero_renovacion }}{% endif %}
+                                                        </span>
+                                                    {% endif %}
+                                                {% else %}
+                                                    <span class="text-muted">N/A</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endif %}
+                                        <tr>
+                                            <td><strong>Meses de Vigencia:</strong></td>
+                                            <td>
+                                                {{ meses_vigencia_rce|default:contrato.meses_vigencia_rce }} meses
+                                                {% if otrosi_modificadores.nuevo_meses_vigencia_rce %}
+                                                    <span class="badge bg-info ms-2" title="Del documento {% if otrosi_modificadores.nuevo_meses_vigencia_rce.numero_otrosi %}{{ otrosi_modificadores.nuevo_meses_vigencia_rce.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_meses_vigencia_rce.numero_renovacion }}{% endif %}">
+                                                        <i class="fas {% if otrosi_modificadores.nuevo_meses_vigencia_rce.numero_otrosi %}fa-file-signature{% else %}fa-sync-alt{% endif %}"></i> {% if otrosi_modificadores.nuevo_meses_vigencia_rce.numero_otrosi %}{{ otrosi_modificadores.nuevo_meses_vigencia_rce.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_meses_vigencia_rce.numero_renovacion }}{% endif %}
+                                                    </span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Fecha Inicio:</strong></td>
+                                            <td>
+                                                {{ fecha_inicio_vigencia_rce|default:contrato.fecha_inicio_vigencia_rce }}
+                                                {% if otrosi_modificadores.nuevo_fecha_inicio_vigencia_rce %}
+                                                    <span class="badge bg-info ms-2" title="Del documento {% if otrosi_modificadores.nuevo_fecha_inicio_vigencia_rce.numero_otrosi %}{{ otrosi_modificadores.nuevo_fecha_inicio_vigencia_rce.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_fecha_inicio_vigencia_rce.numero_renovacion }}{% endif %}">
+                                                        <i class="fas {% if otrosi_modificadores.nuevo_fecha_inicio_vigencia_rce.numero_otrosi %}fa-file-signature{% else %}fa-sync-alt{% endif %}"></i> {% if otrosi_modificadores.nuevo_fecha_inicio_vigencia_rce.numero_otrosi %}{{ otrosi_modificadores.nuevo_fecha_inicio_vigencia_rce.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_fecha_inicio_vigencia_rce.numero_renovacion }}{% endif %}
+                                                    </span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Fecha Fin:</strong></td>
+                                            <td>
+                                                {{ fecha_fin_vigencia_rce|default:contrato.fecha_fin_vigencia_rce }}
+                                                {% if otrosi_modificadores.nuevo_fecha_fin_vigencia_rce %}
+                                                    <span class="badge bg-info ms-2" title="Del documento {% if otrosi_modificadores.nuevo_fecha_fin_vigencia_rce.numero_otrosi %}{{ otrosi_modificadores.nuevo_fecha_fin_vigencia_rce.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_fecha_fin_vigencia_rce.numero_renovacion }}{% endif %}">
+                                                        <i class="fas {% if otrosi_modificadores.nuevo_fecha_fin_vigencia_rce.numero_otrosi %}fa-file-signature{% else %}fa-sync-alt{% endif %}"></i> {% if otrosi_modificadores.nuevo_fecha_fin_vigencia_rce.numero_otrosi %}{{ otrosi_modificadores.nuevo_fecha_fin_vigencia_rce.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_fecha_fin_vigencia_rce.numero_renovacion }}{% endif %}
+                                                    </span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                    </table>
+                                    {% if contrato.tipo_contrato_cliente_proveedor == 'PROVEEDOR' %}
+                                    <div class="mt-3 pt-3 border-top">
+                                        <h6 class="mb-2" style="color: var(--avenida-orange); font-weight: 600;">
+                                            <i class="fas fa-shield-alt me-2"></i> Coberturas RCE
+                                        </h6>
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <table class="table table-sm mb-0">
+                                                    {% if rce_cobertura_danos_materiales or contrato.rce_cobertura_danos_materiales %}<tr><td><strong>Daños materiales a terceros:</strong></td><td>$<span class="formato-moneda">{{ rce_cobertura_danos_materiales|default:contrato.rce_cobertura_danos_materiales|floatformat:0 }}</span>{% if otrosi_modificadores.nuevo_rce_cobertura_danos_materiales %}<span class="badge bg-info ms-2" title="Del documento {% if otrosi_modificadores.nuevo_rce_cobertura_danos_materiales.numero_otrosi %}{{ otrosi_modificadores.nuevo_rce_cobertura_danos_materiales.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_rce_cobertura_danos_materiales.numero_renovacion }}{% endif %}"><i class="fas {% if otrosi_modificadores.nuevo_rce_cobertura_danos_materiales.numero_otrosi %}fa-file-signature{% else %}fa-sync-alt{% endif %}"></i> {% if otrosi_modificadores.nuevo_rce_cobertura_danos_materiales.numero_otrosi %}{{ otrosi_modificadores.nuevo_rce_cobertura_danos_materiales.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_rce_cobertura_danos_materiales.numero_renovacion }}{% endif %}</span>{% endif %}</td></tr>{% endif %}
+                                                    {% if rce_cobertura_lesiones_personales or contrato.rce_cobertura_lesiones_personales %}<tr><td><strong>Lesiones personales a terceros:</strong></td><td>$<span class="formato-moneda">{{ rce_cobertura_lesiones_personales|default:contrato.rce_cobertura_lesiones_personales|floatformat:0 }}</span>{% if otrosi_modificadores.nuevo_rce_cobertura_lesiones_personales %}<span class="badge bg-info ms-2" title="Del documento {% if otrosi_modificadores.nuevo_rce_cobertura_lesiones_personales.numero_otrosi %}{{ otrosi_modificadores.nuevo_rce_cobertura_lesiones_personales.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_rce_cobertura_lesiones_personales.numero_renovacion }}{% endif %}"><i class="fas {% if otrosi_modificadores.nuevo_rce_cobertura_lesiones_personales.numero_otrosi %}fa-file-signature{% else %}fa-sync-alt{% endif %}"></i> {% if otrosi_modificadores.nuevo_rce_cobertura_lesiones_personales.numero_otrosi %}{{ otrosi_modificadores.nuevo_rce_cobertura_lesiones_personales.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_rce_cobertura_lesiones_personales.numero_renovacion }}{% endif %}</span>{% endif %}</td></tr>{% endif %}
+                                                    {% if rce_cobertura_muerte_terceros or contrato.rce_cobertura_muerte_terceros %}<tr><td><strong>Muerte de terceros:</strong></td><td>$<span class="formato-moneda">{{ rce_cobertura_muerte_terceros|default:contrato.rce_cobertura_muerte_terceros|floatformat:0 }}</span>{% if otrosi_modificadores.nuevo_rce_cobertura_muerte_terceros %}<span class="badge bg-info ms-2" title="Del documento {% if otrosi_modificadores.nuevo_rce_cobertura_muerte_terceros.numero_otrosi %}{{ otrosi_modificadores.nuevo_rce_cobertura_muerte_terceros.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_rce_cobertura_muerte_terceros.numero_renovacion }}{% endif %}"><i class="fas {% if otrosi_modificadores.nuevo_rce_cobertura_muerte_terceros.numero_otrosi %}fa-file-signature{% else %}fa-sync-alt{% endif %}"></i> {% if otrosi_modificadores.nuevo_rce_cobertura_muerte_terceros.numero_otrosi %}{{ otrosi_modificadores.nuevo_rce_cobertura_muerte_terceros.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_rce_cobertura_muerte_terceros.numero_renovacion }}{% endif %}</span>{% endif %}</td></tr>{% endif %}
+                                                    {% if rce_cobertura_danos_bienes_terceros or contrato.rce_cobertura_danos_bienes_terceros %}<tr><td><strong>Daños a bienes de terceros:</strong></td><td>$<span class="formato-moneda">{{ rce_cobertura_danos_bienes_terceros|default:contrato.rce_cobertura_danos_bienes_terceros|floatformat:0 }}</span>{% if otrosi_modificadores.nuevo_rce_cobertura_danos_bienes_terceros %}<span class="badge bg-info ms-2" title="Del documento {% if otrosi_modificadores.nuevo_rce_cobertura_danos_bienes_terceros.numero_otrosi %}{{ otrosi_modificadores.nuevo_rce_cobertura_danos_bienes_terceros.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_rce_cobertura_danos_bienes_terceros.numero_renovacion }}{% endif %}"><i class="fas {% if otrosi_modificadores.nuevo_rce_cobertura_danos_bienes_terceros.numero_otrosi %}fa-file-signature{% else %}fa-sync-alt{% endif %}"></i> {% if otrosi_modificadores.nuevo_rce_cobertura_danos_bienes_terceros.numero_otrosi %}{{ otrosi_modificadores.nuevo_rce_cobertura_danos_bienes_terceros.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_rce_cobertura_danos_bienes_terceros.numero_renovacion }}{% endif %}</span>{% endif %}</td></tr>{% endif %}
+                                                    {% if rce_cobertura_responsabilidad_patronal or contrato.rce_cobertura_responsabilidad_patronal %}<tr><td><strong>Responsabilidad patronal:</strong></td><td>$<span class="formato-moneda">{{ rce_cobertura_responsabilidad_patronal|default:contrato.rce_cobertura_responsabilidad_patronal|floatformat:0 }}</span>{% if otrosi_modificadores.nuevo_rce_cobertura_responsabilidad_patronal %}<span class="badge bg-info ms-2" title="Del documento {% if otrosi_modificadores.nuevo_rce_cobertura_responsabilidad_patronal.numero_otrosi %}{{ otrosi_modificadores.nuevo_rce_cobertura_responsabilidad_patronal.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_rce_cobertura_responsabilidad_patronal.numero_renovacion }}{% endif %}"><i class="fas {% if otrosi_modificadores.nuevo_rce_cobertura_responsabilidad_patronal.numero_otrosi %}fa-file-signature{% else %}fa-sync-alt{% endif %}"></i> {% if otrosi_modificadores.nuevo_rce_cobertura_responsabilidad_patronal.numero_otrosi %}{{ otrosi_modificadores.nuevo_rce_cobertura_responsabilidad_patronal.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_rce_cobertura_responsabilidad_patronal.numero_renovacion }}{% endif %}</span>{% endif %}</td></tr>{% endif %}
+                                                    {% if rce_cobertura_responsabilidad_cruzada or contrato.rce_cobertura_responsabilidad_cruzada %}<tr><td><strong>Responsabilidad cruzada:</strong></td><td>$<span class="formato-moneda">{{ rce_cobertura_responsabilidad_cruzada|default:contrato.rce_cobertura_responsabilidad_cruzada|floatformat:0 }}</span>{% if otrosi_modificadores.nuevo_rce_cobertura_responsabilidad_cruzada %}<span class="badge bg-info ms-2" title="Del documento {% if otrosi_modificadores.nuevo_rce_cobertura_responsabilidad_cruzada.numero_otrosi %}{{ otrosi_modificadores.nuevo_rce_cobertura_responsabilidad_cruzada.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_rce_cobertura_responsabilidad_cruzada.numero_renovacion }}{% endif %}"><i class="fas {% if otrosi_modificadores.nuevo_rce_cobertura_responsabilidad_cruzada.numero_otrosi %}fa-file-signature{% else %}fa-sync-alt{% endif %}"></i> {% if otrosi_modificadores.nuevo_rce_cobertura_responsabilidad_cruzada.numero_otrosi %}{{ otrosi_modificadores.nuevo_rce_cobertura_responsabilidad_cruzada.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_rce_cobertura_responsabilidad_cruzada.numero_renovacion }}{% endif %}</span>{% endif %}</td></tr>{% endif %}
+                                                </table>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <table class="table table-sm mb-0">
+                                                    {% if rce_cobertura_danos_contratistas or contrato.rce_cobertura_danos_contratistas %}<tr><td><strong>Daños por contratistas:</strong></td><td>$<span class="formato-moneda">{{ rce_cobertura_danos_contratistas|default:contrato.rce_cobertura_danos_contratistas|floatformat:0 }}</span>{% if otrosi_modificadores.nuevo_rce_cobertura_danos_contratistas %}<span class="badge bg-info ms-2" title="Del documento {% if otrosi_modificadores.nuevo_rce_cobertura_danos_contratistas.numero_otrosi %}{{ otrosi_modificadores.nuevo_rce_cobertura_danos_contratistas.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_rce_cobertura_danos_contratistas.numero_renovacion }}{% endif %}"><i class="fas {% if otrosi_modificadores.nuevo_rce_cobertura_danos_contratistas.numero_otrosi %}fa-file-signature{% else %}fa-sync-alt{% endif %}"></i> {% if otrosi_modificadores.nuevo_rce_cobertura_danos_contratistas.numero_otrosi %}{{ otrosi_modificadores.nuevo_rce_cobertura_danos_contratistas.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_rce_cobertura_danos_contratistas.numero_renovacion }}{% endif %}</span>{% endif %}</td></tr>{% endif %}
+                                                    {% if rce_cobertura_danos_ejecucion_contrato or contrato.rce_cobertura_danos_ejecucion_contrato %}<tr><td><strong>Daños durante ejecución:</strong></td><td>$<span class="formato-moneda">{{ rce_cobertura_danos_ejecucion_contrato|default:contrato.rce_cobertura_danos_ejecucion_contrato|floatformat:0 }}</span>{% if otrosi_modificadores.nuevo_rce_cobertura_danos_ejecucion_contrato %}<span class="badge bg-info ms-2" title="Del documento {% if otrosi_modificadores.nuevo_rce_cobertura_danos_ejecucion_contrato.numero_otrosi %}{{ otrosi_modificadores.nuevo_rce_cobertura_danos_ejecucion_contrato.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_rce_cobertura_danos_ejecucion_contrato.numero_renovacion }}{% endif %}"><i class="fas {% if otrosi_modificadores.nuevo_rce_cobertura_danos_ejecucion_contrato.numero_otrosi %}fa-file-signature{% else %}fa-sync-alt{% endif %}"></i> {% if otrosi_modificadores.nuevo_rce_cobertura_danos_ejecucion_contrato.numero_otrosi %}{{ otrosi_modificadores.nuevo_rce_cobertura_danos_ejecucion_contrato.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_rce_cobertura_danos_ejecucion_contrato.numero_renovacion }}{% endif %}</span>{% endif %}</td></tr>{% endif %}
+                                                    {% if rce_cobertura_danos_predios_vecinos or contrato.rce_cobertura_danos_predios_vecinos %}<tr><td><strong>Daños en predios vecinos:</strong></td><td>$<span class="formato-moneda">{{ rce_cobertura_danos_predios_vecinos|default:contrato.rce_cobertura_danos_predios_vecinos|floatformat:0 }}</span>{% if otrosi_modificadores.nuevo_rce_cobertura_danos_predios_vecinos %}<span class="badge bg-info ms-2" title="Del documento {% if otrosi_modificadores.nuevo_rce_cobertura_danos_predios_vecinos.numero_otrosi %}{{ otrosi_modificadores.nuevo_rce_cobertura_danos_predios_vecinos.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_rce_cobertura_danos_predios_vecinos.numero_renovacion }}{% endif %}"><i class="fas {% if otrosi_modificadores.nuevo_rce_cobertura_danos_predios_vecinos.numero_otrosi %}fa-file-signature{% else %}fa-sync-alt{% endif %}"></i> {% if otrosi_modificadores.nuevo_rce_cobertura_danos_predios_vecinos.numero_otrosi %}{{ otrosi_modificadores.nuevo_rce_cobertura_danos_predios_vecinos.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_rce_cobertura_danos_predios_vecinos.numero_renovacion }}{% endif %}</span>{% endif %}</td></tr>{% endif %}
+                                                    {% if rce_cobertura_gastos_medicos or contrato.rce_cobertura_gastos_medicos %}<tr><td><strong>Gastos médicos:</strong></td><td>$<span class="formato-moneda">{{ rce_cobertura_gastos_medicos|default:contrato.rce_cobertura_gastos_medicos|floatformat:0 }}</span>{% if otrosi_modificadores.nuevo_rce_cobertura_gastos_medicos %}<span class="badge bg-info ms-2" title="Del documento {% if otrosi_modificadores.nuevo_rce_cobertura_gastos_medicos.numero_otrosi %}{{ otrosi_modificadores.nuevo_rce_cobertura_gastos_medicos.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_rce_cobertura_gastos_medicos.numero_renovacion }}{% endif %}"><i class="fas {% if otrosi_modificadores.nuevo_rce_cobertura_gastos_medicos.numero_otrosi %}fa-file-signature{% else %}fa-sync-alt{% endif %}"></i> {% if otrosi_modificadores.nuevo_rce_cobertura_gastos_medicos.numero_otrosi %}{{ otrosi_modificadores.nuevo_rce_cobertura_gastos_medicos.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_rce_cobertura_gastos_medicos.numero_renovacion }}{% endif %}</span>{% endif %}</td></tr>{% endif %}
+                                                    {% if rce_cobertura_gastos_defensa or contrato.rce_cobertura_gastos_defensa %}<tr><td><strong>Gastos de defensa:</strong></td><td>$<span class="formato-moneda">{{ rce_cobertura_gastos_defensa|default:contrato.rce_cobertura_gastos_defensa|floatformat:0 }}</span>{% if otrosi_modificadores.nuevo_rce_cobertura_gastos_defensa %}<span class="badge bg-info ms-2" title="Del documento {% if otrosi_modificadores.nuevo_rce_cobertura_gastos_defensa.numero_otrosi %}{{ otrosi_modificadores.nuevo_rce_cobertura_gastos_defensa.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_rce_cobertura_gastos_defensa.numero_renovacion }}{% endif %}"><i class="fas {% if otrosi_modificadores.nuevo_rce_cobertura_gastos_defensa.numero_otrosi %}fa-file-signature{% else %}fa-sync-alt{% endif %}"></i> {% if otrosi_modificadores.nuevo_rce_cobertura_gastos_defensa.numero_otrosi %}{{ otrosi_modificadores.nuevo_rce_cobertura_gastos_defensa.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_rce_cobertura_gastos_defensa.numero_renovacion }}{% endif %}</span>{% endif %}</td></tr>{% endif %}
+                                                    {% if rce_cobertura_perjuicios_patrimoniales or contrato.rce_cobertura_perjuicios_patrimoniales %}<tr><td><strong>Perjuicios patrimoniales:</strong></td><td>$<span class="formato-moneda">{{ rce_cobertura_perjuicios_patrimoniales|default:contrato.rce_cobertura_perjuicios_patrimoniales|floatformat:0 }}</span>{% if otrosi_modificadores.nuevo_rce_cobertura_perjuicios_patrimoniales %}<span class="badge bg-info ms-2" title="Del documento {% if otrosi_modificadores.nuevo_rce_cobertura_perjuicios_patrimoniales.numero_otrosi %}{{ otrosi_modificadores.nuevo_rce_cobertura_perjuicios_patrimoniales.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_rce_cobertura_perjuicios_patrimoniales.numero_renovacion }}{% endif %}"><i class="fas {% if otrosi_modificadores.nuevo_rce_cobertura_perjuicios_patrimoniales.numero_otrosi %}fa-file-signature{% else %}fa-sync-alt{% endif %}"></i> {% if otrosi_modificadores.nuevo_rce_cobertura_perjuicios_patrimoniales.numero_otrosi %}{{ otrosi_modificadores.nuevo_rce_cobertura_perjuicios_patrimoniales.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_rce_cobertura_perjuicios_patrimoniales.numero_renovacion }}{% endif %}</span>{% endif %}</td></tr>{% endif %}
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- Póliza de Cumplimiento -->
+                        {% if exige_poliza_cumplimiento %}
+                        <div class="col-md-6 mb-3">
+                            <div class="card border-success">
+                                <div class="card-header bg-success text-white">
+                                    <h6 class="mb-0">
+                                        <i class="fas fa-check-circle"></i> Póliza de Cumplimiento
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <table class="table table-sm mb-0">
+                                        <tr>
+                                            <td><strong>Valor Asegurado:</strong></td>
+                                            <td>
+                                                $<span class="formato-moneda">{{ valor_asegurado_cumplimiento|default:contrato.valor_asegurado_cumplimiento|floatformat:0 }}</span>
+                                                {% if otrosi_modificadores.nuevo_valor_asegurado_cumplimiento %}
+                                                    <span class="badge bg-info ms-2" title="Del documento {% if otrosi_modificadores.nuevo_valor_asegurado_cumplimiento.numero_otrosi %}{{ otrosi_modificadores.nuevo_valor_asegurado_cumplimiento.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_valor_asegurado_cumplimiento.numero_renovacion }}{% endif %}">
+                                                        <i class="fas {% if otrosi_modificadores.nuevo_valor_asegurado_cumplimiento.numero_otrosi %}fa-file-signature{% else %}fa-sync-alt{% endif %}"></i> {% if otrosi_modificadores.nuevo_valor_asegurado_cumplimiento.numero_otrosi %}{{ otrosi_modificadores.nuevo_valor_asegurado_cumplimiento.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_valor_asegurado_cumplimiento.numero_renovacion }}{% endif %}
+                                                    </span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Meses de Vigencia:</strong></td>
+                                            <td>
+                                                {{ meses_vigencia_cumplimiento|default:contrato.meses_vigencia_cumplimiento }} meses
+                                                {% if otrosi_modificadores.nuevo_meses_vigencia_cumplimiento %}
+                                                    <span class="badge bg-info ms-2" title="Del documento {% if otrosi_modificadores.nuevo_meses_vigencia_cumplimiento.numero_otrosi %}{{ otrosi_modificadores.nuevo_meses_vigencia_cumplimiento.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_meses_vigencia_cumplimiento.numero_renovacion }}{% endif %}">
+                                                        <i class="fas {% if otrosi_modificadores.nuevo_meses_vigencia_cumplimiento.numero_otrosi %}fa-file-signature{% else %}fa-sync-alt{% endif %}"></i> {% if otrosi_modificadores.nuevo_meses_vigencia_cumplimiento.numero_otrosi %}{{ otrosi_modificadores.nuevo_meses_vigencia_cumplimiento.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_meses_vigencia_cumplimiento.numero_renovacion }}{% endif %}
+                                                    </span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Fecha Inicio:</strong></td>
+                                            <td>
+                                                {{ fecha_inicio_vigencia_cumplimiento|default:contrato.fecha_inicio_vigencia_cumplimiento }}
+                                                {% if otrosi_modificadores.nuevo_fecha_inicio_vigencia_cumplimiento %}
+                                                    <span class="badge bg-info ms-2" title="Del documento {% if otrosi_modificadores.nuevo_fecha_inicio_vigencia_cumplimiento.numero_otrosi %}{{ otrosi_modificadores.nuevo_fecha_inicio_vigencia_cumplimiento.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_fecha_inicio_vigencia_cumplimiento.numero_renovacion }}{% endif %}">
+                                                        <i class="fas {% if otrosi_modificadores.nuevo_fecha_inicio_vigencia_cumplimiento.numero_otrosi %}fa-file-signature{% else %}fa-sync-alt{% endif %}"></i> {% if otrosi_modificadores.nuevo_fecha_inicio_vigencia_cumplimiento.numero_otrosi %}{{ otrosi_modificadores.nuevo_fecha_inicio_vigencia_cumplimiento.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_fecha_inicio_vigencia_cumplimiento.numero_renovacion }}{% endif %}
+                                                    </span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Fecha Fin:</strong></td>
+                                            <td>
+                                                {{ fecha_fin_vigencia_cumplimiento|default:contrato.fecha_fin_vigencia_cumplimiento }}
+                                                {% if otrosi_modificadores.nuevo_fecha_fin_vigencia_cumplimiento %}
+                                                    <span class="badge bg-info ms-2" title="Del documento {% if otrosi_modificadores.nuevo_fecha_fin_vigencia_cumplimiento.numero_otrosi %}{{ otrosi_modificadores.nuevo_fecha_fin_vigencia_cumplimiento.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_fecha_fin_vigencia_cumplimiento.numero_renovacion }}{% endif %}">
+                                                        <i class="fas {% if otrosi_modificadores.nuevo_fecha_fin_vigencia_cumplimiento.numero_otrosi %}fa-file-signature{% else %}fa-sync-alt{% endif %}"></i> {% if otrosi_modificadores.nuevo_fecha_fin_vigencia_cumplimiento.numero_otrosi %}{{ otrosi_modificadores.nuevo_fecha_fin_vigencia_cumplimiento.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_fecha_fin_vigencia_cumplimiento.numero_renovacion }}{% endif %}
+                                                    </span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% if contrato.tipo_contrato_cliente_proveedor == 'CLIENTE' %}
+                                        <tr>
+                                            <td><strong>Remuneraciones Mensuales:</strong></td>
+                                            <td>
+                                                $<span class="formato-moneda">{{ valor_remuneraciones_cumplimiento|default:contrato.valor_remuneraciones_cumplimiento|floatformat:0 }}</span>
+                                                {% if otrosi_modificadores.nuevo_valor_remuneraciones_cumplimiento %}
+                                                    <span class="badge bg-info ms-2" title="Del documento {% if otrosi_modificadores.nuevo_valor_remuneraciones_cumplimiento.numero_otrosi %}{{ otrosi_modificadores.nuevo_valor_remuneraciones_cumplimiento.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_valor_remuneraciones_cumplimiento.numero_renovacion }}{% endif %}">
+                                                        <i class="fas {% if otrosi_modificadores.nuevo_valor_remuneraciones_cumplimiento.numero_otrosi %}fa-file-signature{% else %}fa-sync-alt{% endif %}"></i> {% if otrosi_modificadores.nuevo_valor_remuneraciones_cumplimiento.numero_otrosi %}{{ otrosi_modificadores.nuevo_valor_remuneraciones_cumplimiento.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_valor_remuneraciones_cumplimiento.numero_renovacion }}{% endif %}
+                                                    </span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Servicios Públicos:</strong></td>
+                                            <td>
+                                                $<span class="formato-moneda">{{ valor_servicios_publicos_cumplimiento|default:contrato.valor_servicios_publicos_cumplimiento|floatformat:0 }}</span>
+                                                {% if otrosi_modificadores.nuevo_valor_servicios_publicos_cumplimiento %}
+                                                    <span class="badge bg-info ms-2" title="Del documento {% if otrosi_modificadores.nuevo_valor_servicios_publicos_cumplimiento.numero_otrosi %}{{ otrosi_modificadores.nuevo_valor_servicios_publicos_cumplimiento.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_valor_servicios_publicos_cumplimiento.numero_renovacion }}{% endif %}">
+                                                        <i class="fas {% if otrosi_modificadores.nuevo_valor_servicios_publicos_cumplimiento.numero_otrosi %}fa-file-signature{% else %}fa-sync-alt{% endif %}"></i> {% if otrosi_modificadores.nuevo_valor_servicios_publicos_cumplimiento.numero_otrosi %}{{ otrosi_modificadores.nuevo_valor_servicios_publicos_cumplimiento.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_valor_servicios_publicos_cumplimiento.numero_renovacion }}{% endif %}
+                                                    </span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>IVA:</strong></td>
+                                            <td>
+                                                $<span class="formato-moneda">{{ valor_iva_cumplimiento|default:contrato.valor_iva_cumplimiento|floatformat:0 }}</span>
+                                                {% if otrosi_modificadores.nuevo_valor_iva_cumplimiento %}
+                                                    <span class="badge bg-info ms-2" title="Del documento {% if otrosi_modificadores.nuevo_valor_iva_cumplimiento.numero_otrosi %}{{ otrosi_modificadores.nuevo_valor_iva_cumplimiento.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_valor_iva_cumplimiento.numero_renovacion }}{% endif %}">
+                                                        <i class="fas {% if otrosi_modificadores.nuevo_valor_iva_cumplimiento.numero_otrosi %}fa-file-signature{% else %}fa-sync-alt{% endif %}"></i> {% if otrosi_modificadores.nuevo_valor_iva_cumplimiento.numero_otrosi %}{{ otrosi_modificadores.nuevo_valor_iva_cumplimiento.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_valor_iva_cumplimiento.numero_renovacion }}{% endif %}
+                                                    </span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Cuota de admon.:</strong></td>
+                                            <td>
+                                                $<span class="formato-moneda">{{ valor_otros_cumplimiento|default:contrato.valor_otros_cumplimiento|floatformat:0 }}</span>
+                                                {% if otrosi_modificadores.nuevo_valor_otros_cumplimiento %}
+                                                    <span class="badge bg-info ms-2" title="Del documento {% if otrosi_modificadores.nuevo_valor_otros_cumplimiento.numero_otrosi %}{{ otrosi_modificadores.nuevo_valor_otros_cumplimiento.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_valor_otros_cumplimiento.numero_renovacion }}{% endif %}">
+                                                        <i class="fas {% if otrosi_modificadores.nuevo_valor_otros_cumplimiento.numero_otrosi %}fa-file-signature{% else %}fa-sync-alt{% endif %}"></i> {% if otrosi_modificadores.nuevo_valor_otros_cumplimiento.numero_otrosi %}{{ otrosi_modificadores.nuevo_valor_otros_cumplimiento.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_valor_otros_cumplimiento.numero_renovacion }}{% endif %}
+                                                    </span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endif %}
+                                    </table>
+                                    {% if contrato.tipo_contrato_cliente_proveedor == 'PROVEEDOR' %}
+                                    <div class="mt-3 pt-3 border-top">
+                                        <h6 class="mb-2" style="color: var(--avenida-green); font-weight: 600;">
+                                            <i class="fas fa-shield-alt me-2"></i> Amparos de Cumplimiento
+                                        </h6>
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <table class="table table-sm mb-0">
+                                                    {% if cumplimiento_amparo_cumplimiento_contrato or contrato.cumplimiento_amparo_cumplimiento_contrato %}<tr><td><strong>Cumplimiento del contrato:</strong></td><td>$<span class="formato-moneda">{{ cumplimiento_amparo_cumplimiento_contrato|default:contrato.cumplimiento_amparo_cumplimiento_contrato|floatformat:0 }}</span>{% if otrosi_modificadores.nuevo_cumplimiento_amparo_cumplimiento_contrato %}<span class="badge bg-info ms-2" title="Del documento {% if otrosi_modificadores.nuevo_cumplimiento_amparo_cumplimiento_contrato.numero_otrosi %}{{ otrosi_modificadores.nuevo_cumplimiento_amparo_cumplimiento_contrato.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_cumplimiento_amparo_cumplimiento_contrato.numero_renovacion }}{% endif %}"><i class="fas {% if otrosi_modificadores.nuevo_cumplimiento_amparo_cumplimiento_contrato.numero_otrosi %}fa-file-signature{% else %}fa-sync-alt{% endif %}"></i> {% if otrosi_modificadores.nuevo_cumplimiento_amparo_cumplimiento_contrato.numero_otrosi %}{{ otrosi_modificadores.nuevo_cumplimiento_amparo_cumplimiento_contrato.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_cumplimiento_amparo_cumplimiento_contrato.numero_renovacion }}{% endif %}</span>{% endif %}</td></tr>{% endif %}
+                                                    {% if cumplimiento_amparo_buen_manejo_anticipo or contrato.cumplimiento_amparo_buen_manejo_anticipo %}<tr><td><strong>Buen manejo anticipo:</strong></td><td>$<span class="formato-moneda">{{ cumplimiento_amparo_buen_manejo_anticipo|default:contrato.cumplimiento_amparo_buen_manejo_anticipo|floatformat:0 }}</span>{% if otrosi_modificadores.nuevo_cumplimiento_amparo_buen_manejo_anticipo %}<span class="badge bg-info ms-2" title="Del documento {% if otrosi_modificadores.nuevo_cumplimiento_amparo_buen_manejo_anticipo.numero_otrosi %}{{ otrosi_modificadores.nuevo_cumplimiento_amparo_buen_manejo_anticipo.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_cumplimiento_amparo_buen_manejo_anticipo.numero_renovacion }}{% endif %}"><i class="fas {% if otrosi_modificadores.nuevo_cumplimiento_amparo_buen_manejo_anticipo.numero_otrosi %}fa-file-signature{% else %}fa-sync-alt{% endif %}"></i> {% if otrosi_modificadores.nuevo_cumplimiento_amparo_buen_manejo_anticipo.numero_otrosi %}{{ otrosi_modificadores.nuevo_cumplimiento_amparo_buen_manejo_anticipo.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_cumplimiento_amparo_buen_manejo_anticipo.numero_renovacion }}{% endif %}</span>{% endif %}</td></tr>{% endif %}
+                                                    {% if cumplimiento_amparo_amortizacion_anticipo or contrato.cumplimiento_amparo_amortizacion_anticipo %}<tr><td><strong>Amortización anticipo:</strong></td><td>$<span class="formato-moneda">{{ cumplimiento_amparo_amortizacion_anticipo|default:contrato.cumplimiento_amparo_amortizacion_anticipo|floatformat:0 }}</span>{% if otrosi_modificadores.nuevo_cumplimiento_amparo_amortizacion_anticipo %}<span class="badge bg-info ms-2" title="Del documento {% if otrosi_modificadores.nuevo_cumplimiento_amparo_amortizacion_anticipo.numero_otrosi %}{{ otrosi_modificadores.nuevo_cumplimiento_amparo_amortizacion_anticipo.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_cumplimiento_amparo_amortizacion_anticipo.numero_renovacion }}{% endif %}"><i class="fas {% if otrosi_modificadores.nuevo_cumplimiento_amparo_amortizacion_anticipo.numero_otrosi %}fa-file-signature{% else %}fa-sync-alt{% endif %}"></i> {% if otrosi_modificadores.nuevo_cumplimiento_amparo_amortizacion_anticipo.numero_otrosi %}{{ otrosi_modificadores.nuevo_cumplimiento_amparo_amortizacion_anticipo.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_cumplimiento_amparo_amortizacion_anticipo.numero_renovacion }}{% endif %}</span>{% endif %}</td></tr>{% endif %}
+                                                    {% if cumplimiento_amparo_salarios_prestaciones or contrato.cumplimiento_amparo_salarios_prestaciones %}<tr><td><strong>Salarios y prestaciones:</strong></td><td>$<span class="formato-moneda">{{ cumplimiento_amparo_salarios_prestaciones|default:contrato.cumplimiento_amparo_salarios_prestaciones|floatformat:0 }}</span>{% if otrosi_modificadores.nuevo_cumplimiento_amparo_salarios_prestaciones %}<span class="badge bg-info ms-2" title="Del documento {% if otrosi_modificadores.nuevo_cumplimiento_amparo_salarios_prestaciones.numero_otrosi %}{{ otrosi_modificadores.nuevo_cumplimiento_amparo_salarios_prestaciones.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_cumplimiento_amparo_salarios_prestaciones.numero_renovacion }}{% endif %}"><i class="fas {% if otrosi_modificadores.nuevo_cumplimiento_amparo_salarios_prestaciones.numero_otrosi %}fa-file-signature{% else %}fa-sync-alt{% endif %}"></i> {% if otrosi_modificadores.nuevo_cumplimiento_amparo_salarios_prestaciones.numero_otrosi %}{{ otrosi_modificadores.nuevo_cumplimiento_amparo_salarios_prestaciones.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_cumplimiento_amparo_salarios_prestaciones.numero_renovacion }}{% endif %}</span>{% endif %}</td></tr>{% endif %}
+                                                    {% if cumplimiento_amparo_aportes_seguridad_social or contrato.cumplimiento_amparo_aportes_seguridad_social %}<tr><td><strong>Aportes seguridad social:</strong></td><td>$<span class="formato-moneda">{{ cumplimiento_amparo_aportes_seguridad_social|default:contrato.cumplimiento_amparo_aportes_seguridad_social|floatformat:0 }}</span>{% if otrosi_modificadores.nuevo_cumplimiento_amparo_aportes_seguridad_social %}<span class="badge bg-info ms-2" title="Del documento {% if otrosi_modificadores.nuevo_cumplimiento_amparo_aportes_seguridad_social.numero_otrosi %}{{ otrosi_modificadores.nuevo_cumplimiento_amparo_aportes_seguridad_social.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_cumplimiento_amparo_aportes_seguridad_social.numero_renovacion }}{% endif %}"><i class="fas {% if otrosi_modificadores.nuevo_cumplimiento_amparo_aportes_seguridad_social.numero_otrosi %}fa-file-signature{% else %}fa-sync-alt{% endif %}"></i> {% if otrosi_modificadores.nuevo_cumplimiento_amparo_aportes_seguridad_social.numero_otrosi %}{{ otrosi_modificadores.nuevo_cumplimiento_amparo_aportes_seguridad_social.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_cumplimiento_amparo_aportes_seguridad_social.numero_renovacion }}{% endif %}</span>{% endif %}</td></tr>{% endif %}
+                                                    {% if cumplimiento_amparo_calidad_servicio or contrato.cumplimiento_amparo_calidad_servicio %}<tr><td><strong>Calidad del servicio:</strong></td><td>$<span class="formato-moneda">{{ cumplimiento_amparo_calidad_servicio|default:contrato.cumplimiento_amparo_calidad_servicio|floatformat:0 }}</span>{% if otrosi_modificadores.nuevo_cumplimiento_amparo_calidad_servicio %}<span class="badge bg-info ms-2" title="Del documento {% if otrosi_modificadores.nuevo_cumplimiento_amparo_calidad_servicio.numero_otrosi %}{{ otrosi_modificadores.nuevo_cumplimiento_amparo_calidad_servicio.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_cumplimiento_amparo_calidad_servicio.numero_renovacion }}{% endif %}"><i class="fas {% if otrosi_modificadores.nuevo_cumplimiento_amparo_calidad_servicio.numero_otrosi %}fa-file-signature{% else %}fa-sync-alt{% endif %}"></i> {% if otrosi_modificadores.nuevo_cumplimiento_amparo_calidad_servicio.numero_otrosi %}{{ otrosi_modificadores.nuevo_cumplimiento_amparo_calidad_servicio.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_cumplimiento_amparo_calidad_servicio.numero_renovacion }}{% endif %}</span>{% endif %}</td></tr>{% endif %}
+                                                </table>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <table class="table table-sm mb-0">
+                                                    {% if cumplimiento_amparo_estabilidad_obra or contrato.cumplimiento_amparo_estabilidad_obra %}<tr><td><strong>Estabilidad de la obra:</strong></td><td>$<span class="formato-moneda">{{ cumplimiento_amparo_estabilidad_obra|default:contrato.cumplimiento_amparo_estabilidad_obra|floatformat:0 }}</span>{% if otrosi_modificadores.nuevo_cumplimiento_amparo_estabilidad_obra %}<span class="badge bg-info ms-2" title="Del documento {% if otrosi_modificadores.nuevo_cumplimiento_amparo_estabilidad_obra.numero_otrosi %}{{ otrosi_modificadores.nuevo_cumplimiento_amparo_estabilidad_obra.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_cumplimiento_amparo_estabilidad_obra.numero_renovacion }}{% endif %}"><i class="fas {% if otrosi_modificadores.nuevo_cumplimiento_amparo_estabilidad_obra.numero_otrosi %}fa-file-signature{% else %}fa-sync-alt{% endif %}"></i> {% if otrosi_modificadores.nuevo_cumplimiento_amparo_estabilidad_obra.numero_otrosi %}{{ otrosi_modificadores.nuevo_cumplimiento_amparo_estabilidad_obra.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_cumplimiento_amparo_estabilidad_obra.numero_renovacion }}{% endif %}</span>{% endif %}</td></tr>{% endif %}
+                                                    {% if cumplimiento_amparo_calidad_bienes or contrato.cumplimiento_amparo_calidad_bienes %}<tr><td><strong>Calidad de bienes:</strong></td><td>$<span class="formato-moneda">{{ cumplimiento_amparo_calidad_bienes|default:contrato.cumplimiento_amparo_calidad_bienes|floatformat:0 }}</span>{% if otrosi_modificadores.nuevo_cumplimiento_amparo_calidad_bienes %}<span class="badge bg-info ms-2" title="Del documento {% if otrosi_modificadores.nuevo_cumplimiento_amparo_calidad_bienes.numero_otrosi %}{{ otrosi_modificadores.nuevo_cumplimiento_amparo_calidad_bienes.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_cumplimiento_amparo_calidad_bienes.numero_renovacion }}{% endif %}"><i class="fas {% if otrosi_modificadores.nuevo_cumplimiento_amparo_calidad_bienes.numero_otrosi %}fa-file-signature{% else %}fa-sync-alt{% endif %}"></i> {% if otrosi_modificadores.nuevo_cumplimiento_amparo_calidad_bienes.numero_otrosi %}{{ otrosi_modificadores.nuevo_cumplimiento_amparo_calidad_bienes.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_cumplimiento_amparo_calidad_bienes.numero_renovacion }}{% endif %}</span>{% endif %}</td></tr>{% endif %}
+                                                    {% if cumplimiento_amparo_multas or contrato.cumplimiento_amparo_multas %}<tr><td><strong>Multas:</strong></td><td>$<span class="formato-moneda">{{ cumplimiento_amparo_multas|default:contrato.cumplimiento_amparo_multas|floatformat:0 }}</span>{% if otrosi_modificadores.nuevo_cumplimiento_amparo_multas %}<span class="badge bg-info ms-2" title="Del documento {% if otrosi_modificadores.nuevo_cumplimiento_amparo_multas.numero_otrosi %}{{ otrosi_modificadores.nuevo_cumplimiento_amparo_multas.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_cumplimiento_amparo_multas.numero_renovacion }}{% endif %}"><i class="fas {% if otrosi_modificadores.nuevo_cumplimiento_amparo_multas.numero_otrosi %}fa-file-signature{% else %}fa-sync-alt{% endif %}"></i> {% if otrosi_modificadores.nuevo_cumplimiento_amparo_multas.numero_otrosi %}{{ otrosi_modificadores.nuevo_cumplimiento_amparo_multas.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_cumplimiento_amparo_multas.numero_renovacion }}{% endif %}</span>{% endif %}</td></tr>{% endif %}
+                                                    {% if cumplimiento_amparo_clausula_penal or contrato.cumplimiento_amparo_clausula_penal %}<tr><td><strong>Cláusula penal:</strong></td><td>$<span class="formato-moneda">{{ cumplimiento_amparo_clausula_penal|default:contrato.cumplimiento_amparo_clausula_penal|floatformat:0 }}</span>{% if otrosi_modificadores.nuevo_cumplimiento_amparo_clausula_penal %}<span class="badge bg-info ms-2" title="Del documento {% if otrosi_modificadores.nuevo_cumplimiento_amparo_clausula_penal.numero_otrosi %}{{ otrosi_modificadores.nuevo_cumplimiento_amparo_clausula_penal.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_cumplimiento_amparo_clausula_penal.numero_renovacion }}{% endif %}"><i class="fas {% if otrosi_modificadores.nuevo_cumplimiento_amparo_clausula_penal.numero_otrosi %}fa-file-signature{% else %}fa-sync-alt{% endif %}"></i> {% if otrosi_modificadores.nuevo_cumplimiento_amparo_clausula_penal.numero_otrosi %}{{ otrosi_modificadores.nuevo_cumplimiento_amparo_clausula_penal.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_cumplimiento_amparo_clausula_penal.numero_renovacion }}{% endif %}</span>{% endif %}</td></tr>{% endif %}
+                                                    {% if cumplimiento_amparo_sanciones_incumplimiento or contrato.cumplimiento_amparo_sanciones_incumplimiento %}<tr><td><strong>Sanciones incumplimiento:</strong></td><td>$<span class="formato-moneda">{{ cumplimiento_amparo_sanciones_incumplimiento|default:contrato.cumplimiento_amparo_sanciones_incumplimiento|floatformat:0 }}</span>{% if otrosi_modificadores.nuevo_cumplimiento_amparo_sanciones_incumplimiento %}<span class="badge bg-info ms-2" title="Del documento {% if otrosi_modificadores.nuevo_cumplimiento_amparo_sanciones_incumplimiento.numero_otrosi %}{{ otrosi_modificadores.nuevo_cumplimiento_amparo_sanciones_incumplimiento.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_cumplimiento_amparo_sanciones_incumplimiento.numero_renovacion }}{% endif %}"><i class="fas {% if otrosi_modificadores.nuevo_cumplimiento_amparo_sanciones_incumplimiento.numero_otrosi %}fa-file-signature{% else %}fa-sync-alt{% endif %}"></i> {% if otrosi_modificadores.nuevo_cumplimiento_amparo_sanciones_incumplimiento.numero_otrosi %}{{ otrosi_modificadores.nuevo_cumplimiento_amparo_sanciones_incumplimiento.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_cumplimiento_amparo_sanciones_incumplimiento.numero_renovacion }}{% endif %}</span>{% endif %}</td></tr>{% endif %}
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- Póliza de Arrendamiento -->
+                        {% if exige_poliza_arrendamiento %}
+                        <div class="col-md-6 mb-3">
+                            <div class="card border-primary">
+                                <div class="card-header bg-primary text-white">
+                                    <h6 class="mb-0">
+                                        <i class="fas fa-home"></i> Póliza de Arrendamiento
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <table class="table table-sm mb-0">
+                                        <tr>
+                                            <td><strong>Valor Asegurado:</strong></td>
+                                            <td>
+                                                $<span class="formato-moneda">{{ valor_asegurado_arrendamiento|default:contrato.valor_asegurado_arrendamiento|floatformat:0 }}</span>
+                                                {% if otrosi_modificadores.nuevo_valor_asegurado_arrendamiento %}
+                                                    <span class="badge bg-info ms-2" title="Del documento {% if otrosi_modificadores.nuevo_valor_asegurado_arrendamiento.numero_otrosi %}{{ otrosi_modificadores.nuevo_valor_asegurado_arrendamiento.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_valor_asegurado_arrendamiento.numero_renovacion }}{% endif %}">
+                                                        <i class="fas {% if otrosi_modificadores.nuevo_valor_asegurado_arrendamiento.numero_otrosi %}fa-file-signature{% else %}fa-sync-alt{% endif %}"></i> {% if otrosi_modificadores.nuevo_valor_asegurado_arrendamiento.numero_otrosi %}{{ otrosi_modificadores.nuevo_valor_asegurado_arrendamiento.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_valor_asegurado_arrendamiento.numero_renovacion }}{% endif %}
+                                                    </span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Meses de Vigencia:</strong></td>
+                                            <td>
+                                                {{ meses_vigencia_arrendamiento|default:contrato.meses_vigencia_arrendamiento }} meses
+                                                {% if otrosi_modificadores.nuevo_meses_vigencia_arrendamiento %}
+                                                    <span class="badge bg-info ms-2" title="Del documento {% if otrosi_modificadores.nuevo_meses_vigencia_arrendamiento.numero_otrosi %}{{ otrosi_modificadores.nuevo_meses_vigencia_arrendamiento.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_meses_vigencia_arrendamiento.numero_renovacion }}{% endif %}">
+                                                        <i class="fas {% if otrosi_modificadores.nuevo_meses_vigencia_arrendamiento.numero_otrosi %}fa-file-signature{% else %}fa-sync-alt{% endif %}"></i> {% if otrosi_modificadores.nuevo_meses_vigencia_arrendamiento.numero_otrosi %}{{ otrosi_modificadores.nuevo_meses_vigencia_arrendamiento.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_meses_vigencia_arrendamiento.numero_renovacion }}{% endif %}
+                                                    </span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Fecha Inicio:</strong></td>
+                                            <td>
+                                                {{ fecha_inicio_vigencia_arrendamiento|default:contrato.fecha_inicio_vigencia_arrendamiento }}
+                                                {% if otrosi_modificadores.nuevo_fecha_inicio_vigencia_arrendamiento %}
+                                                    <span class="badge bg-info ms-2" title="Del documento {% if otrosi_modificadores.nuevo_fecha_inicio_vigencia_arrendamiento.numero_otrosi %}{{ otrosi_modificadores.nuevo_fecha_inicio_vigencia_arrendamiento.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_fecha_inicio_vigencia_arrendamiento.numero_renovacion }}{% endif %}">
+                                                        <i class="fas {% if otrosi_modificadores.nuevo_fecha_inicio_vigencia_arrendamiento.numero_otrosi %}fa-file-signature{% else %}fa-sync-alt{% endif %}"></i> {% if otrosi_modificadores.nuevo_fecha_inicio_vigencia_arrendamiento.numero_otrosi %}{{ otrosi_modificadores.nuevo_fecha_inicio_vigencia_arrendamiento.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_fecha_inicio_vigencia_arrendamiento.numero_renovacion }}{% endif %}
+                                                    </span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Fecha Fin:</strong></td>
+                                            <td>
+                                                {{ fecha_fin_vigencia_arrendamiento|default:contrato.fecha_fin_vigencia_arrendamiento }}
+                                                {% if otrosi_modificadores.nuevo_fecha_fin_vigencia_arrendamiento %}
+                                                    <span class="badge bg-info ms-2" title="Del documento {% if otrosi_modificadores.nuevo_fecha_fin_vigencia_arrendamiento.numero_otrosi %}{{ otrosi_modificadores.nuevo_fecha_fin_vigencia_arrendamiento.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_fecha_fin_vigencia_arrendamiento.numero_renovacion }}{% endif %}">
+                                                        <i class="fas {% if otrosi_modificadores.nuevo_fecha_fin_vigencia_arrendamiento.numero_otrosi %}fa-file-signature{% else %}fa-sync-alt{% endif %}"></i> {% if otrosi_modificadores.nuevo_fecha_fin_vigencia_arrendamiento.numero_otrosi %}{{ otrosi_modificadores.nuevo_fecha_fin_vigencia_arrendamiento.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_fecha_fin_vigencia_arrendamiento.numero_renovacion }}{% endif %}
+                                                    </span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% if contrato.tipo_contrato_cliente_proveedor == 'CLIENTE' %}
+                                        <tr>
+                                            <td><strong>Remuneraciones Mensuales:</strong></td>
+                                            <td>
+                                                $<span class="formato-moneda">{{ valor_remuneraciones_arrendamiento|default:contrato.valor_remuneraciones_arrendamiento|floatformat:0 }}</span>
+                                                {% if otrosi_modificadores.nuevo_valor_remuneraciones_arrendamiento %}
+                                                    <span class="badge bg-info ms-2" title="Del documento {% if otrosi_modificadores.nuevo_valor_remuneraciones_arrendamiento.numero_otrosi %}{{ otrosi_modificadores.nuevo_valor_remuneraciones_arrendamiento.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_valor_remuneraciones_arrendamiento.numero_renovacion }}{% endif %}">
+                                                        <i class="fas {% if otrosi_modificadores.nuevo_valor_remuneraciones_arrendamiento.numero_otrosi %}fa-file-signature{% else %}fa-sync-alt{% endif %}"></i> {% if otrosi_modificadores.nuevo_valor_remuneraciones_arrendamiento.numero_otrosi %}{{ otrosi_modificadores.nuevo_valor_remuneraciones_arrendamiento.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_valor_remuneraciones_arrendamiento.numero_renovacion }}{% endif %}
+                                                    </span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Servicios Públicos:</strong></td>
+                                            <td>
+                                                $<span class="formato-moneda">{{ valor_servicios_publicos_arrendamiento|default:contrato.valor_servicios_publicos_arrendamiento|floatformat:0 }}</span>
+                                                {% if otrosi_modificadores.nuevo_valor_servicios_publicos_arrendamiento %}
+                                                    <span class="badge bg-info ms-2" title="Del documento {% if otrosi_modificadores.nuevo_valor_servicios_publicos_arrendamiento.numero_otrosi %}{{ otrosi_modificadores.nuevo_valor_servicios_publicos_arrendamiento.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_valor_servicios_publicos_arrendamiento.numero_renovacion }}{% endif %}">
+                                                        <i class="fas {% if otrosi_modificadores.nuevo_valor_servicios_publicos_arrendamiento.numero_otrosi %}fa-file-signature{% else %}fa-sync-alt{% endif %}"></i> {% if otrosi_modificadores.nuevo_valor_servicios_publicos_arrendamiento.numero_otrosi %}{{ otrosi_modificadores.nuevo_valor_servicios_publicos_arrendamiento.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_valor_servicios_publicos_arrendamiento.numero_renovacion }}{% endif %}
+                                                    </span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>IVA:</strong></td>
+                                            <td>
+                                                $<span class="formato-moneda">{{ valor_iva_arrendamiento|default:contrato.valor_iva_arrendamiento|floatformat:0 }}</span>
+                                                {% if otrosi_modificadores.nuevo_valor_iva_arrendamiento %}
+                                                    <span class="badge bg-info ms-2" title="Del documento {% if otrosi_modificadores.nuevo_valor_iva_arrendamiento.numero_otrosi %}{{ otrosi_modificadores.nuevo_valor_iva_arrendamiento.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_valor_iva_arrendamiento.numero_renovacion }}{% endif %}">
+                                                        <i class="fas {% if otrosi_modificadores.nuevo_valor_iva_arrendamiento.numero_otrosi %}fa-file-signature{% else %}fa-sync-alt{% endif %}"></i> {% if otrosi_modificadores.nuevo_valor_iva_arrendamiento.numero_otrosi %}{{ otrosi_modificadores.nuevo_valor_iva_arrendamiento.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_valor_iva_arrendamiento.numero_renovacion }}{% endif %}
+                                                    </span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Cuota de admon.:</strong></td>
+                                            <td>
+                                                $<span class="formato-moneda">{{ valor_otros_arrendamiento|default:contrato.valor_otros_arrendamiento|floatformat:0 }}</span>
+                                                {% if otrosi_modificadores.nuevo_valor_otros_arrendamiento %}
+                                                    <span class="badge bg-info ms-2" title="Del documento {% if otrosi_modificadores.nuevo_valor_otros_arrendamiento.numero_otrosi %}{{ otrosi_modificadores.nuevo_valor_otros_arrendamiento.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_valor_otros_arrendamiento.numero_renovacion }}{% endif %}">
+                                                        <i class="fas {% if otrosi_modificadores.nuevo_valor_otros_arrendamiento.numero_otrosi %}fa-file-signature{% else %}fa-sync-alt{% endif %}"></i> {% if otrosi_modificadores.nuevo_valor_otros_arrendamiento.numero_otrosi %}{{ otrosi_modificadores.nuevo_valor_otros_arrendamiento.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_valor_otros_arrendamiento.numero_renovacion }}{% endif %}
+                                                    </span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endif %}
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- Póliza Todo Riesgo -->
+                        {% if exige_poliza_todo_riesgo %}
+                        <div class="col-md-6 mb-3">
+                            <div class="card border-warning">
+                                <div class="card-header bg-warning text-dark">
+                                    <h6 class="mb-0">
+                                        <i class="fas fa-tools"></i> Póliza Todo Riesgo
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <table class="table table-sm mb-0">
+                                        <tr>
+                                            <td><strong>Valor Asegurado:</strong></td>
+                                            <td>
+                                                $<span class="formato-moneda">{{ valor_asegurado_todo_riesgo|default:contrato.valor_asegurado_todo_riesgo|floatformat:0 }}</span>
+                                                {% if otrosi_modificadores.nuevo_valor_asegurado_todo_riesgo %}
+                                                    <span class="badge bg-info ms-2" title="Del documento {% if otrosi_modificadores.nuevo_valor_asegurado_todo_riesgo.numero_otrosi %}{{ otrosi_modificadores.nuevo_valor_asegurado_todo_riesgo.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_valor_asegurado_todo_riesgo.numero_renovacion }}{% endif %}">
+                                                        <i class="fas {% if otrosi_modificadores.nuevo_valor_asegurado_todo_riesgo.numero_otrosi %}fa-file-signature{% else %}fa-sync-alt{% endif %}"></i> {% if otrosi_modificadores.nuevo_valor_asegurado_todo_riesgo.numero_otrosi %}{{ otrosi_modificadores.nuevo_valor_asegurado_todo_riesgo.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_valor_asegurado_todo_riesgo.numero_renovacion }}{% endif %}
+                                                    </span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Meses de Vigencia:</strong></td>
+                                            <td>
+                                                {{ meses_vigencia_todo_riesgo|default:contrato.meses_vigencia_todo_riesgo }} meses
+                                                {% if otrosi_modificadores.nuevo_meses_vigencia_todo_riesgo %}
+                                                    <span class="badge bg-info ms-2" title="Del documento {% if otrosi_modificadores.nuevo_meses_vigencia_todo_riesgo.numero_otrosi %}{{ otrosi_modificadores.nuevo_meses_vigencia_todo_riesgo.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_meses_vigencia_todo_riesgo.numero_renovacion }}{% endif %}">
+                                                        <i class="fas {% if otrosi_modificadores.nuevo_meses_vigencia_todo_riesgo.numero_otrosi %}fa-file-signature{% else %}fa-sync-alt{% endif %}"></i> {% if otrosi_modificadores.nuevo_meses_vigencia_todo_riesgo.numero_otrosi %}{{ otrosi_modificadores.nuevo_meses_vigencia_todo_riesgo.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_meses_vigencia_todo_riesgo.numero_renovacion }}{% endif %}
+                                                    </span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Fecha Inicio:</strong></td>
+                                            <td>
+                                                {{ fecha_inicio_vigencia_todo_riesgo|default:contrato.fecha_inicio_vigencia_todo_riesgo }}
+                                                {% if otrosi_modificadores.nuevo_fecha_inicio_vigencia_todo_riesgo %}
+                                                    <span class="badge bg-info ms-2" title="Del documento {% if otrosi_modificadores.nuevo_fecha_inicio_vigencia_todo_riesgo.numero_otrosi %}{{ otrosi_modificadores.nuevo_fecha_inicio_vigencia_todo_riesgo.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_fecha_inicio_vigencia_todo_riesgo.numero_renovacion }}{% endif %}">
+                                                        <i class="fas {% if otrosi_modificadores.nuevo_fecha_inicio_vigencia_todo_riesgo.numero_otrosi %}fa-file-signature{% else %}fa-sync-alt{% endif %}"></i> {% if otrosi_modificadores.nuevo_fecha_inicio_vigencia_todo_riesgo.numero_otrosi %}{{ otrosi_modificadores.nuevo_fecha_inicio_vigencia_todo_riesgo.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_fecha_inicio_vigencia_todo_riesgo.numero_renovacion }}{% endif %}
+                                                    </span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Fecha Fin:</strong></td>
+                                            <td>
+                                                {{ fecha_fin_vigencia_todo_riesgo|default:contrato.fecha_fin_vigencia_todo_riesgo }}
+                                                {% if otrosi_modificadores.nuevo_fecha_fin_vigencia_todo_riesgo %}
+                                                    <span class="badge bg-info ms-2" title="Del documento {% if otrosi_modificadores.nuevo_fecha_fin_vigencia_todo_riesgo.numero_otrosi %}{{ otrosi_modificadores.nuevo_fecha_fin_vigencia_todo_riesgo.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_fecha_fin_vigencia_todo_riesgo.numero_renovacion }}{% endif %}">
+                                                        <i class="fas {% if otrosi_modificadores.nuevo_fecha_fin_vigencia_todo_riesgo.numero_otrosi %}fa-file-signature{% else %}fa-sync-alt{% endif %}"></i> {% if otrosi_modificadores.nuevo_fecha_fin_vigencia_todo_riesgo.numero_otrosi %}{{ otrosi_modificadores.nuevo_fecha_fin_vigencia_todo_riesgo.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_fecha_fin_vigencia_todo_riesgo.numero_renovacion }}{% endif %}
+                                                    </span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- Otra Póliza -->
+                        {% if exige_poliza_otra_1 %}
+                        <div class="col-md-6 mb-3">
+                            <div class="card border-info">
+                                <div class="card-header bg-info text-white">
+                                    <h6 class="mb-0">
+                                        <i class="fas fa-plus-circle"></i> {{ nombre_poliza_otra_1|default:contrato.nombre_poliza_otra_1|default:"Otra Póliza" }}
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <table class="table table-sm mb-0">
+                                        <tr>
+                                            <td><strong>Valor Asegurado:</strong></td>
+                                            <td>
+                                                $<span class="formato-moneda">{{ valor_asegurado_otra_1|default:contrato.valor_asegurado_otra_1|floatformat:0 }}</span>
+                                                {% if otrosi_modificadores.nuevo_valor_asegurado_otra_1 %}
+                                                    <span class="badge bg-info ms-2" title="Del documento {% if otrosi_modificadores.nuevo_valor_asegurado_otra_1.numero_otrosi %}{{ otrosi_modificadores.nuevo_valor_asegurado_otra_1.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_valor_asegurado_otra_1.numero_renovacion }}{% endif %}">
+                                                        <i class="fas {% if otrosi_modificadores.nuevo_valor_asegurado_otra_1.numero_otrosi %}fa-file-signature{% else %}fa-sync-alt{% endif %}"></i> {% if otrosi_modificadores.nuevo_valor_asegurado_otra_1.numero_otrosi %}{{ otrosi_modificadores.nuevo_valor_asegurado_otra_1.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_valor_asegurado_otra_1.numero_renovacion }}{% endif %}
+                                                    </span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Meses de Vigencia:</strong></td>
+                                            <td>
+                                                {{ meses_vigencia_otra_1|default:contrato.meses_vigencia_otra_1 }} meses
+                                                {% if otrosi_modificadores.nuevo_meses_vigencia_otra_1 %}
+                                                    <span class="badge bg-info ms-2" title="Del documento {% if otrosi_modificadores.nuevo_meses_vigencia_otra_1.numero_otrosi %}{{ otrosi_modificadores.nuevo_meses_vigencia_otra_1.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_meses_vigencia_otra_1.numero_renovacion }}{% endif %}">
+                                                        <i class="fas {% if otrosi_modificadores.nuevo_meses_vigencia_otra_1.numero_otrosi %}fa-file-signature{% else %}fa-sync-alt{% endif %}"></i> {% if otrosi_modificadores.nuevo_meses_vigencia_otra_1.numero_otrosi %}{{ otrosi_modificadores.nuevo_meses_vigencia_otra_1.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_meses_vigencia_otra_1.numero_renovacion }}{% endif %}
+                                                    </span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Fecha Inicio:</strong></td>
+                                            <td>
+                                                {{ fecha_inicio_vigencia_otra_1|default:contrato.fecha_inicio_vigencia_otra_1 }}
+                                                {% if otrosi_modificadores.nuevo_fecha_inicio_vigencia_otra_1 %}
+                                                    <span class="badge bg-info ms-2" title="Del documento {% if otrosi_modificadores.nuevo_fecha_inicio_vigencia_otra_1.numero_otrosi %}{{ otrosi_modificadores.nuevo_fecha_inicio_vigencia_otra_1.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_fecha_inicio_vigencia_otra_1.numero_renovacion }}{% endif %}">
+                                                        <i class="fas {% if otrosi_modificadores.nuevo_fecha_inicio_vigencia_otra_1.numero_otrosi %}fa-file-signature{% else %}fa-sync-alt{% endif %}"></i> {% if otrosi_modificadores.nuevo_fecha_inicio_vigencia_otra_1.numero_otrosi %}{{ otrosi_modificadores.nuevo_fecha_inicio_vigencia_otra_1.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_fecha_inicio_vigencia_otra_1.numero_renovacion }}{% endif %}
+                                                    </span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Fecha Fin:</strong></td>
+                                            <td>
+                                                {{ fecha_fin_vigencia_otra_1|default:contrato.fecha_fin_vigencia_otra_1 }}
+                                                {% if otrosi_modificadores.nuevo_fecha_fin_vigencia_otra_1 %}
+                                                    <span class="badge bg-info ms-2" title="Del documento {% if otrosi_modificadores.nuevo_fecha_fin_vigencia_otra_1.numero_otrosi %}{{ otrosi_modificadores.nuevo_fecha_fin_vigencia_otra_1.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_fecha_fin_vigencia_otra_1.numero_renovacion }}{% endif %}">
+                                                        <i class="fas {% if otrosi_modificadores.nuevo_fecha_fin_vigencia_otra_1.numero_otrosi %}fa-file-signature{% else %}fa-sync-alt{% endif %}"></i> {% if otrosi_modificadores.nuevo_fecha_fin_vigencia_otra_1.numero_otrosi %}{{ otrosi_modificadores.nuevo_fecha_fin_vigencia_otra_1.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_fecha_fin_vigencia_otra_1.numero_renovacion }}{% endif %}
+                                                    </span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    {% if not exige_poliza_rce and not exige_poliza_cumplimiento and not exige_poliza_todo_riesgo and not exige_poliza_otra_1 %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i> No se requieren pólizas para este contrato.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Seguimiento del Contrato -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-clipboard-list"></i> Seguimiento del Contrato
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" class="mb-3">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="detalle_seguimiento" class="form-label">Agregar nueva nota</label>
+                            <textarea
+                                id="detalle_seguimiento"
+                                name="detalle_seguimiento"
+                                rows="3"
+                                class="form-control"
+                                placeholder="Registre observaciones o gestiones realizadas"
+                                required
+                            ></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-plus-circle"></i> Guardar seguimiento
+                        </button>
+                    </form>
+                    {% if seguimientos_contrato %}
+                        <ul class="list-group list-group-flush">
+                            {% for seguimiento in seguimientos_contrato %}
+                                <li class="list-group-item px-0">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div class="flex-grow-1">
+                                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                                <span class="fw-semibold text-primary">
+                                                    {{ seguimiento.registrado_por|default:"Registro" }}
+                                                </span>
+                                                <small class="text-muted">
+                                                    <i class="fas fa-clock me-1"></i>{{ seguimiento.fecha_registro|date:"d/m/Y H:i" }}
+                                                </small>
+                                            </div>
+                                            <p class="mb-0 text-muted">{{ seguimiento.detalle|linebreaksbr }}</p>
+                                        </div>
+                                        {% if user.is_staff %}
+                                        <div class="ms-2">
+                                            <div class="btn-group btn-group-sm" role="group">
+                                                <a href="{% url 'gestion:editar_seguimiento_contrato' seguimiento.id %}" class="btn btn-outline-primary" title="Editar seguimiento">
+                                                    <i class="fas fa-edit"></i>
+                                                </a>
+                                                <a href="{% url 'gestion:eliminar_seguimiento_contrato' seguimiento.id %}" class="btn btn-outline-danger" title="Eliminar seguimiento">
+                                                    <i class="fas fa-trash-alt"></i>
+                                                </a>
+                                            </div>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="text-muted mb-0">No se han registrado seguimientos para este contrato.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Pólizas -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-shield-alt"></i> Pólizas ({{ polizas.count }})
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if polizas %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Número</th>
+                                    <th>Tipo</th>
+                                    <th>Valor Asegurado</th>
+                                    <th>Vencimiento</th>
+                                    <th>Estado</th>
+                                    <th>Tipo de Entrega</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for poliza in polizas %}
+                                <tr>
+                                    <td>{{ poliza.numero_poliza }}</td>
+                                    <td>{{ poliza.get_tipo_display }}</td>
+                                    <td>$<span class="formato-moneda">{{ poliza.valor_asegurado|floatformat:0 }}</span></td>
+                                    <td>{{ poliza.fecha_vencimiento }}</td>
+                                    <td>
+                                        {% if poliza.obtener_estado_vigencia == 'Vencida' %}
+                                            <span class="badge bg-danger">
+                                                <i class="fas fa-times-circle"></i> {{ poliza.obtener_estado_legible }}
+                                            </span>
+                                        {% elif poliza.obtener_dias_para_vencer <= 30 %}
+                                            <span class="badge bg-warning">
+                                                <i class="fas fa-exclamation-triangle"></i> {{ poliza.obtener_estado_legible }}
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-success">
+                                                <i class="fas fa-check-circle"></i> {{ poliza.obtener_estado_legible }}
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if poliza.estado_aportado == 'Aporte inicial' %}
+                                            <span class="badge bg-primary">{{ poliza.estado_aportado }}</span>
+                                        {% elif poliza.estado_aportado == 'Actualización' %}
+                                            <span class="badge bg-info">{{ poliza.estado_aportado }}</span>
+                                        {% elif poliza.estado_aportado == 'Prórroga' %}
+                                            <span class="badge bg-warning text-dark">{{ poliza.estado_aportado }}</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">{{ poliza.estado_aportado }}</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-muted">No hay pólizas registradas para este contrato</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- 8. SARLAFT y Protección de Datos -->
+            <div class="card mb-4 border-success">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-shield-alt"></i> 8. SARLAFT y Protección de Datos
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <table class="table table-sm mb-0">
+                                <tr>
+                                    <td><strong>Tiene Cláusula SARLAFT:</strong></td>
+                                    <td>
+                                        {% if contrato.tiene_clausula_sarlaft %}
+                                            <span class="badge bg-success">Sí</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">No</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            </table>
+                            <small class="text-muted">
+                                <i class="fas fa-info-circle"></i> Indica si el contrato incluye cláusulas relacionadas con el cumplimiento de SARLAFT (Sistema de Administración de Riesgo de Lavado de Activos y Financiación del Terrorismo).
+                            </small>
+                        </div>
+                        <div class="col-md-6">
+                            <table class="table table-sm mb-0">
+                                <tr>
+                                    <td><strong>Tiene Cláusula de Protección de Datos:</strong></td>
+                                    <td>
+                                        {% if contrato.tiene_clausula_proteccion_datos %}
+                                            <span class="badge bg-success">Sí</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">No</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            </table>
+                            <small class="text-muted">
+                                <i class="fas fa-info-circle"></i> Indica si el contrato incluye cláusulas de protección de datos personales conforme a la normativa vigente.
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Otros Sí -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-file-signature"></i> Otros Sí ({{ otrosi.count }})
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if otrosi %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Número</th>
+                                    <th>Tipo</th>
+                                    <th>Estado</th>
+                                    <th>Versión</th>
+                                    <th>Vigencia Desde</th>
+                                    <th>Archivo</th>
+                                    <th>Cambios</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for otrosi_item in otrosi %}
+                                <tr>
+                                    <td><strong>{{ otrosi_item.numero_otrosi }}</strong></td>
+                                    <td>{{ otrosi_item.get_tipo_display }}</td>
+                                    <td>
+                                        {% if otrosi_item.estado == 'BORRADOR' %}
+                                            <span class="badge bg-secondary">{{ otrosi_item.get_estado_display }}</span>
+                                        {% elif otrosi_item.estado == 'EN_REVISION' %}
+                                            <span class="badge bg-warning text-dark">{{ otrosi_item.get_estado_display }}</span>
+                                        {% elif otrosi_item.estado == 'APROBADO' %}
+                                            <span class="badge bg-success">{{ otrosi_item.get_estado_display }}</span>
+                                        {% else %}
+                                            <span class="badge bg-dark">{{ otrosi_item.get_estado_display }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>v{{ otrosi_item.version }}</td>
+                                    <td>{{ otrosi_item.effective_from }}</td>
+                                    <td>
+                                        {% if otrosi_item.url_archivo %}
+                                            <a href="{{ otrosi_item.url_archivo }}" target="_blank" class="btn btn-sm btn-outline-primary" title="Abrir archivo en nueva pestaña">
+                                                <i class="fas fa-external-link-alt"></i>
+                                            </a>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <small>
+                                            {% for cambio in otrosi_item.get_cambios_resumen %}
+                                                • {{ cambio }}<br>
+                                            {% endfor %}
+                                        </small>
+                                    </td>
+                                    <td>
+                                        <a href="{% url 'gestion:detalle_otrosi' otrosi_item.id %}" class="btn btn-sm btn-primary" title="Ver Detalle">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        {% if user.is_staff %}
+                                            <a href="{% url 'gestion:editar_otrosi' otrosi_item.id %}" class="btn btn-sm btn-warning" title="Editar (Solo Admin)">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                        {% endif %}
+                                        {% if user.is_staff %}
+                                            {% if otrosi_item.tiene_posteriores %}
+                                                <button class="btn btn-sm btn-danger" disabled title="No se puede eliminar porque existen Otros Sí posteriores">
+                                                    <i class="fas fa-lock"></i>
+                                                </button>
+                                            {% else %}
+                                                <a href="{% url 'gestion:eliminar_otrosi' otrosi_item.id %}" class="btn btn-sm btn-danger" title="Eliminar (Solo Admin)" onclick="return confirm('¿Eliminar este Otro Sí? Esta acción no se puede deshacer.');">
+                                                    <i class="fas fa-trash"></i>
+                                                </a>
+                                            {% endif %}
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="mt-3">
+                        <a href="{% url 'gestion:lista_otrosi' contrato.id %}" class="btn btn-success">
+                            <i class="fas fa-list"></i> Ver Todos los Otro Sí
+                        </a>
+                        <a href="{% url 'gestion:vista_vigente_contrato' contrato.id %}" class="btn btn-primary">
+                            <i class="fas fa-eye"></i> Ver Vista Vigente
+                        </a>
+                    </div>
+                    {% else %}
+                    <p class="text-muted">No hay Otros Sí registrados para este contrato.</p>
+                    <a href="{% url 'gestion:nuevo_otrosi' contrato.id %}" class="btn btn-success">
+                        <i class="fas fa-plus"></i> Crear Primer Otro Sí
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Información del Tercero (Cliente o Proveedor) y Local (solo para Cliente) -->
+        <div class="col-lg-4">
+            {% if contrato.tipo_contrato_cliente_proveedor == 'CLIENTE' %}
+            <!-- Información del Arrendatario y Local (solo para CLIENTE) -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-building"></i> Arrendatario
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if contrato.arrendatario %}
+                    <h6>{{ contrato.arrendatario.razon_social }}</h6>
+                    <table class="table table-sm">
+                        <tr>
+                            <td><strong>NIT:</strong></td>
+                            <td>{{ contrato.arrendatario.nit }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Representante Legal:</strong></td>
+                            <td>{{ contrato.arrendatario.nombre_rep_legal }}</td>
+                        </tr>
+                        {% if contrato.arrendatario.nombre_supervisor_op %}
+                        <tr>
+                            <td><strong>Supervisor:</strong></td>
+                            <td>{{ contrato.arrendatario.nombre_supervisor_op }}</td>
+                        </tr>
+                        {% endif %}
+                        {% if contrato.arrendatario.email_supervisor_op %}
+                        <tr>
+                            <td><strong>Email:</strong></td>
+                            <td>{{ contrato.arrendatario.email_supervisor_op }}</td>
+                        </tr>
+                        {% endif %}
+                    </table>
+                    {% else %}
+                    <p class="text-muted">No hay arrendatario asignado</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-store"></i> Local
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if contrato.local %}
+                    <h6>{{ contrato.local.nombre_comercial_stand }}</h6>
+                    <table class="table table-sm">
+                        <tr>
+                            <td><strong>Área Total:</strong></td>
+                            <td>{{ contrato.local.total_area_m2 }} m²</td>
+                        </tr>
+                    </table>
+                    {% else %}
+                    <p class="text-muted">No hay local asignado</p>
+                    {% endif %}
+                </div>
+            </div>
+            {% elif contrato.tipo_contrato_cliente_proveedor == 'PROVEEDOR' %}
+            <!-- Información del Proveedor (solo para PROVEEDOR) -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-truck"></i> Proveedor
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if contrato.proveedor %}
+                    <h6>{{ contrato.proveedor.razon_social }}</h6>
+                    <table class="table table-sm">
+                        <tr>
+                            <td><strong>NIT:</strong></td>
+                            <td>{{ contrato.proveedor.nit }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Representante Legal:</strong></td>
+                            <td>{{ contrato.proveedor.nombre_rep_legal }}</td>
+                        </tr>
+                        {% if contrato.proveedor.nombre_supervisor_op %}
+                        <tr>
+                            <td><strong>Supervisor:</strong></td>
+                            <td>{{ contrato.proveedor.nombre_supervisor_op }}</td>
+                        </tr>
+                        {% endif %}
+                        {% if contrato.proveedor.email_supervisor_op %}
+                        <tr>
+                            <td><strong>Email:</strong></td>
+                            <td>{{ contrato.proveedor.email_supervisor_op }}</td>
+                        </tr>
+                        {% endif %}
+                        {% if contrato.tipo_servicio %}
+                        <tr>
+                            <td><strong>Tipo de Servicio:</strong></td>
+                            <td>{{ contrato.tipo_servicio.nombre }}</td>
+                        </tr>
+                        {% endif %}
+                    </table>
+                    {% else %}
+                    <p class="text-muted">No hay proveedor asignado</p>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Solo funcionalidad específica del detalle de contrato
+    // El formateo de números se maneja automáticamente por el sistema global
+});
+</script>
+{% endblock %}

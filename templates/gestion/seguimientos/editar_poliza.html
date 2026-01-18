@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ titulo }} - Gestión de Contratos{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="display-6">
+                    <i class="fas fa-edit text-primary"></i> {{ titulo }}
+                </h1>
+                {% if contrato %}
+                <a href="{% url 'gestion:vista_vigente_contrato' contrato.id %}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Volver
+                </a>
+                {% else %}
+                <a href="{% url 'gestion:gestionar_polizas' seguimiento.poliza.contrato.id %}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Volver
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-clipboard-list"></i> Editar Seguimiento de Póliza
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="detalle" class="form-label">Detalle del Seguimiento</label>
+                            <textarea class="form-control" id="detalle" name="detalle" rows="6" required>{{ seguimiento.detalle }}</textarea>
+                        </div>
+                        <div class="mb-3">
+                            <small class="text-muted">
+                                <i class="fas fa-info-circle"></i> 
+                                Registrado por: {{ seguimiento.registrado_por|default:"Sistema" }} el {{ seguimiento.fecha_registro|date:"d/m/Y H:i" }}
+                                {% if seguimiento.poliza_tipo %}
+                                    <br><i class="fas fa-shield-alt"></i> Tipo: {{ seguimiento.get_poliza_tipo_display }}
+                                {% endif %}
+                                {% if seguimiento.poliza %}
+                                    <br><i class="fas fa-file-alt"></i> Póliza: {{ seguimiento.poliza.numero_poliza }}
+                                {% endif %}
+                            </small>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            {% if contrato %}
+                            <a href="{% url 'gestion:vista_vigente_contrato' contrato.id %}" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Cancelar
+                            </a>
+                            {% else %}
+                            <a href="{% url 'gestion:gestionar_polizas' seguimiento.poliza.contrato.id %}" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Cancelar
+                            </a>
+                            {% endif %}
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Guardar Cambios
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

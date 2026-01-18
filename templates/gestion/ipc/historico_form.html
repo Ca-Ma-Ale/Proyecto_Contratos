@@ -1,0 +1,131 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ titulo }} - Gestión de Contratos{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="display-6">
+                    <i class="fas fa-edit text-primary"></i> {{ titulo }}
+                </h1>
+                <a href="{% url 'gestion:lista_ipc_historico' %}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Volver
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-file-alt"></i> Datos del IPC Histórico
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" onsubmit="if(typeof cleanFormValues === 'function') cleanFormValues(); return true;">
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            {{ form.año.label_tag }}
+                            {{ form.año }}
+                            {% if form.año.help_text %}
+                                <small class="form-text text-muted">{{ form.año.help_text }}</small>
+                            {% endif %}
+                            {% if form.año.errors %}
+                                <div class="text-danger">{{ form.año.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            {{ form.valor_ipc.label_tag }}
+                            {{ form.valor_ipc }}
+                            {% if form.valor_ipc.help_text %}
+                                <small class="form-text text-muted">{{ form.valor_ipc.help_text }}</small>
+                            {% endif %}
+                            {% if form.valor_ipc.errors %}
+                                <div class="text-danger">{{ form.valor_ipc.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            {{ form.fecha_certificacion.label_tag }}
+                            {{ form.fecha_certificacion }}
+                            {% if form.fecha_certificacion.help_text %}
+                                <small class="form-text text-muted">{{ form.fecha_certificacion.help_text }}</small>
+                            {% endif %}
+                            {% if form.fecha_certificacion.errors %}
+                                <div class="text-danger">{{ form.fecha_certificacion.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            {{ form.observaciones.label_tag }}
+                            {{ form.observaciones }}
+                            {% if form.observaciones.help_text %}
+                                <small class="form-text text-muted">{{ form.observaciones.help_text }}</small>
+                            {% endif %}
+                            {% if form.observaciones.errors %}
+                                <div class="text-danger">{{ form.observaciones.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'gestion:lista_ipc_historico' %}" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Guardar
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Inicializar formateo de porcentaje para el campo valor_ipc
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('[IPC Histórico] Inicializando formateo de porcentaje...');
+        
+        // Buscar el campo de porcentaje
+        const campoPorcentaje = document.querySelector('.percentage-input');
+        console.log('[IPC Histórico] Campo encontrado:', campoPorcentaje);
+        
+        if (campoPorcentaje) {
+            console.log('[IPC Histórico] Campo name:', campoPorcentaje.name);
+            console.log('[IPC Histórico] Campo id:', campoPorcentaje.id);
+            console.log('[IPC Histórico] Campo type:', campoPorcentaje.type);
+        }
+        
+        // Esperar un momento para asegurar que formatMiles.js esté cargado
+        setTimeout(function() {
+            if (typeof initPercentageFormatter === 'function') {
+                console.log('[IPC Histórico] Llamando initPercentageFormatter con forzarReinicializacion=true...');
+                // Forzar reinicialización para reemplazar listeners antiguos
+                initPercentageFormatter('.percentage-input', true);
+                console.log('[IPC Histórico] ✅ Formateo de porcentaje inicializado');
+                
+                // Verificar que el listener se agregó
+                const campo = document.querySelector('.percentage-input');
+                if (campo && campo.dataset.percentLiveInitialized) {
+                    console.log('[IPC Histórico] ✅ Listener confirmado como inicializado');
+                } else {
+                    console.warn('[IPC Histórico] ⚠️ Listener no se inicializó correctamente');
+                }
+            } else {
+                console.error('[IPC Histórico] ❌ initPercentageFormatter no está disponible');
+                console.error('[IPC Histórico] Verificar que formatMiles.js esté cargado');
+            }
+        }, 500);
+    });
+</script>
+{% endblock %}
+

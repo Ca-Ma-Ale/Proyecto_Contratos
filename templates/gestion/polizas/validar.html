@@ -1,0 +1,370 @@
+{% extends 'base.html' %}
+{% load formato_filters %}
+
+{% block title %}{{ titulo }} - Gestión de Contratos{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="display-6">
+                    <i class="fas fa-exclamation-triangle text-warning"></i> {{ titulo }}
+                </h1>
+                <a href="{% url 'gestion:gestionar_polizas' contrato.id %}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Volver a Pólizas
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <!-- Alerta de Inconsistencias -->
+            <div class="card border-warning">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">
+                        <i class="fas fa-exclamation-triangle"></i> Inconsistencias Detectadas
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-warning">
+                        <h6><i class="fas fa-info-circle"></i> La póliza registrada NO cumple con los requisitos del contrato</h6>
+                        <p class="mb-0">Se han detectado las siguientes inconsistencias:</p>
+                    </div>
+                    
+                    <ul class="list-group list-group-flush">
+                        {% for observacion in validacion.observaciones %}
+                        <li class="list-group-item d-flex align-items-center">
+                            <i class="fas fa-times-circle text-danger me-3"></i>
+                            <span>{{ observacion }}</span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Información de la Póliza -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-shield-alt"></i> Información de la Póliza Registrada
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Tipo:</strong> {{ poliza.tipo }}</p>
+                            <p><strong>Número:</strong> {{ poliza.numero_poliza }}</p>
+                            <p><strong>Aseguradora:</strong> {{ poliza.aseguradora|default:"No especificada" }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Valor Asegurado:</strong> ${{ poliza.valor_asegurado|formato_moneda }}</p>
+                            <p><strong>Fecha Vencimiento:</strong> {{ poliza.fecha_vencimiento|date:"d/m/Y" }}</p>
+                            <p><strong>Estado:</strong> {{ poliza.get_estado_aportado_display }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Comparación con Requisitos del Contrato -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-clipboard-check"></i> Comparación con Requisitos del Contrato
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if poliza.tipo == 'RCE - Responsabilidad Civil' and requisitos_contrato.rce.exigida %}
+                    <div class="alert alert-warning">
+                        <h6 class="d-flex justify-content-between align-items-center">
+                            <span><i class="fas fa-shield-alt"></i> Póliza RCE - Requisitos del Contrato</span>
+                            {% if requisitos_contrato.rce.fuente == 'otrosi' %}
+                            <span class="badge bg-primary text-white"><i class="fas fa-sync-alt"></i> Actualizado por {% if requisitos_contrato.rce.otrosi_modificador %}{{ requisitos_contrato.rce.otrosi_modificador }}{% else %}Otro Sí{% endif %}</span>
+                            {% endif %}
+                        </h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p><strong>Valor Requerido:</strong> ${{ requisitos_contrato.rce.valor|formato_moneda }}</p>
+                                <p><strong>Vigencia Requerida:</strong> {{ requisitos_contrato.rce.vigencia }} meses</p>
+                                {% with detalles=requisitos_contrato.rce.detalles %}
+                                {% if contrato.tipo_contrato_cliente_proveedor == 'CLIENTE' %}
+                                <p><strong>PLO (Propietario, Locatario y Ocupante):</strong> ${{ detalles.plo|default:0|formato_moneda }}</p>
+                                <p><strong>Patronal:</strong> ${{ detalles.patronal|default:0|formato_moneda }}</p>
+                                <p><strong>Gastos Médicos de Terceros:</strong> ${{ detalles.gastos_medicos|default:0|formato_moneda }}</p>
+                                <p><strong>Vehículos Propios y No Propios:</strong> ${{ detalles.vehiculos|default:0|formato_moneda }}</p>
+                                <p><strong>Contratistas y Subcontratistas:</strong> ${{ detalles.contratistas|default:0|formato_moneda }}</p>
+                                <p><strong>Perjuicios Extrapatrimoniales:</strong> ${{ detalles.perjuicios|default:0|formato_moneda }}</p>
+                                <p><strong>Daño Moral:</strong> ${{ detalles.dano_moral|default:0|formato_moneda }}</p>
+                                <p class="mb-0"><strong>Lucro Cesante:</strong> ${{ detalles.lucro_cesante|default:0|formato_moneda }}</p>
+                                {% elif contrato.tipo_contrato_cliente_proveedor == 'PROVEEDOR' %}
+                                <p><strong>Daños materiales a terceros:</strong> ${{ detalles.danos_materiales|default:0|formato_moneda }}</p>
+                                <p><strong>Lesiones personales a terceros:</strong> ${{ detalles.lesiones_personales|default:0|formato_moneda }}</p>
+                                <p><strong>Muerte de terceros:</strong> ${{ detalles.muerte_terceros|default:0|formato_moneda }}</p>
+                                <p><strong>Daños a bienes de terceros:</strong> ${{ detalles.danos_bienes_terceros|default:0|formato_moneda }}</p>
+                                <p><strong>Responsabilidad patronal:</strong> ${{ detalles.responsabilidad_patronal|default:0|formato_moneda }}</p>
+                                <p><strong>Responsabilidad cruzada:</strong> ${{ detalles.responsabilidad_cruzada|default:0|formato_moneda }}</p>
+                                <p><strong>Daños por contratistas:</strong> ${{ detalles.danos_contratistas|default:0|formato_moneda }}</p>
+                                <p><strong>Daños durante ejecución:</strong> ${{ detalles.danos_ejecucion_contrato|default:0|formato_moneda }}</p>
+                                <p><strong>Daños en predios vecinos:</strong> ${{ detalles.danos_predios_vecinos|default:0|formato_moneda }}</p>
+                                <p><strong>Gastos médicos:</strong> ${{ detalles.gastos_medicos_cobertura|default:0|formato_moneda }}</p>
+                                <p><strong>Gastos de defensa:</strong> ${{ detalles.gastos_defensa|default:0|formato_moneda }}</p>
+                                <p class="mb-0"><strong>Perjuicios patrimoniales:</strong> ${{ detalles.perjuicios_patrimoniales|default:0|formato_moneda }}</p>
+                                {% endif %}
+                                {% endwith %}
+                            </div>
+                            <div class="col-md-6">
+                                <p class="mb-0"><strong>Vigencia Hasta:</strong> {{ requisitos_contrato.rce.fecha_fin|date:"d/m/Y" }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    {% elif poliza.tipo == 'Cumplimiento' and requisitos_contrato.cumplimiento.exigida %}
+                    <div class="alert alert-info">
+                        <h6 class="d-flex justify-content-between align-items-center">
+                            <span><i class="fas fa-shield-alt"></i> Póliza de Cumplimiento - Requisitos del Contrato</span>
+                            {% if requisitos_contrato.cumplimiento.fuente == 'otrosi' %}
+                            <span class="badge bg-primary text-white"><i class="fas fa-sync-alt"></i> Actualizado por {% if requisitos_contrato.cumplimiento.otrosi_modificador %}{{ requisitos_contrato.cumplimiento.otrosi_modificador }}{% else %}Otro Sí{% endif %}</span>
+                            {% endif %}
+                        </h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p><strong>Valor Requerido:</strong> ${{ requisitos_contrato.cumplimiento.valor|formato_moneda }}</p>
+                                <p><strong>Vigencia Requerida:</strong> {{ requisitos_contrato.cumplimiento.vigencia }} meses</p>
+                                {% with detalles=requisitos_contrato.cumplimiento.detalles %}
+                                {% if contrato.tipo_contrato_cliente_proveedor == 'CLIENTE' %}
+                                <p><strong>Remuneraciones Mensuales:</strong> ${{ detalles.remuneraciones|default:0|formato_moneda }}</p>
+                                <p><strong>Servicios Públicos:</strong> ${{ detalles.servicios_publicos|default:0|formato_moneda }}</p>
+                                <p><strong>IVA:</strong> ${{ detalles.iva|default:0|formato_moneda }}</p>
+                                <p class="mb-0"><strong>Cuota de administración:</strong> ${{ detalles.cuota_admon|default:0|formato_moneda }}</p>
+                                {% elif contrato.tipo_contrato_cliente_proveedor == 'PROVEEDOR' %}
+                                <p><strong>Cumplimiento del contrato:</strong> ${{ detalles.cumplimiento_contrato|default:0|formato_moneda }}</p>
+                                <p><strong>Buen manejo anticipo:</strong> ${{ detalles.buen_manejo_anticipo|default:0|formato_moneda }}</p>
+                                <p><strong>Amortización anticipo:</strong> ${{ detalles.amortizacion_anticipo|default:0|formato_moneda }}</p>
+                                <p><strong>Salarios y prestaciones:</strong> ${{ detalles.salarios_prestaciones|default:0|formato_moneda }}</p>
+                                <p><strong>Aportes seguridad social:</strong> ${{ detalles.aportes_seguridad_social|default:0|formato_moneda }}</p>
+                                <p><strong>Calidad del servicio:</strong> ${{ detalles.calidad_servicio|default:0|formato_moneda }}</p>
+                                <p><strong>Estabilidad de la obra:</strong> ${{ detalles.estabilidad_obra|default:0|formato_moneda }}</p>
+                                <p><strong>Calidad de bienes:</strong> ${{ detalles.calidad_bienes|default:0|formato_moneda }}</p>
+                                <p><strong>Multas:</strong> ${{ detalles.multas|default:0|formato_moneda }}</p>
+                                <p><strong>Cláusula penal:</strong> ${{ detalles.clausula_penal|default:0|formato_moneda }}</p>
+                                <p class="mb-0"><strong>Sanciones incumplimiento:</strong> ${{ detalles.sanciones_incumplimiento|default:0|formato_moneda }}</p>
+                                {% endif %}
+                                {% endwith %}
+                            </div>
+                            <div class="col-md-6">
+                                <p class="mb-0"><strong>Vigencia Hasta:</strong> {{ requisitos_contrato.cumplimiento.fecha_fin|date:"d/m/Y" }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    {% elif poliza.tipo == 'Poliza de Arrendamiento' and requisitos_contrato.arrendamiento.exigida %}
+                    <div class="alert alert-primary">
+                        <h6><i class="fas fa-home"></i> Póliza de Arrendamiento - Requisitos del Contrato</h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p><strong>Valor Requerido:</strong> ${{ requisitos_contrato.arrendamiento.valor|formato_moneda }}</p>
+                                <p><strong>Vigencia Requerida:</strong> {{ requisitos_contrato.arrendamiento.vigencia }} meses</p>
+                                {% with detalles=requisitos_contrato.arrendamiento.detalles %}
+                                <p><strong>Remuneraciones Mensuales:</strong> ${{ detalles.remuneraciones|default:0|formato_moneda }}</p>
+                                <p><strong>Servicios Públicos:</strong> ${{ detalles.servicios_publicos|default:0|formato_moneda }}</p>
+                                <p><strong>IVA:</strong> ${{ detalles.iva|default:0|formato_moneda }}</p>
+                                <p class="mb-0"><strong>Cuota de administración:</strong> ${{ detalles.cuota_admon|default:0|formato_moneda }}</p>
+                                {% endwith %}
+                            </div>
+                            <div class="col-md-6">
+                                <p class="mb-0"><strong>Vigencia Hasta:</strong> {{ requisitos_contrato.arrendamiento.fecha_fin|date:"d/m/Y" }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    {% elif poliza.tipo == 'Arrendamiento' and requisitos_contrato.todo_riesgo.exigida %}
+                    <div class="alert alert-info">
+                        <h6><i class="fas fa-shield-alt"></i> Póliza Todo Riesgo - Requisitos del Contrato</h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p><strong>Valor Requerido:</strong> ${{ requisitos_contrato.todo_riesgo.valor|formato_moneda }}</p>
+                                <p><strong>Vigencia Requerida:</strong> {{ requisitos_contrato.todo_riesgo.vigencia }} meses</p>
+                            </div>
+                            <div class="col-md-6">
+                                <p><strong>Vigencia Hasta:</strong> {{ requisitos_contrato.todo_riesgo.fecha_fin|date:"d/m/Y" }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Acciones -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-cogs"></i> ¿Qué desea hacer?
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="row">
+                            <div class="col-md-6">
+                                <button type="submit" name="accion" value="corregir" class="btn btn-primary btn-lg w-100">
+                                    <i class="fas fa-edit"></i> Corregir Póliza
+                                </button>
+                                <small class="form-text text-muted">Editar la póliza para cumplir con los requisitos</small>
+                            </div>
+                            <div class="col-md-6">
+                                <button type="submit" name="accion" value="continuar" class="btn btn-warning btn-lg w-100">
+                                    <i class="fas fa-check"></i> Continuar de Todas Formas
+                                </button>
+                                <small class="form-text text-muted">Guardar la póliza con las inconsistencias actuales</small>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Panel de información del contrato -->
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header" style="background-color: var(--avenida-dark); color: white;">
+                    <h6 class="mb-0">
+                        <i class="fas fa-file-contract"></i> Información del Contrato
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <p><strong>Número:</strong> {{ contrato.num_contrato }}</p>
+                    <p><strong>{% if contrato.tipo_contrato_cliente_proveedor == 'PROVEEDOR' %}Proveedor{% else %}Arrendatario{% endif %}:</strong> {{ contrato.obtener_nombre_tercero }}</p>
+                    {% if contrato.tipo_contrato_cliente_proveedor == 'CLIENTE' %}
+                    <p><strong>Local:</strong> {{ contrato.local.nombre_comercial_stand|default:"N/A" }}</p>
+                    {% endif %}
+                    <p><strong>Vigencia:</strong> {{ contrato.fecha_final_actualizada|date:"d/m/Y" }}</p>
+                </div>
+            </div>
+
+            <!-- Resumen de Requisitos -->
+            <div class="card mt-3">
+                <div class="card-header" style="background-color: var(--avenida-orange); color: white;">
+                    <h6 class="mb-0">
+                        <i class="fas fa-clipboard-list"></i> Requisitos del Contrato
+                    </h6>
+                </div>
+                <div class="card-body">
+                    {% if requisitos_contrato.rce.exigida %}
+                    <div class="alert alert-info mb-2">
+                        <h6><i class="fas fa-shield-alt"></i> RCE</h6>
+                        <p class="mb-1"><strong>Valor:</strong> ${{ requisitos_contrato.rce.valor|formato_moneda }}</p>
+                        {% if requisitos_contrato.rce.vigencia %}
+                        <p class="mb-1"><strong>Vigencia:</strong> {{ requisitos_contrato.rce.vigencia }} meses</p>
+                        {% endif %}
+                        {% if requisitos_contrato.rce.fecha_fin %}
+                        <p class="mb-1"><strong>Vigente hasta:</strong> {{ requisitos_contrato.rce.fecha_fin|date:"d/m/Y" }}</p>
+                        {% endif %}
+                        {% with detalles=requisitos_contrato.rce.detalles %}
+                        {% if contrato.tipo_contrato_cliente_proveedor == 'CLIENTE' %}
+                        <p class="mb-1"><strong>PLO:</strong> ${{ detalles.plo|default:0|formato_moneda }}</p>
+                        <p class="mb-1"><strong>Patronal:</strong> ${{ detalles.patronal|default:0|formato_moneda }}</p>
+                        <p class="mb-1"><strong>Gastos Médicos:</strong> ${{ detalles.gastos_medicos|default:0|formato_moneda }}</p>
+                        <p class="mb-1"><strong>Vehículos:</strong> ${{ detalles.vehiculos|default:0|formato_moneda }}</p>
+                        <p class="mb-1"><strong>Contratistas:</strong> ${{ detalles.contratistas|default:0|formato_moneda }}</p>
+                        <p class="mb-1"><strong>Perjuicios:</strong> ${{ detalles.perjuicios|default:0|formato_moneda }}</p>
+                        <p class="mb-1"><strong>Daño Moral:</strong> ${{ detalles.dano_moral|default:0|formato_moneda }}</p>
+                        <p class="mb-0"><strong>Lucro Cesante:</strong> ${{ detalles.lucro_cesante|default:0|formato_moneda }}</p>
+                        {% elif contrato.tipo_contrato_cliente_proveedor == 'PROVEEDOR' %}
+                        <p class="mb-1"><strong>Daños materiales:</strong> ${{ detalles.danos_materiales|default:0|formato_moneda }}</p>
+                        <p class="mb-1"><strong>Lesiones personales:</strong> ${{ detalles.lesiones_personales|default:0|formato_moneda }}</p>
+                        <p class="mb-1"><strong>Muerte de terceros:</strong> ${{ detalles.muerte_terceros|default:0|formato_moneda }}</p>
+                        <p class="mb-1"><strong>Daños a bienes:</strong> ${{ detalles.danos_bienes_terceros|default:0|formato_moneda }}</p>
+                        <p class="mb-1"><strong>Responsabilidad patronal:</strong> ${{ detalles.responsabilidad_patronal|default:0|formato_moneda }}</p>
+                        <p class="mb-1"><strong>Responsabilidad cruzada:</strong> ${{ detalles.responsabilidad_cruzada|default:0|formato_moneda }}</p>
+                        <p class="mb-1"><strong>Daños contratistas:</strong> ${{ detalles.danos_contratistas|default:0|formato_moneda }}</p>
+                        <p class="mb-1"><strong>Daños ejecución:</strong> ${{ detalles.danos_ejecucion_contrato|default:0|formato_moneda }}</p>
+                        <p class="mb-1"><strong>Daños predios vecinos:</strong> ${{ detalles.danos_predios_vecinos|default:0|formato_moneda }}</p>
+                        <p class="mb-1"><strong>Gastos médicos:</strong> ${{ detalles.gastos_medicos_cobertura|default:0|formato_moneda }}</p>
+                        <p class="mb-1"><strong>Gastos de defensa:</strong> ${{ detalles.gastos_defensa|default:0|formato_moneda }}</p>
+                        <p class="mb-0"><strong>Perjuicios patrimoniales:</strong> ${{ detalles.perjuicios_patrimoniales|default:0|formato_moneda }}</p>
+                        {% endif %}
+                        {% endwith %}
+                    </div>
+                    {% endif %}
+                    
+                    {% if requisitos_contrato.cumplimiento.exigida %}
+                    <div class="alert alert-warning mb-2">
+                        <h6><i class="fas fa-shield-alt"></i> Cumplimiento</h6>
+                        <p class="mb-1"><strong>Valor:</strong> ${{ requisitos_contrato.cumplimiento.valor|formato_moneda }}</p>
+                        {% if requisitos_contrato.cumplimiento.vigencia %}
+                        <p class="mb-1"><strong>Vigencia:</strong> {{ requisitos_contrato.cumplimiento.vigencia }} meses</p>
+                        {% endif %}
+                        {% if requisitos_contrato.cumplimiento.fecha_fin %}
+                        <p class="mb-1"><strong>Vigente hasta:</strong> {{ requisitos_contrato.cumplimiento.fecha_fin|date:"d/m/Y" }}</p>
+                        {% endif %}
+                        {% with detalles=requisitos_contrato.cumplimiento.detalles %}
+                        {% if contrato.tipo_contrato_cliente_proveedor == 'CLIENTE' %}
+                        <p class="mb-1"><strong>Remuneraciones:</strong> ${{ detalles.remuneraciones|default:0|formato_moneda }}</p>
+                        <p class="mb-1"><strong>Servicios Públicos:</strong> ${{ detalles.servicios_publicos|default:0|formato_moneda }}</p>
+                        <p class="mb-1"><strong>IVA:</strong> ${{ detalles.iva|default:0|formato_moneda }}</p>
+                        <p class="mb-0"><strong>Cuota de administración:</strong> ${{ detalles.cuota_admon|default:0|formato_moneda }}</p>
+                        {% elif contrato.tipo_contrato_cliente_proveedor == 'PROVEEDOR' %}
+                        <p class="mb-1"><strong>Cumplimiento contrato:</strong> ${{ detalles.cumplimiento_contrato|default:0|formato_moneda }}</p>
+                        <p class="mb-1"><strong>Buen manejo anticipo:</strong> ${{ detalles.buen_manejo_anticipo|default:0|formato_moneda }}</p>
+                        <p class="mb-1"><strong>Amortización anticipo:</strong> ${{ detalles.amortizacion_anticipo|default:0|formato_moneda }}</p>
+                        <p class="mb-1"><strong>Salarios y prestaciones:</strong> ${{ detalles.salarios_prestaciones|default:0|formato_moneda }}</p>
+                        <p class="mb-1"><strong>Aportes seguridad social:</strong> ${{ detalles.aportes_seguridad_social|default:0|formato_moneda }}</p>
+                        <p class="mb-1"><strong>Calidad servicio:</strong> ${{ detalles.calidad_servicio|default:0|formato_moneda }}</p>
+                        <p class="mb-1"><strong>Estabilidad obra:</strong> ${{ detalles.estabilidad_obra|default:0|formato_moneda }}</p>
+                        <p class="mb-1"><strong>Calidad bienes:</strong> ${{ detalles.calidad_bienes|default:0|formato_moneda }}</p>
+                        <p class="mb-1"><strong>Multas:</strong> ${{ detalles.multas|default:0|formato_moneda }}</p>
+                        <p class="mb-1"><strong>Cláusula penal:</strong> ${{ detalles.clausula_penal|default:0|formato_moneda }}</p>
+                        <p class="mb-0"><strong>Sanciones incumplimiento:</strong> ${{ detalles.sanciones_incumplimiento|default:0|formato_moneda }}</p>
+                        {% endif %}
+                        {% endwith %}
+                    </div>
+                    {% endif %}
+                    
+                    {% if requisitos_contrato.arrendamiento.exigida %}
+                    <div class="alert alert-primary mb-2">
+                        <h6><i class="fas fa-home"></i> Arrendamiento</h6>
+                        <p class="mb-1"><strong>Valor:</strong> ${{ requisitos_contrato.arrendamiento.valor|formato_moneda }}</p>
+                        {% if requisitos_contrato.arrendamiento.vigencia %}
+                        <p class="mb-1"><strong>Vigencia:</strong> {{ requisitos_contrato.arrendamiento.vigencia }} meses</p>
+                        {% endif %}
+                        {% if requisitos_contrato.arrendamiento.fecha_fin %}
+                        <p class="mb-1"><strong>Vigente hasta:</strong> {{ requisitos_contrato.arrendamiento.fecha_fin|date:"d/m/Y" }}</p>
+                        {% endif %}
+                        {% with detalles=requisitos_contrato.arrendamiento.detalles %}
+                        <p class="mb-1"><strong>Remuneraciones:</strong> ${{ detalles.remuneraciones|default:0|formato_moneda }}</p>
+                        <p class="mb-1"><strong>Servicios Públicos:</strong> ${{ detalles.servicios_publicos|default:0|formato_moneda }}</p>
+                        <p class="mb-1"><strong>IVA:</strong> ${{ detalles.iva|default:0|formato_moneda }}</p>
+                        <p class="mb-0"><strong>Cuota de administración:</strong> ${{ detalles.cuota_admon|default:0|formato_moneda }}</p>
+                        {% endwith %}
+                    </div>
+                    {% endif %}
+                    
+                    {% if requisitos_contrato.todo_riesgo.exigida %}
+                    <div class="alert alert-success mb-2">
+                        <h6><i class="fas fa-shield-alt"></i> Todo Riesgo</h6>
+                        <p class="mb-1"><strong>Valor:</strong> ${{ requisitos_contrato.todo_riesgo.valor|formato_moneda }}</p>
+                        {% if requisitos_contrato.todo_riesgo.vigencia %}
+                        <p class="mb-1"><strong>Vigencia:</strong> {{ requisitos_contrato.todo_riesgo.vigencia }} meses</p>
+                        {% endif %}
+                        {% if requisitos_contrato.todo_riesgo.fecha_fin %}
+                        <p class="mb-0"><strong>Vigente hasta:</strong> {{ requisitos_contrato.todo_riesgo.fecha_fin|date:"d/m/Y" }}</p>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                    
+                    {% if requisitos_contrato.otra.exigida %}
+                    <div class="alert alert-secondary mb-2">
+                        <h6><i class="fas fa-shield-alt"></i> {{ requisitos_contrato.otra.nombre|default:"Otra Póliza" }}</h6>
+                        <p class="mb-1"><strong>Valor:</strong> ${{ requisitos_contrato.otra.valor|formato_moneda }}</p>
+                        {% if requisitos_contrato.otra.vigencia %}
+                        <p class="mb-1"><strong>Vigencia:</strong> {{ requisitos_contrato.otra.vigencia }} meses</p>
+                        {% endif %}
+                        {% if requisitos_contrato.otra.fecha_fin %}
+                        <p class="mb-0"><strong>Vigente hasta:</strong> {{ requisitos_contrato.otra.fecha_fin|date:"d/m/Y" }}</p>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,173 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ titulo }} - Gestión de Contratos{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header con breadcrumb y acciones -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex flex-wrap justify-content-between align-items-center">
+                <nav aria-label="breadcrumb" class="mb-2 mb-md-0">
+                    <ol class="breadcrumb mb-0">
+                        <li class="breadcrumb-item"><a href="{% url 'gestion:dashboard' %}" class="text-decoration-none"><i class="fas fa-home"></i> Dashboard</a></li>
+                        {% if 'Editar' in titulo %}
+                            <li class="breadcrumb-item"><a href="{% url 'gestion:lista_locales' %}" class="text-decoration-none">Locales</a></li>
+                        {% else %}
+                            <li class="breadcrumb-item"><a href="{% url 'gestion:nuevo_contrato' %}" class="text-decoration-none">Nuevo Contrato</a></li>
+                        {% endif %}
+                        <li class="breadcrumb-item active" aria-current="page">{{ titulo }}</li>
+                    </ol>
+                </nav>
+                <div class="btn-group btn-group-sm" role="group">
+                    <a href="{% url 'gestion:lista_locales' %}" class="btn btn-outline-primary">
+                        <i class="fas fa-store"></i> Lista de Locales
+                    </a>
+                    <a href="{% if next_url %}{{ next_url }}{% else %}{% url 'gestion:nuevo_contrato' %}{% endif %}" class="btn btn-outline-secondary">
+                        <i class="fas fa-file-contract"></i> Volver al Contrato
+                    </a>
+                    <a href="{% url 'gestion:dashboard' %}" class="btn btn-outline-dark">
+                        <i class="fas fa-home"></i> Dashboard
+                    </a>
+                </div>
+            </div>
+            <div class="mt-3">
+                <h1 class="display-5 mb-0">
+                    <i class="fas fa-store text-primary"></i> {{ titulo }}
+                </h1>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-gradient" style="background: linear-gradient(135deg, var(--avenida-cyan) 0%, var(--avenida-green) 100%); color: white;">
+                    <h5 class="mb-0">
+                        <i class="fas fa-edit"></i> Información del Local
+                    </h5>
+                </div>
+                <div class="card-body p-4">
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <div class="form-floating mb-3">
+                                    {{ form.nombre_comercial_stand }}
+                                    <label for="{{ form.nombre_comercial_stand.id_for_label }}">
+                                        <i class="fas fa-tag me-2"></i>{{ form.nombre_comercial_stand.label }}
+                                    </label>
+                                </div>
+                                {% if form.nombre_comercial_stand.errors %}
+                                    <div class="alert alert-danger py-2">
+                                        <i class="fas fa-exclamation-circle"></i> {{ form.nombre_comercial_stand.errors }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-floating mb-3">
+                                    {{ form.total_area_m2 }}
+                                    <label for="{{ form.total_area_m2.id_for_label }}">
+                                        <i class="fas fa-ruler-combined me-2"></i>{{ form.total_area_m2.label }}
+                                    </label>
+                                </div>
+                                {% if form.total_area_m2.errors %}
+                                    <div class="alert alert-danger py-2">
+                                        <i class="fas fa-exclamation-circle"></i> {{ form.total_area_m2.errors }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="row mb-4">
+                            <div class="col-md-12">
+                                <div class="form-floating mb-3">
+                                    {{ form.ubicacion }}
+                                    <label for="{{ form.ubicacion.id_for_label }}">
+                                        <i class="fas fa-map-marker-alt me-2"></i>{{ form.ubicacion.label }}
+                                    </label>
+                                </div>
+                                {% if form.ubicacion.errors %}
+                                    <div class="alert alert-danger py-2">
+                                        <i class="fas fa-exclamation-circle"></i> {{ form.ubicacion.errors }}
+                                    </div>
+                                {% endif %}
+                                <small class="text-muted">
+                                    <i class="fas fa-info-circle"></i> {{ form.ubicacion.help_text }}
+                                </small>
+                            </div>
+                        </div>
+
+                        <hr class="my-4">
+
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                    {% if 'Editar' in titulo %}
+                                        <a href="{% url 'gestion:lista_locales' %}" class="btn btn-secondary btn-lg">
+                                            <i class="fas fa-times"></i> Cancelar
+                                        </a>
+                                    {% else %}
+                                        <a href="{% if next_url %}{{ next_url }}{% else %}{% url 'gestion:nuevo_contrato' %}{% endif %}" class="btn btn-secondary btn-lg">
+                                            <i class="fas fa-times"></i> Cancelar
+                                        </a>
+                                    {% endif %}
+                                    <button type="submit" class="btn btn-primary btn-lg">
+                                        <i class="fas fa-save"></i> Guardar Local
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card shadow-sm border-0 mb-3">
+                <div class="card-header" style="background-color: var(--avenida-light); border-bottom: 3px solid var(--avenida-cyan);">
+                    <h5 class="mb-0">
+                        <i class="fas fa-info-circle text-info"></i> Información
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info border-0" style="background-color: rgba(0, 188, 212, 0.1);">
+                        <h6 class="alert-heading"><i class="fas fa-exclamation-triangle"></i> Campos Requeridos:</h6>
+                        <ul class="list-unstyled mb-0">
+                            <li><i class="fas fa-check-circle text-success"></i> Nombre Comercial/Stand (único)</li>
+                            <li><i class="fas fa-check-circle text-success"></i> Ubicación</li>
+                            <li><i class="fas fa-check-circle text-success"></i> Área Total en m²</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm border-0">
+                <div class="card-header" style="background-color: var(--avenida-light); border-bottom: 3px solid var(--avenida-green);">
+                    <h5 class="mb-0">
+                        <i class="fas fa-lightbulb text-warning"></i> Ejemplos
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <h6 class="text-muted mb-3">Ejemplos de Nombres:</h6>
+                    <div class="list-group list-group-flush">
+                        <div class="list-group-item border-0 px-0 py-2">
+                            <i class="fas fa-angle-right text-primary"></i> Local A-101
+                        </div>
+                        <div class="list-group-item border-0 px-0 py-2">
+                            <i class="fas fa-angle-right text-primary"></i> Stand B-205
+                        </div>
+                        <div class="list-group-item border-0 px-0 py-2">
+                            <i class="fas fa-angle-right text-primary"></i> Tienda Central
+                        </div>
+                        <div class="list-group-item border-0 px-0 py-2">
+                            <i class="fas fa-angle-right text-primary"></i> Puesto 15
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

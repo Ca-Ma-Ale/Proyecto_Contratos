@@ -1,0 +1,372 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load formato_filters %}
+
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="display-6">
+                    <i class="fas fa-file-signature text-success"></i> {{ otrosi.numero_otrosi }}
+                </h1>
+                <div>
+                    {% if otrosi.estado == 'BORRADOR' %}
+                        <a href="{% url 'gestion:enviar_revision_otrosi' otrosi.id %}" class="btn btn-warning">
+                            <i class="fas fa-paper-plane"></i> Enviar a Revisión
+                        </a>
+                    {% endif %}
+                    
+                    {% if otrosi.estado == 'EN_REVISION' and user.is_staff %}
+                        <a href="{% url 'gestion:aprobar_otrosi' otrosi.id %}" class="btn btn-success">
+                            <i class="fas fa-check"></i> Aprobar/Rechazar
+                        </a>
+                    {% endif %}
+                    
+                    {% if user.is_staff %}
+                        <a href="{% url 'gestion:editar_otrosi' otrosi.id %}" class="btn btn-primary">
+                            <i class="fas fa-edit"></i> Editar
+                        </a>
+                    {% endif %}
+                    
+                    {% if user.is_staff %}
+                        {% if tiene_posteriores %}
+                            <button class="btn btn-danger" disabled title="No se puede eliminar porque existen Otros Sí posteriores">
+                                <i class="fas fa-lock"></i> Eliminar (Bloqueado)
+                            </button>
+                        {% else %}
+                            <a href="{% url 'gestion:eliminar_otrosi' otrosi.id %}" class="btn btn-danger" onclick="return confirm('¿Está seguro de eliminar este Otro Sí? Esta acción no se puede deshacer.');">
+                                <i class="fas fa-trash"></i> Eliminar
+                            </a>
+                        {% endif %}
+                    {% endif %}
+                    
+                    <a href="{% url 'gestion:lista_otrosi' contrato.id %}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Volver a Lista
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Estado y Metadata -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card {% if otrosi.estado == 'APROBADO' %}border-success{% elif otrosi.estado == 'RECHAZADO' %}border-danger{% elif otrosi.estado == 'EN_REVISION' %}border-warning{% endif %}">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-2">
+                            <strong>Estado:</strong><br>
+                            {% if otrosi.estado == 'BORRADOR' %}
+                                <span class="badge bg-secondary fs-6">{{ otrosi.get_estado_display }}</span>
+                            {% elif otrosi.estado == 'EN_REVISION' %}
+                                <span class="badge bg-warning text-dark fs-6">{{ otrosi.get_estado_display }}</span>
+                            {% elif otrosi.estado == 'APROBADO' %}
+                                <span class="badge bg-success fs-6">{{ otrosi.get_estado_display }}</span>
+                            {% elif otrosi.estado == 'RECHAZADO' %}
+                                <span class="badge bg-danger fs-6">{{ otrosi.get_estado_display }}</span>
+                            {% else %}
+                                <span class="badge bg-dark fs-6">{{ otrosi.get_estado_display }}</span>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-2">
+                            <strong>Tipo:</strong><br>
+                            {{ otrosi.get_tipo_display }}
+                        </div>
+                        <div class="col-md-2">
+                            <strong>Versión:</strong><br>
+                            v{{ otrosi.version }}
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Vigencia:</strong><br>
+                            Desde: {{ otrosi.effective_from }}<br>
+                            {% if otrosi.effective_to %}
+                                Hasta: {{ otrosi.effective_to }}
+                            {% else %}
+                                <span class="text-muted">Sin fecha límite</span>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Vigente Ahora:</strong><br>
+                            {% if otrosi.is_vigente %}
+                                <span class="badge bg-success"><i class="fas fa-check"></i> SÍ</span>
+                            {% else %}
+                                <span class="badge bg-secondary"><i class="fas fa-times"></i> NO</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cambios Resumen -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-list-ul"></i> Resumen de Cambios</h5>
+                </div>
+                <div class="card-body">
+                    <ul>
+                        {% for cambio in cambios %}
+                            <li class="fs-5">{{ cambio }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Información del Contrato Base -->
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-file-contract"></i> Contrato Original</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm">
+                        <tr>
+                            <th>Número:</th>
+                            <td>{{ contrato.num_contrato }}</td>
+                        </tr>
+                        {% if contrato.tipo_contrato_cliente_proveedor == 'CLIENTE' %}
+                        <tr>
+                            <th>Arrendatario:</th>
+                            <td>
+                                {% if contrato.arrendatario %}
+                                    {{ contrato.arrendatario.razon_social }}
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Local:</th>
+                            <td>
+                                {% if contrato.local %}
+                                    {{ contrato.local.nombre_comercial_stand }}
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Canon Base:</th>
+                            <td>
+                                {% if contrato.valor_canon_fijo %}
+                                    ${{ contrato.valor_canon_fijo|formato_moneda }}
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% elif contrato.tipo_contrato_cliente_proveedor == 'PROVEEDOR' %}
+                        <tr>
+                            <th>Proveedor:</th>
+                            <td>
+                                {% if contrato.proveedor %}
+                                    {{ contrato.proveedor.razon_social }}
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Tipo:</th>
+                            <td>
+                                {% if contrato.tipo_servicio %}
+                                    {{ contrato.tipo_servicio.nombre }}
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Valor Mensual:</th>
+                            <td>
+                                {% if contrato.valor_canon_fijo %}
+                                    ${{ contrato.valor_canon_fijo|formato_moneda }}
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endif %}
+                        <tr>
+                            <th>Modalidad:</th>
+                            <td>{{ contrato.modalidad_pago|default:"N/A" }}</td>
+                        </tr>
+                        <tr>
+                            <th>Fecha Final:</th>
+                            <td>{{ contrato.fecha_final_actualizada|default:contrato.fecha_final_inicial }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cambios del Otro Sí -->
+        <div class="col-md-6">
+            <div class="card mb-4 border-primary">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-edit"></i> Modificaciones del Otro Sí</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm">
+                        {% if otrosi.nuevo_valor_canon %}
+                        <tr class="table-warning">
+                            <th>{% if contrato.tipo_contrato_cliente_proveedor == 'PROVEEDOR' %}Nuevo Valor Mensual{% else %}Nuevo Canon{% endif %}:</th>
+                            <td><strong>${{ otrosi.nuevo_valor_canon|formato_moneda }}</strong></td>
+                        </tr>
+                        {% endif %}
+                        
+                        {% if otrosi.nueva_modalidad_pago %}
+                        <tr class="table-warning">
+                            <th>Nueva Modalidad:</th>
+                            <td><strong>{{ otrosi.nueva_modalidad_pago }}</strong></td>
+                        </tr>
+                        {% endif %}
+                        
+                        {% if otrosi.nuevo_canon_minimo_garantizado %}
+                        <tr class="table-warning">
+                            <th>{% if contrato.tipo_contrato_cliente_proveedor == 'PROVEEDOR' %}Nuevo Valor Mínimo{% else %}Nuevo Canon Mínimo{% endif %}:</th>
+                            <td><strong>${{ otrosi.nuevo_canon_minimo_garantizado|formato_moneda }}</strong></td>
+                        </tr>
+                        {% endif %}
+                        
+                        {% if otrosi.nuevo_porcentaje_ventas %}
+                        <tr class="table-warning">
+                            <th>Nuevo % Ventas:</th>
+                            <td><strong>{{ otrosi.nuevo_porcentaje_ventas|formato_porcentaje }}</strong></td>
+                        </tr>
+                        {% endif %}
+                        
+                        {% if otrosi.nueva_fecha_final_actualizada %}
+                        <tr class="table-warning">
+                            <th>Nueva Fecha Final:</th>
+                            <td><strong>{{ otrosi.nueva_fecha_final_actualizada }}</strong></td>
+                        </tr>
+                        {% endif %}
+                        
+                        {% if otrosi.nuevo_plazo_meses %}
+                        <tr class="table-warning">
+                            <th>Nuevo Plazo:</th>
+                            <td><strong>{{ otrosi.nuevo_plazo_meses }} meses</strong></td>
+                        </tr>
+                        {% endif %}
+                        
+                        {% if not otrosi.nuevo_valor_canon and not otrosi.nueva_modalidad_pago and not otrosi.nueva_fecha_final_actualizada %}
+                        <tr>
+                            <td colspan="2" class="text-muted">
+                                <em>Ver descripciones abajo para cambios específicos</em>
+                            </td>
+                        </tr>
+                        {% endif %}
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pólizas -->
+    {% if otrosi.modifica_polizas %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-info">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="fas fa-shield-alt"></i> Actualización de Pólizas</h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-success">
+                        <i class="fas fa-check-circle"></i> <strong>Este Otro Sí incluye modificaciones de pólizas</strong>
+                    </div>
+                    
+                    {% if otrosi.notas_polizas %}
+                        <h6>Detalle de las modificaciones:</h6>
+                        <p>{{ otrosi.notas_polizas|linebreaks }}</p>
+                    {% endif %}
+                    
+                    <a href="{% url 'gestion:gestionar_polizas' contrato.id %}" class="btn btn-info">
+                        <i class="fas fa-shield-alt"></i> Ver Pólizas del Contrato
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Descripciones -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-file-alt"></i> Descripciones y Justificaciones</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <h6>Descripción:</h6>
+                        <p>{{ otrosi.descripcion }}</p>
+                    </div>
+                    
+                    {% if otrosi.clausulas_modificadas %}
+                    <div class="mb-3">
+                        <h6>Cláusulas Modificadas:</h6>
+                        <p>{{ otrosi.clausulas_modificadas|linebreaks }}</p>
+                    </div>
+                    {% endif %}
+                    
+                    {% if otrosi.justificacion_legal %}
+                    <div class="mb-3">
+                        <h6>Justificación Legal:</h6>
+                        <p>{{ otrosi.justificacion_legal|linebreaks }}</p>
+                    </div>
+                    {% endif %}
+                    
+                    {% if otrosi.observaciones %}
+                    <div class="mb-3">
+                        <h6>Observaciones:</h6>
+                        <p>{{ otrosi.observaciones|linebreaks }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Auditoría -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-history"></i> Auditoría</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <strong>Creado Por:</strong> {{ otrosi.creado_por|default:"Sistema" }}<br>
+                            <strong>Fecha:</strong> {{ otrosi.fecha_creacion|date:"Y-m-d H:i:s" }}
+                        </div>
+                        {% if otrosi.aprobado_por %}
+                        <div class="col-md-4">
+                            <strong>Aprobado Por:</strong> {{ otrosi.aprobado_por }}<br>
+                            <strong>Fecha:</strong> {{ otrosi.fecha_aprobacion|date:"Y-m-d H:i:s" }}
+                        </div>
+                        {% endif %}
+                        {% if otrosi.modificado_por %}
+                        <div class="col-md-4">
+                            <strong>Última Modificación:</strong> {{ otrosi.modificado_por }}<br>
+                            <strong>Fecha:</strong> {{ otrosi.fecha_modificacion|date:"Y-m-d H:i:s" }}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
