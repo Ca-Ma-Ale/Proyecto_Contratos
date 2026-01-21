@@ -68,8 +68,8 @@
                                                 <form method="post" action="{% url 'gestion:eliminar_clausula' clausula.id %}" style="display: inline;">
                                                     {% csrf_token %}
                                                     <button type="submit" class="btn btn-sm btn-outline-danger" 
-                                                            onclick="return confirm('¿Está seguro de que desea desactivar la cláusula {{ clausula.titulo }}?')"
-                                                            title="Desactivar">
+                                                            onclick="return confirm('¿Está seguro de que desea eliminar la cláusula {{ clausula.titulo }}? Esta acción no se puede deshacer.')"
+                                                            title="Eliminar">
                                                         <i class="fas fa-trash-alt"></i>
                                                     </button>
                                                 </form>
@@ -164,8 +164,10 @@
 </div>
 
 <script>
+const editarClausulaUrlTemplate = "{% url 'gestion:editar_clausula' 0 %}";
+
 function editarClausula(id, titulo, orden, activa) {
-    document.getElementById('formEditarClausula').action = `/gestion/clausulas/${id}/editar/`;
+    document.getElementById('formEditarClausula').action = editarClausulaUrlTemplate.replace('/0/', `/${id}/`);
     document.getElementById('titulo_edit').value = titulo;
     document.getElementById('orden_edit').value = orden;
     document.getElementById('activa_edit').checked = activa;

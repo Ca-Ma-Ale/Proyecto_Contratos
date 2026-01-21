@@ -172,10 +172,6 @@ document.addEventListener('DOMContentLoaded', function() {
                         .then(data => {
                             if (data.success) {
                                 let redirectUrl = data.redirect_url || '{% url "gestion:detalle_contrato" contrato.id %}';
-                                if (!redirectUrl.startsWith('http') && !redirectUrl.startsWith('/')) {
-                                    redirectUrl = '/' + redirectUrl;
-                                }
-('Redirigiendo a:', redirectUrl);
                                 window.location.replace(redirectUrl);
                             } else {
                                 alert('Error: ' + (data.error || 'Error desconocido'));
@@ -189,9 +185,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 } else {
                     let redirectUrl = data.redirect_url || '{% url "gestion:detalle_contrato" contrato.id %}';
-                    if (!redirectUrl.startsWith('http') && !redirectUrl.startsWith('/')) {
-                        redirectUrl = '/' + redirectUrl;
-                    }
                     window.location.replace(redirectUrl);
                 }
             } else {
@@ -227,10 +220,6 @@ document.addEventListener('DOMContentLoaded', function() {
                         .then(data => {
                             if (data.success) {
                                 let redirectUrl = data.redirect_url || '{% url "gestion:detalle_contrato" contrato.id %}';
-                                if (!redirectUrl.startsWith('http') && !redirectUrl.startsWith('/')) {
-                                    redirectUrl = '/' + redirectUrl;
-                                }
-('Redirigiendo a:', redirectUrl);
                                 window.location.replace(redirectUrl);
                             } else {
                                 alert('Error: ' + (data.error || 'Error desconocido'));

@@ -198,16 +198,15 @@ def editar_clausula(request, clausula_id):
 @admin_required
 @require_http_methods(["POST"])
 def eliminar_clausula(request, clausula_id):
-    """Elimina una cláusula (desactiva)"""
+    """Elimina permanentemente una cláusula"""
     clausula = get_object_or_404(Clausula, id=clausula_id)
     
     try:
-        clausula.activa = False
-        clausula.eliminado_por = request.user.username
-        clausula.save()
-        messages.success(request, f'Cláusula "{clausula.titulo}" desactivada exitosamente.')
+        titulo = clausula.titulo
+        clausula.delete()
+        messages.success(request, f'Cláusula "{titulo}" eliminada exitosamente.')
     except Exception as e:
-        messages.error(request, f'Error al desactivar la cláusula: {str(e)}')
+        messages.error(request, f'Error al eliminar la cláusula: {str(e)}')
     
     return redirect('gestion:gestionar_clausulas')
 
