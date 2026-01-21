@@ -210,13 +210,14 @@ def obtener_alertas_ipc(
                 fecha_aumento_ipc.day
             )
         
-        # Verificar si ya tiene cálculo para esta fecha exacta (excluyendo ANULADOS)
+        # Verificar si ya tiene cálculo para esta fecha exacta
+        # Los cálculos eliminados se borran físicamente de la base de datos
         calculo_existente = CalculoIPC.objects.filter(
             contrato=contrato,
             fecha_aplicacion=fecha_aumento_anual
-        ).exclude(estado='ANULADO').exists()
+        ).exists()
         
-        # Si ya tiene cálculo aplicado o pendiente, no mostrar la alerta
+        # Si ya tiene cálculo, no mostrar la alerta
         if calculo_existente:
             continue
         
@@ -367,13 +368,14 @@ def obtener_alertas_salario_minimo(
                 fecha_aumento_ipc.day
             )
         
-        # Verificar si ya tiene cálculo para esta fecha exacta (excluyendo ANULADOS)
+        # Verificar si ya tiene cálculo para esta fecha exacta
+        # Los cálculos eliminados se borran físicamente de la base de datos
         calculo_existente = CalculoSalarioMinimo.objects.filter(
             contrato=contrato,
             fecha_aplicacion=fecha_aumento_anual
-        ).exclude(estado='ANULADO').exists()
+        ).exists()
         
-        # Si ya tiene cálculo aplicado o pendiente, no mostrar la alerta
+        # Si ya tiene cálculo, no mostrar la alerta
         if calculo_existente:
             continue
         
