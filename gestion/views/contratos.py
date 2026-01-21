@@ -1266,88 +1266,16 @@ def autorizar_renovacion_automatica(request, contrato_id):
             renovacion.aprobado_por = request.user.get_username()
             renovacion.save()
             
-            # NO actualizar fecha_final_actualizada del contrato
-            # La fecha final debe estar solo en la renovación automática
+            # IMPORTANTE: NO modificar los campos de pólizas del contrato base.
+            # Los valores de pólizas deben estar solo en la renovación automática
+            # y obtenerse mediante el efecto cadena en get_polizas_requeridas_contrato.
+            # Esto permite que la vista vigente muestre correctamente el estado histórico
+            # del contrato según la fecha de referencia seleccionada.
+            
+            # Actualizar solo campos de control de renovación automática
             contrato.ultima_renovacion_automatica_por = request.user.get_username()
             contrato.fecha_ultima_renovacion_automatica = timezone.now().date()
             # NO incrementar total_renovaciones_automaticas, se calcula dinámicamente
-            contrato.save()
-            
-            # Actualizar campos de pólizas del contrato si modifica_polizas es True
-            modifica_polizas = form.cleaned_data.get('modifica_polizas', False)
-            if modifica_polizas:
-                campos_polizas_contrato = {
-                    'exige_poliza_rce': form.cleaned_data.get('nuevo_exige_poliza_rce'),
-                    'valor_asegurado_rce': form.cleaned_data.get('nuevo_valor_asegurado_rce'),
-                    'valor_propietario_locatario_ocupante_rce': form.cleaned_data.get('nuevo_valor_propietario_locatario_ocupante_rce'),
-                    'valor_patronal_rce': form.cleaned_data.get('nuevo_valor_patronal_rce'),
-                    'valor_gastos_medicos_rce': form.cleaned_data.get('nuevo_valor_gastos_medicos_rce'),
-                    'valor_vehiculos_rce': form.cleaned_data.get('nuevo_valor_vehiculos_rce'),
-                    'valor_contratistas_rce': form.cleaned_data.get('nuevo_valor_contratistas_rce'),
-                    'valor_perjuicios_extrapatrimoniales_rce': form.cleaned_data.get('nuevo_valor_perjuicios_extrapatrimoniales_rce'),
-                    'valor_dano_moral_rce': form.cleaned_data.get('nuevo_valor_dano_moral_rce'),
-                    'valor_lucro_cesante_rce': form.cleaned_data.get('nuevo_valor_lucro_cesante_rce'),
-                    'rce_cobertura_danos_materiales': form.cleaned_data.get('nuevo_rce_cobertura_danos_materiales'),
-                    'rce_cobertura_lesiones_personales': form.cleaned_data.get('nuevo_rce_cobertura_lesiones_personales'),
-                    'rce_cobertura_muerte_terceros': form.cleaned_data.get('nuevo_rce_cobertura_muerte_terceros'),
-                    'rce_cobertura_danos_bienes_terceros': form.cleaned_data.get('nuevo_rce_cobertura_danos_bienes_terceros'),
-                    'rce_cobertura_responsabilidad_patronal': form.cleaned_data.get('nuevo_rce_cobertura_responsabilidad_patronal'),
-                    'rce_cobertura_responsabilidad_cruzada': form.cleaned_data.get('nuevo_rce_cobertura_responsabilidad_cruzada'),
-                    'rce_cobertura_danos_contratistas': form.cleaned_data.get('nuevo_rce_cobertura_danos_contratistas'),
-                    'rce_cobertura_danos_ejecucion_contrato': form.cleaned_data.get('nuevo_rce_cobertura_danos_ejecucion_contrato'),
-                    'rce_cobertura_danos_predios_vecinos': form.cleaned_data.get('nuevo_rce_cobertura_danos_predios_vecinos'),
-                    'rce_cobertura_gastos_medicos': form.cleaned_data.get('nuevo_rce_cobertura_gastos_medicos'),
-                    'rce_cobertura_gastos_defensa': form.cleaned_data.get('nuevo_rce_cobertura_gastos_defensa'),
-                    'rce_cobertura_perjuicios_patrimoniales': form.cleaned_data.get('nuevo_rce_cobertura_perjuicios_patrimoniales'),
-                    'meses_vigencia_rce': form.cleaned_data.get('nuevo_meses_vigencia_rce'),
-                    'fecha_inicio_vigencia_rce': form.cleaned_data.get('nuevo_fecha_inicio_vigencia_rce'),
-                    'fecha_fin_vigencia_rce': form.cleaned_data.get('nuevo_fecha_fin_vigencia_rce'),
-                    'exige_poliza_cumplimiento': form.cleaned_data.get('nuevo_exige_poliza_cumplimiento'),
-                    'valor_asegurado_cumplimiento': form.cleaned_data.get('nuevo_valor_asegurado_cumplimiento'),
-                    'valor_remuneraciones_cumplimiento': form.cleaned_data.get('nuevo_valor_remuneraciones_cumplimiento'),
-                    'valor_servicios_publicos_cumplimiento': form.cleaned_data.get('nuevo_valor_servicios_publicos_cumplimiento'),
-                    'valor_iva_cumplimiento': form.cleaned_data.get('nuevo_valor_iva_cumplimiento'),
-                    'valor_otros_cumplimiento': form.cleaned_data.get('nuevo_valor_otros_cumplimiento'),
-                    'cumplimiento_amparo_cumplimiento_contrato': form.cleaned_data.get('nuevo_cumplimiento_amparo_cumplimiento_contrato'),
-                    'cumplimiento_amparo_buen_manejo_anticipo': form.cleaned_data.get('nuevo_cumplimiento_amparo_buen_manejo_anticipo'),
-                    'cumplimiento_amparo_amortizacion_anticipo': form.cleaned_data.get('nuevo_cumplimiento_amparo_amortizacion_anticipo'),
-                    'cumplimiento_amparo_salarios_prestaciones': form.cleaned_data.get('nuevo_cumplimiento_amparo_salarios_prestaciones'),
-                    'cumplimiento_amparo_aportes_seguridad_social': form.cleaned_data.get('nuevo_cumplimiento_amparo_aportes_seguridad_social'),
-                    'cumplimiento_amparo_calidad_servicio': form.cleaned_data.get('nuevo_cumplimiento_amparo_calidad_servicio'),
-                    'cumplimiento_amparo_estabilidad_obra': form.cleaned_data.get('nuevo_cumplimiento_amparo_estabilidad_obra'),
-                    'cumplimiento_amparo_calidad_bienes': form.cleaned_data.get('nuevo_cumplimiento_amparo_calidad_bienes'),
-                    'cumplimiento_amparo_multas': form.cleaned_data.get('nuevo_cumplimiento_amparo_multas'),
-                    'cumplimiento_amparo_clausula_penal': form.cleaned_data.get('nuevo_cumplimiento_amparo_clausula_penal'),
-                    'cumplimiento_amparo_sanciones_incumplimiento': form.cleaned_data.get('nuevo_cumplimiento_amparo_sanciones_incumplimiento'),
-                    'meses_vigencia_cumplimiento': form.cleaned_data.get('nuevo_meses_vigencia_cumplimiento'),
-                    'fecha_inicio_vigencia_cumplimiento': form.cleaned_data.get('nuevo_fecha_inicio_vigencia_cumplimiento'),
-                    'fecha_fin_vigencia_cumplimiento': form.cleaned_data.get('nuevo_fecha_fin_vigencia_cumplimiento'),
-                    'exige_poliza_arrendamiento': form.cleaned_data.get('nuevo_exige_poliza_arrendamiento'),
-                    'valor_asegurado_arrendamiento': form.cleaned_data.get('nuevo_valor_asegurado_arrendamiento'),
-                    'valor_remuneraciones_arrendamiento': form.cleaned_data.get('nuevo_valor_remuneraciones_arrendamiento'),
-                    'valor_servicios_publicos_arrendamiento': form.cleaned_data.get('nuevo_valor_servicios_publicos_arrendamiento'),
-                    'valor_iva_arrendamiento': form.cleaned_data.get('nuevo_valor_iva_arrendamiento'),
-                    'valor_otros_arrendamiento': form.cleaned_data.get('nuevo_valor_otros_arrendamiento'),
-                    'meses_vigencia_arrendamiento': form.cleaned_data.get('nuevo_meses_vigencia_arrendamiento'),
-                    'fecha_inicio_vigencia_arrendamiento': form.cleaned_data.get('nuevo_fecha_inicio_vigencia_arrendamiento'),
-                    'fecha_fin_vigencia_arrendamiento': form.cleaned_data.get('nuevo_fecha_fin_vigencia_arrendamiento'),
-                    'exige_poliza_todo_riesgo': form.cleaned_data.get('nuevo_exige_poliza_todo_riesgo'),
-                    'valor_asegurado_todo_riesgo': form.cleaned_data.get('nuevo_valor_asegurado_todo_riesgo'),
-                    'meses_vigencia_todo_riesgo': form.cleaned_data.get('nuevo_meses_vigencia_todo_riesgo'),
-                    'fecha_inicio_vigencia_todo_riesgo': form.cleaned_data.get('nuevo_fecha_inicio_vigencia_todo_riesgo'),
-                    'fecha_fin_vigencia_todo_riesgo': form.cleaned_data.get('nuevo_fecha_fin_vigencia_todo_riesgo'),
-                    'exige_poliza_otra_1': form.cleaned_data.get('nuevo_exige_poliza_otra_1'),
-                    'nombre_poliza_otra_1': form.cleaned_data.get('nuevo_nombre_poliza_otra_1'),
-                    'valor_asegurado_otra_1': form.cleaned_data.get('nuevo_valor_asegurado_otra_1'),
-                    'meses_vigencia_otra_1': form.cleaned_data.get('nuevo_meses_vigencia_otra_1'),
-                    'fecha_inicio_vigencia_otra_1': form.cleaned_data.get('nuevo_fecha_inicio_vigencia_otra_1'),
-                    'fecha_fin_vigencia_otra_1': form.cleaned_data.get('nuevo_fecha_fin_vigencia_otra_1'),
-                }
-                
-                for campo_contrato, valor in campos_polizas_contrato.items():
-                    if valor is not None and hasattr(contrato, campo_contrato):
-                        setattr(contrato, campo_contrato, valor)
-            
             contrato.save()
             
             messages.success(
