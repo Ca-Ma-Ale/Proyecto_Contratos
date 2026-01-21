@@ -594,30 +594,46 @@ def get_polizas_requeridas_contrato(contrato, fecha_referencia=None, permitir_fu
     
     # Función auxiliar para obtener valor con efecto cadena y el Otro Sí modificador
     def obtener_valor_y_otrosi(campo_otrosi, campo_contrato):
+        # Solo buscar eventos que sean vigentes en la fecha de referencia
+        # No permitir eventos futuros para asegurar que respetamos el estado histórico
         otrosi_modificador = get_ultimo_otrosi_que_modifico_campo_hasta_fecha(
-            contrato, campo_otrosi, fecha_referencia, permitir_futuros=considerar_futuros
+            contrato, campo_otrosi, fecha_referencia, permitir_futuros=False
         )
         
         if otrosi_modificador:
-            valor = getattr(otrosi_modificador, campo_otrosi, None)
-            if valor is not None:
-                # Para strings, verificar que no esté vacío
-                if isinstance(valor, str) and valor.strip() != '':
-                    return valor, otrosi_modificador
-                # Para Decimal y otros tipos numéricos
-                elif not isinstance(valor, str):
-                    # Si el valor es 0, verificar si el contrato base tiene un valor diferente
-                    # Si el contrato tiene un valor > 0, entonces 0 en el Otro Sí podría ser un valor por defecto
-                    # y deberíamos usar el valor del contrato en su lugar
-                    from decimal import Decimal
-                    valor_contrato = getattr(contrato, campo_contrato, None)
-                    if isinstance(valor, Decimal) and valor == Decimal('0') and valor_contrato and valor_contrato != Decimal('0'):
-                        # El valor 0 podría ser un valor por defecto, usar el valor del contrato
-                        return valor_contrato, None
-                    # Para otros tipos o cuando el valor no es 0, retornar el valor del Otro Sí
-                    return valor, otrosi_modificador
+            # Verificar que el evento sea realmente vigente en la fecha de referencia
+            # Un evento es vigente si su effective_from <= fecha_referencia
+            # y (effective_to >= fecha_referencia o effective_to es None)
+            # IMPORTANTE: Si effective_from > fecha_referencia, el evento NO es vigente
+            if otrosi_modificador.effective_from > fecha_referencia:
+                # El evento es futuro, no es vigente
+                valor_contrato = getattr(contrato, campo_contrato, None)
+                return valor_contrato, None
+            
+            es_vigente = otrosi_modificador.effective_from <= fecha_referencia
+            if otrosi_modificador.effective_to is not None:
+                es_vigente = es_vigente and otrosi_modificador.effective_to >= fecha_referencia
+            
+            if es_vigente:
+                valor = getattr(otrosi_modificador, campo_otrosi, None)
+                if valor is not None:
+                    # Para strings, verificar que no esté vacío
+                    if isinstance(valor, str) and valor.strip() != '':
+                        return valor, otrosi_modificador
+                    # Para Decimal y otros tipos numéricos
+                    elif not isinstance(valor, str):
+                        # Si el valor es 0, verificar si el contrato base tiene un valor diferente
+                        # Si el contrato tiene un valor > 0, entonces 0 en el Otro Sí podría ser un valor por defecto
+                        # y deberíamos usar el valor del contrato en su lugar
+                        from decimal import Decimal
+                        valor_contrato = getattr(contrato, campo_contrato, None)
+                        if isinstance(valor, Decimal) and valor == Decimal('0') and valor_contrato and valor_contrato != Decimal('0'):
+                            # El valor 0 podría ser un valor por defecto, usar el valor del contrato
+                            return valor_contrato, None
+                        # Para otros tipos o cuando el valor no es 0, retornar el valor del Otro Sí
+                        return valor, otrosi_modificador
         
-        # Si no hay Otro Sí que lo modificó, usar valor del contrato
+        # Si no hay Otro Sí que lo modificó o el evento no es vigente, usar valor del contrato
         valor_contrato = getattr(contrato, campo_contrato, None)
         return valor_contrato, None
     
@@ -678,7 +694,18 @@ def get_polizas_requeridas_contrato(contrato, fecha_referencia=None, permitir_fu
     polizas_requeridas = {}
     
     # Póliza RCE
-    exige_rce = obtener_bool('nuevo_exige_poliza_rce', 'exige_poliza_rce')
+    # Verificar explícitamente que no haya eventos futuros que modifiquen este campo
+    exige_rce, otrosi_exige_rce = obtener_bool_y_otrosi('nuevo_exige_poliza_rce', 'exige_poliza_rce')
+    # Si hay un modificador pero no es vigente, usar el valor del contrato base
+    if otrosi_exige_rce:
+        # Verificar nuevamente la vigencia del modificador
+        if otrosi_exige_rce.effective_from > fecha_referencia:
+            # El evento es futuro, usar valor del contrato base
+            exige_rce = getattr(contrato, 'exige_poliza_rce', False)
+        elif otrosi_exige_rce.effective_to is not None and otrosi_exige_rce.effective_to < fecha_referencia:
+            # El evento ya venció, usar valor del contrato base
+            exige_rce = getattr(contrato, 'exige_poliza_rce', False)
+    
     if exige_rce:
         meses_rce = obtener_valor('nuevo_meses_vigencia_rce', 'meses_vigencia_rce')
         fecha_inicio_rce = obtener_valor('nuevo_fecha_inicio_vigencia_rce', 'fecha_inicio_vigencia_rce')
@@ -736,7 +763,18 @@ def get_polizas_requeridas_contrato(contrato, fecha_referencia=None, permitir_fu
         }
     
     # Póliza Cumplimiento
-    exige_cumplimiento = obtener_bool('nuevo_exige_poliza_cumplimiento', 'exige_poliza_cumplimiento')
+    # Verificar explícitamente que no haya eventos futuros que modifiquen este campo
+    exige_cumplimiento, otrosi_exige_cumplimiento = obtener_bool_y_otrosi('nuevo_exige_poliza_cumplimiento', 'exige_poliza_cumplimiento')
+    # Si hay un modificador pero no es vigente, usar el valor del contrato base
+    if otrosi_exige_cumplimiento:
+        # Verificar nuevamente la vigencia del modificador
+        if otrosi_exige_cumplimiento.effective_from > fecha_referencia:
+            # El evento es futuro, usar valor del contrato base
+            exige_cumplimiento = getattr(contrato, 'exige_poliza_cumplimiento', False)
+        elif otrosi_exige_cumplimiento.effective_to is not None and otrosi_exige_cumplimiento.effective_to < fecha_referencia:
+            # El evento ya venció, usar valor del contrato base
+            exige_cumplimiento = getattr(contrato, 'exige_poliza_cumplimiento', False)
+    
     if exige_cumplimiento:
         meses_cumplimiento = obtener_valor('nuevo_meses_vigencia_cumplimiento', 'meses_vigencia_cumplimiento')
         fecha_inicio_cumplimiento = obtener_valor('nuevo_fecha_inicio_vigencia_cumplimiento', 'fecha_inicio_vigencia_cumplimiento')
@@ -787,7 +825,18 @@ def get_polizas_requeridas_contrato(contrato, fecha_referencia=None, permitir_fu
         }
     
     # Póliza de Arrendamiento
-    exige_arrendamiento = obtener_bool('nuevo_exige_poliza_arrendamiento', 'exige_poliza_arrendamiento')
+    # Verificar explícitamente que no haya eventos futuros que modifiquen este campo
+    exige_arrendamiento, otrosi_exige_arrendamiento = obtener_bool_y_otrosi('nuevo_exige_poliza_arrendamiento', 'exige_poliza_arrendamiento')
+    # Si hay un modificador pero no es vigente, usar el valor del contrato base
+    if otrosi_exige_arrendamiento:
+        # Verificar nuevamente la vigencia del modificador
+        if otrosi_exige_arrendamiento.effective_from > fecha_referencia:
+            # El evento es futuro, usar valor del contrato base
+            exige_arrendamiento = getattr(contrato, 'exige_poliza_arrendamiento', False)
+        elif otrosi_exige_arrendamiento.effective_to is not None and otrosi_exige_arrendamiento.effective_to < fecha_referencia:
+            # El evento ya venció, usar valor del contrato base
+            exige_arrendamiento = getattr(contrato, 'exige_poliza_arrendamiento', False)
+    
     if exige_arrendamiento:
         meses_arrendamiento = obtener_valor('nuevo_meses_vigencia_arrendamiento', 'meses_vigencia_arrendamiento')
         fecha_inicio_arrendamiento = obtener_valor('nuevo_fecha_inicio_vigencia_arrendamiento', 'fecha_inicio_vigencia_arrendamiento')
@@ -820,7 +869,18 @@ def get_polizas_requeridas_contrato(contrato, fecha_referencia=None, permitir_fu
         }
     
     # Póliza Todo Riesgo
-    exige_todo_riesgo = obtener_bool('nuevo_exige_poliza_todo_riesgo', 'exige_poliza_todo_riesgo')
+    # Verificar explícitamente que no haya eventos futuros que modifiquen este campo
+    exige_todo_riesgo, otrosi_exige_todo_riesgo = obtener_bool_y_otrosi('nuevo_exige_poliza_todo_riesgo', 'exige_poliza_todo_riesgo')
+    # Si hay un modificador pero no es vigente, usar el valor del contrato base
+    if otrosi_exige_todo_riesgo:
+        # Verificar nuevamente la vigencia del modificador
+        if otrosi_exige_todo_riesgo.effective_from > fecha_referencia:
+            # El evento es futuro, usar valor del contrato base
+            exige_todo_riesgo = getattr(contrato, 'exige_poliza_todo_riesgo', False)
+        elif otrosi_exige_todo_riesgo.effective_to is not None and otrosi_exige_todo_riesgo.effective_to < fecha_referencia:
+            # El evento ya venció, usar valor del contrato base
+            exige_todo_riesgo = getattr(contrato, 'exige_poliza_todo_riesgo', False)
+    
     if exige_todo_riesgo:
         meses_todo_riesgo = obtener_valor('nuevo_meses_vigencia_todo_riesgo', 'meses_vigencia_todo_riesgo')
         fecha_inicio_todo_riesgo = obtener_valor('nuevo_fecha_inicio_vigencia_todo_riesgo', 'fecha_inicio_vigencia_todo_riesgo')
@@ -847,7 +907,18 @@ def get_polizas_requeridas_contrato(contrato, fecha_referencia=None, permitir_fu
         }
     
     # Otras Pólizas
-    exige_otra = obtener_bool('nuevo_exige_poliza_otra_1', 'exige_poliza_otra_1')
+    # Verificar explícitamente que no haya eventos futuros que modifiquen este campo
+    exige_otra, otrosi_exige_otra = obtener_bool_y_otrosi('nuevo_exige_poliza_otra_1', 'exige_poliza_otra_1')
+    # Si hay un modificador pero no es vigente, usar el valor del contrato base
+    if otrosi_exige_otra:
+        # Verificar nuevamente la vigencia del modificador
+        if otrosi_exige_otra.effective_from > fecha_referencia:
+            # El evento es futuro, usar valor del contrato base
+            exige_otra = getattr(contrato, 'exige_poliza_otra_1', False)
+        elif otrosi_exige_otra.effective_to is not None and otrosi_exige_otra.effective_to < fecha_referencia:
+            # El evento ya venció, usar valor del contrato base
+            exige_otra = getattr(contrato, 'exige_poliza_otra_1', False)
+    
     if exige_otra:
         meses_otra = obtener_valor('nuevo_meses_vigencia_otra_1', 'meses_vigencia_otra_1')
         fecha_inicio_otra = obtener_valor('nuevo_fecha_inicio_vigencia_otra_1', 'fecha_inicio_vigencia_otra_1')
@@ -1189,55 +1260,11 @@ def procesar_renovacion_automatica(contrato, usuario, meses_renovacion=None, usa
     contrato.fecha_ultima_renovacion_automatica = timezone.now().date()
     contrato.total_renovaciones_automaticas += 1
     
-    if modifica_polizas and datos_polizas:
-        campos_contrato_polizas = {
-            'exige_poliza_rce': datos_polizas.get('nuevo_exige_poliza_rce'),
-            'valor_asegurado_rce': datos_polizas.get('nuevo_valor_asegurado_rce'),
-            'valor_propietario_locatario_ocupante_rce': datos_polizas.get('nuevo_valor_propietario_locatario_ocupante_rce'),
-            'valor_patronal_rce': datos_polizas.get('nuevo_valor_patronal_rce'),
-            'valor_gastos_medicos_rce': datos_polizas.get('nuevo_valor_gastos_medicos_rce'),
-            'valor_vehiculos_rce': datos_polizas.get('nuevo_valor_vehiculos_rce'),
-            'valor_contratistas_rce': datos_polizas.get('nuevo_valor_contratistas_rce'),
-            'valor_perjuicios_extrapatrimoniales_rce': datos_polizas.get('nuevo_valor_perjuicios_extrapatrimoniales_rce'),
-            'valor_dano_moral_rce': datos_polizas.get('nuevo_valor_dano_moral_rce'),
-            'valor_lucro_cesante_rce': datos_polizas.get('nuevo_valor_lucro_cesante_rce'),
-            'meses_vigencia_rce': datos_polizas.get('nuevo_meses_vigencia_rce'),
-            'fecha_inicio_vigencia_rce': datos_polizas.get('nuevo_fecha_inicio_vigencia_rce'),
-            'fecha_fin_vigencia_rce': datos_polizas.get('nuevo_fecha_fin_vigencia_rce'),
-            'exige_poliza_cumplimiento': datos_polizas.get('nuevo_exige_poliza_cumplimiento'),
-            'valor_asegurado_cumplimiento': datos_polizas.get('nuevo_valor_asegurado_cumplimiento'),
-            'valor_remuneraciones_cumplimiento': datos_polizas.get('nuevo_valor_remuneraciones_cumplimiento'),
-            'valor_servicios_publicos_cumplimiento': datos_polizas.get('nuevo_valor_servicios_publicos_cumplimiento'),
-            'valor_iva_cumplimiento': datos_polizas.get('nuevo_valor_iva_cumplimiento'),
-            'valor_otros_cumplimiento': datos_polizas.get('nuevo_valor_otros_cumplimiento'),
-            'meses_vigencia_cumplimiento': datos_polizas.get('nuevo_meses_vigencia_cumplimiento'),
-            'fecha_inicio_vigencia_cumplimiento': datos_polizas.get('nuevo_fecha_inicio_vigencia_cumplimiento'),
-            'fecha_fin_vigencia_cumplimiento': datos_polizas.get('nuevo_fecha_fin_vigencia_cumplimiento'),
-            'exige_poliza_arrendamiento': datos_polizas.get('nuevo_exige_poliza_arrendamiento'),
-            'valor_asegurado_arrendamiento': datos_polizas.get('nuevo_valor_asegurado_arrendamiento'),
-            'valor_remuneraciones_arrendamiento': datos_polizas.get('nuevo_valor_remuneraciones_arrendamiento'),
-            'valor_servicios_publicos_arrendamiento': datos_polizas.get('nuevo_valor_servicios_publicos_arrendamiento'),
-            'valor_iva_arrendamiento': datos_polizas.get('nuevo_valor_iva_arrendamiento'),
-            'valor_otros_arrendamiento': datos_polizas.get('nuevo_valor_otros_arrendamiento'),
-            'meses_vigencia_arrendamiento': datos_polizas.get('nuevo_meses_vigencia_arrendamiento'),
-            'fecha_inicio_vigencia_arrendamiento': datos_polizas.get('nuevo_fecha_inicio_vigencia_arrendamiento'),
-            'fecha_fin_vigencia_arrendamiento': datos_polizas.get('nuevo_fecha_fin_vigencia_arrendamiento'),
-            'exige_poliza_todo_riesgo': datos_polizas.get('nuevo_exige_poliza_todo_riesgo'),
-            'valor_asegurado_todo_riesgo': datos_polizas.get('nuevo_valor_asegurado_todo_riesgo'),
-            'meses_vigencia_todo_riesgo': datos_polizas.get('nuevo_meses_vigencia_todo_riesgo'),
-            'fecha_inicio_vigencia_todo_riesgo': datos_polizas.get('nuevo_fecha_inicio_vigencia_todo_riesgo'),
-            'fecha_fin_vigencia_todo_riesgo': datos_polizas.get('nuevo_fecha_fin_vigencia_todo_riesgo'),
-            'exige_poliza_otra_1': datos_polizas.get('nuevo_exige_poliza_otra_1'),
-            'nombre_poliza_otra_1': datos_polizas.get('nuevo_nombre_poliza_otra_1'),
-            'valor_asegurado_otra_1': datos_polizas.get('nuevo_valor_asegurado_otra_1'),
-            'meses_vigencia_otra_1': datos_polizas.get('nuevo_meses_vigencia_otra_1'),
-            'fecha_inicio_vigencia_otra_1': datos_polizas.get('nuevo_fecha_inicio_vigencia_otra_1'),
-            'fecha_fin_vigencia_otra_1': datos_polizas.get('nuevo_fecha_fin_vigencia_otra_1'),
-        }
-        
-        for campo_contrato, valor in campos_contrato_polizas.items():
-            if valor is not None:
-                setattr(contrato, campo_contrato, valor)
+    # IMPORTANTE: NO modificar los campos de pólizas del contrato base.
+    # Los valores de pólizas deben estar solo en la renovación automática
+    # y obtenerse mediante el efecto cadena en get_polizas_requeridas_contrato.
+    # Esto permite que la vista vigente muestre correctamente el estado histórico
+    # del contrato según la fecha de referencia seleccionada.
     
     contrato.save()
     
