@@ -1266,10 +1266,12 @@ def autorizar_renovacion_automatica(request, contrato_id):
             renovacion.aprobado_por = request.user.get_username()
             renovacion.save()
             
-            contrato.fecha_final_actualizada = nueva_fecha_final
+            # NO actualizar fecha_final_actualizada del contrato
+            # La fecha final debe estar solo en la renovación automática
             contrato.ultima_renovacion_automatica_por = request.user.get_username()
             contrato.fecha_ultima_renovacion_automatica = timezone.now().date()
-            contrato.total_renovaciones_automaticas += 1
+            # NO incrementar total_renovaciones_automaticas, se calcula dinámicamente
+            contrato.save()
             
             # Actualizar campos de pólizas del contrato si modifica_polizas es True
             modifica_polizas = form.cleaned_data.get('modifica_polizas', False)

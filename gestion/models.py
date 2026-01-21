@@ -551,6 +551,11 @@ class Contrato(models.Model):
         tercero = self.obtener_tercero()
         return tercero.razon_social if tercero else 'Sin tercero asignado'
     
+    @property
+    def total_renovaciones_automaticas_activas(self):
+        """Retorna el total de renovaciones automáticas existentes (no eliminadas)"""
+        return self.renovaciones_automaticas.count()
+    
     def calcular_fechas_polizas(self):
         """Calcula automáticamente las fechas de vigencia de las pólizas basándose en la fecha de inicio del contrato"""
         

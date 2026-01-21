@@ -67,21 +67,36 @@ class AlertaSalarioMinimo:
 
 def _obtener_fecha_final_contrato(contrato: Contrato, fecha_referencia: date) -> Optional[date]:
     """
-    Obtiene la fecha final actualizada de un contrato considerando Otrosí vigentes.
+    Obtiene la fecha final actualizada de un contrato considerando Otrosí y Renovaciones Automáticas vigentes.
     
     Args:
         contrato: Contrato del cual obtener la fecha final.
-        fecha_referencia: Fecha de referencia para evaluar Otrosí vigentes.
+        fecha_referencia: Fecha de referencia para evaluar eventos vigentes.
     
     Returns:
         Fecha final actualizada o None si no existe.
     """
+    from gestion.models import RenovacionAutomatica
+    
+    # Primero verificar si hay una Renovación Automática vigente (tiene prioridad)
+    renovacion_vigente = RenovacionAutomatica.objects.filter(
+        contrato=contrato,
+        estado='APROBADO',
+        effective_from__lte=fecha_referencia
+    ).order_by('-effective_from', '-fecha_aprobacion', '-version').first()
+    
+    if renovacion_vigente and renovacion_vigente.nueva_fecha_final_actualizada:
+        return renovacion_vigente.nueva_fecha_final_actualizada
+    
+    # Si no hay renovación vigente, verificar Otrosí
     otrosi_modificador = get_ultimo_otrosi_que_modifico_campo_hasta_fecha(
         contrato, 'nueva_fecha_final_actualizada', fecha_referencia
     )
     if otrosi_modificador and otrosi_modificador.nueva_fecha_final_actualizada:
         return otrosi_modificador.nueva_fecha_final_actualizada
-    return contrato.fecha_final_actualizada or contrato.fecha_final_inicial
+    
+    # Si no hay modificaciones, usar fecha final inicial del contrato (NO fecha_final_actualizada)
+    return contrato.fecha_final_inicial
 
 
 def obtener_alertas_expiracion_contratos(
