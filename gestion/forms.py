@@ -580,6 +580,27 @@ class TerceroForm(BaseModelForm):
             'nombre_supervisor_op': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nombre del Supervisor (opcional)'}),
             'email_supervisor_op': forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'correo@ejemplo.com'}),
         }
+    
+    def clean(self):
+        cleaned_data = super().clean()
+        nit = cleaned_data.get('nit')
+        tipo = cleaned_data.get('tipo')
+        
+        if nit and tipo:
+            # Verificar si ya existe otro tercero con el mismo NIT y tipo
+            queryset = Tercero.objects.filter(nit=nit, tipo=tipo)
+            
+            # Si estamos editando, excluir el registro actual
+            if self.instance and self.instance.pk:
+                queryset = queryset.exclude(pk=self.instance.pk)
+            
+            if queryset.exists():
+                tipo_display = dict(Tercero.TIPO_CHOICES).get(tipo, tipo)
+                raise ValidationError({
+                    'nit': f'Ya existe un {tipo_display.lower()} con el NIT {nit}. El mismo NIT puede existir como cliente y proveedor, pero no puede haber duplicados del mismo tipo.'
+                })
+        
+        return cleaned_data
 
 # Alias para compatibilidad hacia atrás
 ArrendatarioForm = TerceroForm

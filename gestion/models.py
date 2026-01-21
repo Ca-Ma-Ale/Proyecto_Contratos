@@ -217,7 +217,7 @@ class Tercero(AuditoriaMixin):
         ('PROVEEDOR', 'Proveedor'),
     ]
     
-    nit = models.CharField(max_length=20, unique=True, verbose_name='NIT')
+    nit = models.CharField(max_length=20, verbose_name='NIT')
     razon_social = models.CharField(max_length=200, verbose_name='Razón Social')
     tipo = models.CharField(
         max_length=20,
@@ -233,6 +233,9 @@ class Tercero(AuditoriaMixin):
         verbose_name = 'Tercero'
         verbose_name_plural = 'Terceros'
         ordering = ['razon_social']
+        constraints = [
+            models.UniqueConstraint(fields=['nit', 'tipo'], name='unique_nit_por_tipo')
+        ]
 
     def __str__(self):
         return self.razon_social
