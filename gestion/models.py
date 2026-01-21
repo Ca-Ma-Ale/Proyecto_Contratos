@@ -1252,8 +1252,27 @@ class RenovacionAutomatica(models.Model):
                 self.version = 1
             
             if not self.numero_renovacion or self.numero_renovacion == 'RA-TEMP':
-                cantidad_renovaciones = RenovacionAutomatica.objects.filter(contrato=self.contrato).count()
-                self.numero_renovacion = f"RA-{cantidad_renovaciones + 1}"
+                # Obtener el número más alto de renovación existente para este contrato
+                # Extraer números de renovaciones existentes (formato RA-X)
+                import re
+                renovaciones_existentes = RenovacionAutomatica.objects.filter(
+                    contrato=self.contrato
+                ).exclude(numero_renovacion__in=['', 'RA-TEMP', None]).values_list('numero_renovacion', flat=True)
+                
+                numeros_existentes = []
+                for num in renovaciones_existentes:
+                    if num:
+                        match = re.search(r'RA-(\d+)', str(num))
+                        if match:
+                            numeros_existentes.append(int(match.group(1)))
+                
+                # Si hay números existentes, usar el máximo + 1, sino empezar en 1
+                if numeros_existentes:
+                    siguiente_numero = max(numeros_existentes) + 1
+                else:
+                    siguiente_numero = 1
+                
+                self.numero_renovacion = f"RA-{siguiente_numero}"
         
         super().save(*args, **kwargs)
 
