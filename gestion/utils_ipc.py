@@ -464,3 +464,48 @@ def obtener_ultimo_calculo_ajuste(contrato):
         return ultimo_salario
     
     return None
+
+
+def obtener_ultimo_calculo_aplicado_hasta_fecha(contrato, fecha_referencia=None):
+    """
+    Obtiene el último cálculo de ajuste (IPC o Salario Mínimo) aplicado hasta una fecha específica.
+    Solo incluye cálculos con estado APLICADO y fecha_aplicacion <= fecha_referencia.
+    
+    Args:
+        contrato: Instancia del modelo Contrato
+        fecha_referencia: date opcional, por defecto usa date.today()
+    
+    Returns:
+        CalculoIPC o CalculoSalarioMinimo o None
+    """
+    from gestion.models import CalculoSalarioMinimo
+    
+    if fecha_referencia is None:
+        fecha_referencia = date.today()
+    
+    # Obtener último cálculo de IPC aplicado hasta la fecha
+    ultimo_ipc = CalculoIPC.objects.filter(
+        contrato=contrato,
+        estado='APLICADO',
+        fecha_aplicacion__lte=fecha_referencia
+    ).order_by('-fecha_aplicacion', '-fecha_calculo').first()
+    
+    # Obtener último cálculo de Salario Mínimo aplicado hasta la fecha
+    ultimo_salario = CalculoSalarioMinimo.objects.filter(
+        contrato=contrato,
+        estado='APLICADO',
+        fecha_aplicacion__lte=fecha_referencia
+    ).order_by('-fecha_aplicacion', '-fecha_calculo').first()
+    
+    # Retornar el más reciente
+    if ultimo_ipc and ultimo_salario:
+        if ultimo_ipc.fecha_aplicacion >= ultimo_salario.fecha_aplicacion:
+            return ultimo_ipc
+        else:
+            return ultimo_salario
+    elif ultimo_ipc:
+        return ultimo_ipc
+    elif ultimo_salario:
+        return ultimo_salario
+    
+    return None

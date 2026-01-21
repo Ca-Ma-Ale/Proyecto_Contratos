@@ -403,6 +403,61 @@ def get_vista_vigente_contrato(contrato, fecha_referencia=None):
         }
         vista['tiene_modificaciones'] = True
     
+    # Considerar cálculos de IPC o Salario Mínimo aplicados hasta la fecha de referencia
+    from gestion.utils_ipc import obtener_ultimo_calculo_aplicado_hasta_fecha
+    ultimo_calculo_aplicado = obtener_ultimo_calculo_aplicado_hasta_fecha(contrato, fecha_referencia)
+    
+    if ultimo_calculo_aplicado and ultimo_calculo_aplicado.nuevo_canon:
+        # Determinar qué campo actualizar según el tipo de contrato
+        aplicar_calculo = False
+        
+        if contrato.tipo_contrato_cliente_proveedor == 'PROVEEDOR':
+            # Para proveedores, actualizar "Valor mensual" (canon_minimo_garantizado)
+            # Solo aplicar si no hay un Otro Sí que lo haya modificado después del cálculo
+            if not otrosi_canon_min:
+                aplicar_calculo = True
+            elif hasattr(otrosi_canon_min, 'fecha_aprobacion') and otrosi_canon_min.fecha_aprobacion:
+                # Si hay Otro Sí, solo aplicar si el cálculo es posterior o igual
+                fecha_otrosi = otrosi_canon_min.fecha_aprobacion.date() if hasattr(otrosi_canon_min.fecha_aprobacion, 'date') else otrosi_canon_min.fecha_aprobacion
+                aplicar_calculo = ultimo_calculo_aplicado.fecha_aplicacion >= fecha_otrosi
+            else:
+                aplicar_calculo = True
+            
+            if aplicar_calculo:
+                vista['canon_minimo_garantizado'] = ultimo_calculo_aplicado.nuevo_canon
+                if 'canon_minimo_garantizado' not in vista['campos_modificados']:
+                    vista['campos_modificados']['canon_minimo_garantizado'] = {
+                        'original': canon_minimo or contrato.canon_minimo_garantizado,
+                        'nuevo': ultimo_calculo_aplicado.nuevo_canon,
+                        'calculo': True,
+                        'tipo_calculo': 'IPC' if hasattr(ultimo_calculo_aplicado, 'ipc_historico') else 'Salario Mínimo',
+                        'fecha_calculo': ultimo_calculo_aplicado.fecha_aplicacion
+                    }
+                    vista['tiene_modificaciones'] = True
+        else:
+            # Para arrendatarios, actualizar "Canon" (valor_canon)
+            # Solo aplicar si no hay un Otro Sí que lo haya modificado después del cálculo
+            if not otrosi_canon:
+                aplicar_calculo = True
+            elif hasattr(otrosi_canon, 'fecha_aprobacion') and otrosi_canon.fecha_aprobacion:
+                # Si hay Otro Sí, solo aplicar si el cálculo es posterior o igual
+                fecha_otrosi = otrosi_canon.fecha_aprobacion.date() if hasattr(otrosi_canon.fecha_aprobacion, 'date') else otrosi_canon.fecha_aprobacion
+                aplicar_calculo = ultimo_calculo_aplicado.fecha_aplicacion >= fecha_otrosi
+            else:
+                aplicar_calculo = True
+            
+            if aplicar_calculo:
+                vista['valor_canon'] = ultimo_calculo_aplicado.nuevo_canon
+                if 'valor_canon' not in vista['campos_modificados']:
+                    vista['campos_modificados']['valor_canon'] = {
+                        'original': valor_canon or contrato.valor_canon_fijo,
+                        'nuevo': ultimo_calculo_aplicado.nuevo_canon,
+                        'calculo': True,
+                        'tipo_calculo': 'IPC' if hasattr(ultimo_calculo_aplicado, 'ipc_historico') else 'Salario Mínimo',
+                        'fecha_calculo': ultimo_calculo_aplicado.fecha_aplicacion
+                    }
+                    vista['tiene_modificaciones'] = True
+    
     porcentaje_ventas, otrosi_ventas = obtener_valor_campo('nuevo_porcentaje_ventas', 'porcentaje_ventas')
     vista['porcentaje_ventas'] = porcentaje_ventas
     if otrosi_ventas:

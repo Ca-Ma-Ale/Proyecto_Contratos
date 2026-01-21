@@ -233,7 +233,7 @@
                         
                         {% if otrosi.nuevo_canon_minimo_garantizado %}
                         <tr class="table-warning">
-                            <th>{% if contrato.tipo_contrato_cliente_proveedor == 'PROVEEDOR' %}Nuevo Valor Mínimo{% else %}Nuevo Canon Mínimo{% endif %}:</th>
+                            <th>{% if contrato.tipo_contrato_cliente_proveedor == 'PROVEEDOR' %}Nuevo Valor Mensual{% else %}Nuevo Canon Mínimo Garantizado{% endif %}:</th>
                             <td><strong>${{ otrosi.nuevo_canon_minimo_garantizado|formato_moneda }}</strong></td>
                         </tr>
                         {% endif %}

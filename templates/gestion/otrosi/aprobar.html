@@ -59,7 +59,7 @@
                     
                     {% if otrosi.nuevo_canon_minimo_garantizado %}
                         <div class="alert alert-info">
-                            <strong>{% if contrato.tipo_contrato_cliente_proveedor == 'PROVEEDOR' %}Valor Mínimo{% else %}Canon Mínimo Garantizado{% endif %}:</strong> ${{ otrosi.nuevo_canon_minimo_garantizado|formato_moneda }}
+                            <strong>{% if contrato.tipo_contrato_cliente_proveedor == 'PROVEEDOR' %}Valor Mensual{% else %}Canon Mínimo Garantizado{% endif %}:</strong> ${{ otrosi.nuevo_canon_minimo_garantizado|formato_moneda }}
                         </div>
                     {% endif %}
                     

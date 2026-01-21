@@ -28,7 +28,7 @@ from gestion.utils_otrosi import (
     get_ultimo_otrosi_aprobado,
     get_otrosi_vigente,
 )
-from gestion.utils_ipc import obtener_ultimo_calculo_ipc_aplicado
+from gestion.utils_ipc import obtener_ultimo_calculo_ipc_aplicado, obtener_ultimo_calculo_aplicado_hasta_fecha
 from .utils import (
     obtener_configuracion_empresa,
     registrar_seguimientos_contrato_desde_formulario,
@@ -614,6 +614,45 @@ def detalle_contrato(request, contrato_id):
     # Obtener el último cálculo IPC aplicado
     ultimo_calculo_ipc_aplicado = obtener_ultimo_calculo_ipc_aplicado(contrato)
     
+    # Obtener el último cálculo aplicado (IPC o Salario Mínimo) para actualizar valores económicos
+    ultimo_calculo_aplicado = obtener_ultimo_calculo_aplicado_hasta_fecha(contrato, date.today())
+    
+    # Actualizar valores económicos con el último cálculo aplicado si existe
+    if ultimo_calculo_aplicado and ultimo_calculo_aplicado.nuevo_canon:
+        # Verificar si hay Otro Sí que haya modificado estos campos después del cálculo
+        otrosi_canon_min = otrosi_modificadores.get('nuevo_canon_minimo_garantizado')
+        otrosi_canon = otrosi_modificadores.get('nuevo_valor_canon')
+        
+        # Si hay un cálculo aplicado, actualizar el canon según el tipo de contrato
+        if contrato.tipo_contrato_cliente_proveedor == 'PROVEEDOR':
+            # Para proveedores, actualizar "Valor mensual" (canon_minimo_garantizado)
+            # Solo si no hay Otro Sí posterior o el cálculo es posterior al Otro Sí
+            aplicar_calculo = False
+            if not otrosi_canon_min:
+                aplicar_calculo = True
+            elif hasattr(otrosi_canon_min, 'fecha_aprobacion') and otrosi_canon_min.fecha_aprobacion:
+                fecha_otrosi = otrosi_canon_min.fecha_aprobacion.date() if hasattr(otrosi_canon_min.fecha_aprobacion, 'date') else otrosi_canon_min.fecha_aprobacion
+                aplicar_calculo = ultimo_calculo_aplicado.fecha_aplicacion >= fecha_otrosi
+            else:
+                aplicar_calculo = True
+            
+            if aplicar_calculo:
+                canon_minimo_garantizado = ultimo_calculo_aplicado.nuevo_canon
+        else:
+            # Para arrendatarios, actualizar "Canon" (valor_canon_fijo)
+            # Solo si no hay Otro Sí posterior o el cálculo es posterior al Otro Sí
+            aplicar_calculo = False
+            if not otrosi_canon:
+                aplicar_calculo = True
+            elif hasattr(otrosi_canon, 'fecha_aprobacion') and otrosi_canon.fecha_aprobacion:
+                fecha_otrosi = otrosi_canon.fecha_aprobacion.date() if hasattr(otrosi_canon.fecha_aprobacion, 'date') else otrosi_canon.fecha_aprobacion
+                aplicar_calculo = ultimo_calculo_aplicado.fecha_aplicacion >= fecha_otrosi
+            else:
+                aplicar_calculo = True
+            
+            if aplicar_calculo:
+                valor_canon_fijo = ultimo_calculo_aplicado.nuevo_canon
+    
     context = {
         'contrato': contrato,
         'requerimientos_poliza': requerimientos_poliza,
@@ -700,6 +739,7 @@ def detalle_contrato(request, contrato_id):
         # Valores económicos
         'valor_canon_fijo': valor_canon_fijo,
         'canon_minimo_garantizado': canon_minimo_garantizado,
+        'ultimo_calculo_aplicado': ultimo_calculo_aplicado,
         'porcentaje_ventas': porcentaje_ventas,
         'modalidad_pago': modalidad_pago_valor,
         'modalidad_pago_display': modalidad_pago_display,
@@ -983,7 +1023,7 @@ def exportar_contratos(request):
                 ColumnaExportacion('Terminación Anticipada (Días)', ancho=28, es_numerica=True, alineacion='right'),
                 ColumnaExportacion('Modalidad Pago', ancho=25),
                 ColumnaExportacion('Canon Fijo', ancho=18, es_numerica=True, alineacion='right'),
-                ColumnaExportacion('Canon Mínimo Garantizado', ancho=28, es_numerica=True, alineacion='right'),
+                ColumnaExportacion('Canon Mínimo Garantizado / Valor Mensual', ancho=35, es_numerica=True, alineacion='right'),
                 ColumnaExportacion('% Ventas', ancho=15, es_numerica=True, alineacion='right'),
                 ColumnaExportacion('Reporta Ventas', ancho=18),
                 ColumnaExportacion('Día Límite Reporte Ventas', ancho=28, es_numerica=True, alineacion='right'),

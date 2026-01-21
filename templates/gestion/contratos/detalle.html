@@ -149,7 +149,11 @@
                                     <td><strong>Canon Fijo:</strong></td>
                                     <td>
                                         $<span class="formato-moneda">{{ valor_canon_fijo|default:contrato.valor_canon_fijo|floatformat:0 }}</span>
-                                        {% if otrosi_modificadores.nuevo_valor_canon %}
+                                        {% if ultimo_calculo_aplicado and ultimo_calculo_aplicado.nuevo_canon == valor_canon_fijo and contrato.tipo_contrato_cliente_proveedor != 'PROVEEDOR' %}
+                                            <span class="badge bg-success ms-2" title="Ajuste por {% if ultimo_calculo_aplicado.ipc_historico %}IPC{% else %}Salario Mínimo{% endif %} aplicado el {{ ultimo_calculo_aplicado.fecha_aplicacion|date:'d/m/Y' }}">
+                                                <i class="fas fa-calculator"></i> {% if ultimo_calculo_aplicado.ipc_historico %}IPC{% else %}Salario Mínimo{% endif %} {{ ultimo_calculo_aplicado.fecha_aplicacion|date:'d/m/Y' }}
+                                            </span>
+                                        {% elif otrosi_modificadores.nuevo_valor_canon %}
                                             <span class="badge bg-info ms-2" title="Del documento {% if otrosi_modificadores.nuevo_valor_canon.numero_otrosi %}{{ otrosi_modificadores.nuevo_valor_canon.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_valor_canon.numero_renovacion }}{% endif %}">
                                                 <i class="fas {% if otrosi_modificadores.nuevo_valor_canon.numero_otrosi %}fa-file-signature{% else %}fa-sync-alt{% endif %}"></i> {% if otrosi_modificadores.nuevo_valor_canon.numero_otrosi %}{{ otrosi_modificadores.nuevo_valor_canon.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_valor_canon.numero_renovacion }}{% endif %}
                                             </span>
@@ -159,10 +163,14 @@
                                 {% endif %}
                                 {% if canon_minimo_garantizado or contrato.canon_minimo_garantizado %}
                                 <tr>
-                                    <td><strong>Mínimo Garantizado:</strong></td>
+                                    <td><strong>{% if contrato.tipo_contrato_cliente_proveedor == 'PROVEEDOR' %}Valor mensual{% else %}Mínimo Garantizado{% endif %}:</strong></td>
                                     <td>
                                         $<span class="formato-moneda">{{ canon_minimo_garantizado|default:contrato.canon_minimo_garantizado|floatformat:0 }}</span>
-                                        {% if otrosi_modificadores.nuevo_canon_minimo_garantizado %}
+                                        {% if ultimo_calculo_aplicado and ultimo_calculo_aplicado.nuevo_canon == canon_minimo_garantizado %}
+                                            <span class="badge bg-success ms-2" title="Ajuste por {% if ultimo_calculo_aplicado.ipc_historico %}IPC{% else %}Salario Mínimo{% endif %} aplicado el {{ ultimo_calculo_aplicado.fecha_aplicacion|date:'d/m/Y' }}">
+                                                <i class="fas fa-calculator"></i> {% if ultimo_calculo_aplicado.ipc_historico %}IPC{% else %}Salario Mínimo{% endif %} {{ ultimo_calculo_aplicado.fecha_aplicacion|date:'d/m/Y' }}
+                                            </span>
+                                        {% elif otrosi_modificadores.nuevo_canon_minimo_garantizado %}
                                             <span class="badge bg-info ms-2" title="Del documento {% if otrosi_modificadores.nuevo_canon_minimo_garantizado.numero_otrosi %}{{ otrosi_modificadores.nuevo_canon_minimo_garantizado.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_canon_minimo_garantizado.numero_renovacion }}{% endif %}">
                                                 <i class="fas {% if otrosi_modificadores.nuevo_canon_minimo_garantizado.numero_otrosi %}fa-file-signature{% else %}fa-sync-alt{% endif %}"></i> {% if otrosi_modificadores.nuevo_canon_minimo_garantizado.numero_otrosi %}{{ otrosi_modificadores.nuevo_canon_minimo_garantizado.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_canon_minimo_garantizado.numero_renovacion }}{% endif %}
                                             </span>

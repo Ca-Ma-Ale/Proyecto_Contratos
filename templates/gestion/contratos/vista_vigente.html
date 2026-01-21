@@ -136,9 +136,15 @@
                                     N/A
                                 {% endif %}
                                 {% if 'valor_canon' in vista_vigente.campos_modificados %}
-                                    <span class="badge bg-info ms-2" title="Del documento {{ vista_vigente.campos_modificados.valor_canon.otrosi }}">
-                                        <i class="fas fa-file-signature"></i> {{ vista_vigente.campos_modificados.valor_canon.otrosi }}
-                                    </span>
+                                    {% if vista_vigente.campos_modificados.valor_canon.calculo %}
+                                        <span class="badge bg-success ms-2" title="Ajuste por {{ vista_vigente.campos_modificados.valor_canon.tipo_calculo }} aplicado el {{ vista_vigente.campos_modificados.valor_canon.fecha_calculo|date:'d/m/Y' }}">
+                                            <i class="fas fa-calculator"></i> {{ vista_vigente.campos_modificados.valor_canon.tipo_calculo }} {{ vista_vigente.campos_modificados.valor_canon.fecha_calculo|date:'d/m/Y' }}
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-info ms-2" title="Del documento {{ vista_vigente.campos_modificados.valor_canon.otrosi }}">
+                                            <i class="fas fa-file-signature"></i> {{ vista_vigente.campos_modificados.valor_canon.otrosi }}
+                                        </span>
+                                    {% endif %}
                                 {% endif %}
                             </td>
                         </tr>
@@ -162,9 +168,15 @@
                                 {% if vista_vigente.canon_minimo_garantizado %}
                                     ${{ vista_vigente.canon_minimo_garantizado|formato_moneda }}
                                     {% if 'canon_minimo_garantizado' in vista_vigente.campos_modificados %}
-                                        <span class="badge bg-info ms-2" title="Del documento {{ vista_vigente.campos_modificados.canon_minimo_garantizado.otrosi }}">
-                                            <i class="fas fa-file-signature"></i> {{ vista_vigente.campos_modificados.canon_minimo_garantizado.otrosi }}
-                                        </span>
+                                        {% if vista_vigente.campos_modificados.canon_minimo_garantizado.calculo %}
+                                            <span class="badge bg-success ms-2" title="Ajuste por {{ vista_vigente.campos_modificados.canon_minimo_garantizado.tipo_calculo }} aplicado el {{ vista_vigente.campos_modificados.canon_minimo_garantizado.fecha_calculo|date:'d/m/Y' }}">
+                                                <i class="fas fa-calculator"></i> {{ vista_vigente.campos_modificados.canon_minimo_garantizado.tipo_calculo }} {{ vista_vigente.campos_modificados.canon_minimo_garantizado.fecha_calculo|date:'d/m/Y' }}
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-info ms-2" title="Del documento {{ vista_vigente.campos_modificados.canon_minimo_garantizado.otrosi }}">
+                                                <i class="fas fa-file-signature"></i> {{ vista_vigente.campos_modificados.canon_minimo_garantizado.otrosi }}
+                                            </span>
+                                        {% endif %}
                                     {% endif %}
                                 {% else %}
                                     <span class="text-muted">N/A</span>
@@ -194,9 +206,15 @@
                                 {% if vista_vigente.canon_minimo_garantizado %}
                                     ${{ vista_vigente.canon_minimo_garantizado|formato_moneda }}
                                     {% if 'canon_minimo_garantizado' in vista_vigente.campos_modificados %}
-                                        <span class="badge bg-info ms-2" title="Del documento {{ vista_vigente.campos_modificados.canon_minimo_garantizado.otrosi }}">
-                                            <i class="fas fa-file-signature"></i> {{ vista_vigente.campos_modificados.canon_minimo_garantizado.otrosi }}
-                                        </span>
+                                        {% if vista_vigente.campos_modificados.canon_minimo_garantizado.calculo %}
+                                            <span class="badge bg-success ms-2" title="Ajuste por {{ vista_vigente.campos_modificados.canon_minimo_garantizado.tipo_calculo }} aplicado el {{ vista_vigente.campos_modificados.canon_minimo_garantizado.fecha_calculo|date:'d/m/Y' }}">
+                                                <i class="fas fa-calculator"></i> {{ vista_vigente.campos_modificados.canon_minimo_garantizado.tipo_calculo }} {{ vista_vigente.campos_modificados.canon_minimo_garantizado.fecha_calculo|date:'d/m/Y' }}
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-info ms-2" title="Del documento {{ vista_vigente.campos_modificados.canon_minimo_garantizado.otrosi }}">
+                                                <i class="fas fa-file-signature"></i> {{ vista_vigente.campos_modificados.canon_minimo_garantizado.otrosi }}
+                                            </span>
+                                        {% endif %}
                                     {% endif %}
                                 {% else %}
                                     <span class="text-muted">N/A</span>
