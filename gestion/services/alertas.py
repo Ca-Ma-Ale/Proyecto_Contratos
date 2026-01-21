@@ -191,24 +191,14 @@ def obtener_alertas_ipc(
         if periodicidad_ipc not in ['ANUAL']:
             continue
         
-        # La fecha de aumento es obligatoria
-        if not fecha_aumento_ipc:
+        # Calcular la próxima fecha de aumento usando la función utilitaria
+        # que considera el último cálculo realizado y calcula correctamente
+        from gestion.utils_ipc import calcular_proxima_fecha_aumento
+        fecha_aumento_anual = calcular_proxima_fecha_aumento(contrato, fecha_base)
+        
+        # Si no se puede calcular la fecha, continuar con el siguiente contrato
+        if not fecha_aumento_anual:
             continue
-        
-        # Calcular la fecha de aumento para el año actual
-        fecha_aumento_anual = date(
-            fecha_base.year,
-            fecha_aumento_ipc.month,
-            fecha_aumento_ipc.day
-        )
-        
-        # Si la fecha de aumento ya pasó este año, calcular para el próximo año
-        if fecha_aumento_anual < fecha_base:
-            fecha_aumento_anual = date(
-                fecha_base.year + 1,
-                fecha_aumento_ipc.month,
-                fecha_aumento_ipc.day
-            )
         
         # Verificar si ya tiene cálculo para esta fecha exacta
         # Los cálculos eliminados se borran físicamente de la base de datos
@@ -349,24 +339,14 @@ def obtener_alertas_salario_minimo(
         if periodicidad_ipc not in ['ANUAL']:
             continue
         
-        # La fecha de aumento es obligatoria
-        if not fecha_aumento_ipc:
+        # Calcular la próxima fecha de aumento usando la función utilitaria
+        # que considera el último cálculo realizado y calcula correctamente
+        from gestion.utils_ipc import calcular_proxima_fecha_aumento
+        fecha_aumento_anual = calcular_proxima_fecha_aumento(contrato, fecha_base)
+        
+        # Si no se puede calcular la fecha, continuar con el siguiente contrato
+        if not fecha_aumento_anual:
             continue
-        
-        # Calcular la fecha de aumento para el año actual
-        fecha_aumento_anual = date(
-            fecha_base.year,
-            fecha_aumento_ipc.month,
-            fecha_aumento_ipc.day
-        )
-        
-        # Si la fecha de aumento ya pasó este año, calcular para el próximo año
-        if fecha_aumento_anual < fecha_base:
-            fecha_aumento_anual = date(
-                fecha_base.year + 1,
-                fecha_aumento_ipc.month,
-                fecha_aumento_ipc.day
-            )
         
         # Verificar si ya tiene cálculo para esta fecha exacta
         # Los cálculos eliminados se borran físicamente de la base de datos
