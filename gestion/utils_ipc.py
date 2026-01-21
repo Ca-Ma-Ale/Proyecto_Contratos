@@ -323,3 +323,118 @@ def obtener_ultimo_calculo_ipc_aplicado(contrato):
         contrato=contrato,
         estado='APLICADO'
     ).order_by('-fecha_aplicacion', '-fecha_calculo').first()
+
+
+def calcular_proxima_fecha_aumento(contrato, fecha_referencia=None):
+    """
+    Calcula la próxima fecha de aumento IPC/Salario Mínimo para un contrato.
+    
+    Si la periodicidad es ANUAL y no hay fecha_aumento_ipc, calcula fecha_inicial_contrato + 1 año.
+    Si hay fecha_aumento_ipc, calcula la próxima ocurrencia de esa fecha.
+    
+    Args:
+        contrato: Instancia del modelo Contrato
+        fecha_referencia: date opcional, por defecto usa date.today()
+    
+    Returns:
+        date con la próxima fecha de aumento o None si no se puede calcular
+    """
+    from gestion.utils_otrosi import get_ultimo_otrosi_que_modifico_campo_hasta_fecha
+    
+    if fecha_referencia is None:
+        fecha_referencia = date.today()
+    
+    # Obtener fecha de aumento considerando otrosí
+    otrosi_fecha_ipc = get_ultimo_otrosi_que_modifico_campo_hasta_fecha(
+        contrato, 'nueva_fecha_aumento_ipc', fecha_referencia
+    )
+    if otrosi_fecha_ipc and otrosi_fecha_ipc.nueva_fecha_aumento_ipc:
+        fecha_base = otrosi_fecha_ipc.nueva_fecha_aumento_ipc
+    else:
+        fecha_base = contrato.fecha_aumento_ipc
+    
+    # Obtener periodicidad considerando otrosí
+    otrosi_periodicidad = get_ultimo_otrosi_que_modifico_campo_hasta_fecha(
+        contrato, 'nueva_periodicidad_ipc', fecha_referencia
+    )
+    if otrosi_periodicidad and otrosi_periodicidad.nueva_periodicidad_ipc:
+        periodicidad = otrosi_periodicidad.nueva_periodicidad_ipc
+    else:
+        periodicidad = contrato.periodicidad_ipc
+    
+    # Si es ANUAL
+    if periodicidad == 'ANUAL':
+        if fecha_base:
+            # Calcular próxima ocurrencia de fecha_base
+            fecha_proxima = date(
+                fecha_referencia.year,
+                fecha_base.month,
+                fecha_base.day
+            )
+            # Si ya pasó este año, calcular para el próximo año
+            if fecha_proxima < fecha_referencia:
+                fecha_proxima = date(
+                    fecha_referencia.year + 1,
+                    fecha_base.month,
+                    fecha_base.day
+                )
+            return fecha_proxima
+        elif contrato.fecha_inicial_contrato:
+            # Si no hay fecha_aumento_ipc pero hay fecha_inicial_contrato, calcular fecha_inicial + 1 año
+            fecha_inicial = contrato.fecha_inicial_contrato
+            # Calcular fecha_inicial + 1 año (no solo la próxima ocurrencia en el año actual)
+            fecha_proxima = date(
+                fecha_inicial.year + 1,
+                fecha_inicial.month,
+                fecha_inicial.day
+            )
+            # Si esa fecha ya pasó, calcular para el próximo año desde la fecha de referencia
+            if fecha_proxima < fecha_referencia:
+                fecha_proxima = date(
+                    fecha_referencia.year + 1,
+                    fecha_inicial.month,
+                    fecha_inicial.day
+                )
+            return fecha_proxima
+    
+    # Si es FECHA_ESPECIFICA, retornar la fecha base
+    elif periodicidad == 'FECHA_ESPECIFICA' and fecha_base:
+        return fecha_base
+    
+    return None
+
+
+def obtener_ultimo_calculo_ajuste(contrato):
+    """
+    Obtiene el último cálculo de ajuste (IPC o Salario Mínimo) para un contrato.
+    
+    Args:
+        contrato: Instancia del modelo Contrato
+    
+    Returns:
+        CalculoIPC o CalculoSalarioMinimo o None
+    """
+    from gestion.models import CalculoSalarioMinimo
+    
+    # Obtener último cálculo de IPC
+    ultimo_ipc = CalculoIPC.objects.filter(
+        contrato=contrato
+    ).order_by('-fecha_aplicacion', '-fecha_calculo').first()
+    
+    # Obtener último cálculo de Salario Mínimo
+    ultimo_salario = CalculoSalarioMinimo.objects.filter(
+        contrato=contrato
+    ).order_by('-fecha_aplicacion', '-fecha_calculo').first()
+    
+    # Retornar el más reciente
+    if ultimo_ipc and ultimo_salario:
+        if ultimo_ipc.fecha_aplicacion >= ultimo_salario.fecha_aplicacion:
+            return ultimo_ipc
+        else:
+            return ultimo_salario
+    elif ultimo_ipc:
+        return ultimo_ipc
+    elif ultimo_salario:
+        return ultimo_salario
+    
+    return None

@@ -1849,6 +1849,25 @@ class CalculoIPCForm(BaseForm):
                     f'(año anterior al de aplicación).'
                 )
             
+            # Validar que la fecha de aplicación coincida con la fecha proyectada (±1 día)
+            from gestion.utils_ipc import calcular_proxima_fecha_aumento
+            from gestion.utils_otrosi import get_ultimo_otrosi_que_modifico_campo_hasta_fecha
+            
+            fecha_referencia = date.today()
+            fecha_proyectada = calcular_proxima_fecha_aumento(contrato, fecha_referencia)
+            
+            if fecha_proyectada:
+                diferencia_dias = abs((fecha_aplicacion - fecha_proyectada).days)
+                if diferencia_dias > 1:
+                    fecha_proyectada_str = fecha_proyectada.strftime("%d/%m/%Y")
+                    fecha_aplicacion_str = fecha_aplicacion.strftime("%d/%m/%Y")
+                    self.add_error(
+                        'fecha_aplicacion',
+                        f'La fecha de aplicación ({fecha_aplicacion_str}) no coincide con la fecha proyectada '
+                        f'({fecha_proyectada_str}). Solo se permite un margen de ±1 día. '
+                        f'Si necesita ajustar en una fecha diferente, debe modificar la fecha de aumento en el contrato u otro sí.'
+                    )
+            
             # Si no es manual, obtener el canon automáticamente
             if not canon_anterior_manual and not canon_anterior:
                 from gestion.utils_ipc import obtener_canon_base_para_ipc

@@ -227,8 +227,9 @@ def obtener_alertas_ipc(
         # Convertir días a meses usando estándar de 30 días por mes
         meses_restantes = round(dias_restantes / 30)
         
-        # Solo mostrar alertas que están dentro de 3 meses (90 días) o ya vencidas
-        # Si la fecha está más de 90 días en el futuro, no mostrar la alerta
+        # Mostrar alertas si:
+        # 1. La fecha ya pasó (dias_restantes < 0) - siempre mostrar
+        # 2. La fecha está dentro de 3 meses (90 días) en el futuro
         if dias_restantes > 90:
             continue
         
@@ -384,8 +385,9 @@ def obtener_alertas_salario_minimo(
         # Convertir días a meses usando estándar de 30 días por mes
         meses_restantes = round(dias_restantes / 30)
         
-        # Solo mostrar alertas que están dentro de 3 meses (90 días) o ya vencidas
-        # Si la fecha está más de 90 días en el futuro, no mostrar la alerta
+        # Mostrar alertas si:
+        # 1. La fecha ya pasó (dias_restantes < 0) - siempre mostrar
+        # 2. La fecha está dentro de 3 meses (90 días) en el futuro
         if dias_restantes > 90:
             continue
         

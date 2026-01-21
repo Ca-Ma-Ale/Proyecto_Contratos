@@ -2171,9 +2171,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 fechaAumentoIpc.style.backgroundColor = '#e9ecef';
                 fechaAumentoIpc.style.cursor = 'not-allowed';
                 
-                // Si hay fecha de inicio, sugerirla como fecha de aumento
+                // Si hay fecha de inicio, calcular fecha_inicial + 1 año
                 if (fechaInicioContrato && fechaInicioContrato.value && !fechaAumentoIpc.value) {
-                    fechaAumentoIpc.value = fechaInicioContrato.value;
+                    const fechaInicio = new Date(fechaInicioContrato.value);
+                    fechaInicio.setFullYear(fechaInicio.getFullYear() + 1);
+                    const fechaAumento = fechaInicio.toISOString().split('T')[0];
+                    fechaAumentoIpc.value = fechaAumento;
                 }
             } else if (periodicidad === 'FECHA_ESPECIFICA') {
                 // Mostrar campo y hacerlo editable
@@ -2191,8 +2194,11 @@ document.addEventListener('DOMContentLoaded', function() {
         
         if (fechaInicioContrato) {
             fechaInicioContrato.addEventListener('change', function() {
-                if (periodicidadIpc.value === 'ANUAL' && !fechaAumentoIpc.value) {
-                    fechaAumentoIpc.value = fechaInicioContrato.value;
+                if (periodicidadIpc.value === 'ANUAL') {
+                    const fechaInicio = new Date(fechaInicioContrato.value);
+                    fechaInicio.setFullYear(fechaInicio.getFullYear() + 1);
+                    const fechaAumento = fechaInicio.toISOString().split('T')[0];
+                    fechaAumentoIpc.value = fechaAumento;
                 }
             });
         }

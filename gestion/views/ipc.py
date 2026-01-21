@@ -22,6 +22,8 @@ from gestion.utils_ipc import (
     validar_ipc_disponible,
     obtener_ultimo_calculo_ipc_contrato,
     obtener_fuente_puntos_adicionales,
+    calcular_proxima_fecha_aumento,
+    obtener_ultimo_calculo_ajuste,
 )
 from gestion.utils_formateo import limpiar_valor_numerico
 
@@ -63,13 +65,17 @@ def lista_ipc_historico(request):
         else:
             fecha_aumento_ipc = contrato.fecha_aumento_ipc
         
-        # Obtener último cálculo de IPC si existe
-        ultimo_calculo = CalculoIPC.objects.filter(contrato=contrato).order_by('-fecha_aplicacion', '-fecha_calculo').first()
+        # Calcular próxima fecha de aumento
+        proxima_fecha_aumento = calcular_proxima_fecha_aumento(contrato, fecha_actual)
+        
+        # Obtener último cálculo de ajuste (IPC o Salario Mínimo)
+        ultimo_calculo = obtener_ultimo_calculo_ajuste(contrato)
         
         contratos_info.append({
             'contrato': contrato,
             'fecha_final': fecha_final,
             'fecha_aumento_ipc': fecha_aumento_ipc,
+            'proxima_fecha_aumento': proxima_fecha_aumento,
             'ultimo_calculo': ultimo_calculo,
         })
     

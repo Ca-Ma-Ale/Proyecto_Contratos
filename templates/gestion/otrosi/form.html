@@ -1943,6 +1943,19 @@ document.addEventListener('DOMContentLoaded', function() {
                 nuevaFechaAumentoIpc.readOnly = true;
                 nuevaFechaAumentoIpc.style.backgroundColor = '#e9ecef';
                 nuevaFechaAumentoIpc.style.cursor = 'not-allowed';
+                
+                // Si no hay fecha y hay fecha de aumento IPC del contrato, calcular fecha + 1 año
+                if (!nuevaFechaAumentoIpc.value) {
+                    {% if contrato.fecha_aumento_ipc %}
+                        const fechaBase = new Date('{{ contrato.fecha_aumento_ipc|date:"Y-m-d" }}');
+                        fechaBase.setFullYear(fechaBase.getFullYear() + 1);
+                        nuevaFechaAumentoIpc.value = fechaBase.toISOString().split('T')[0];
+                    {% elif contrato.fecha_inicial_contrato %}
+                        const fechaInicial = new Date('{{ contrato.fecha_inicial_contrato|date:"Y-m-d" }}');
+                        fechaInicial.setFullYear(fechaInicial.getFullYear() + 1);
+                        nuevaFechaAumentoIpc.value = fechaInicial.toISOString().split('T')[0];
+                    {% endif %}
+                }
             } else if (periodicidad === 'FECHA_ESPECIFICA') {
                 // Hacer el campo editable
                 nuevaFechaAumentoIpc.readOnly = false;

@@ -60,6 +60,7 @@
                                         <th>Local</th>
                                         <th>Fecha Final</th>
                                         <th>Fecha Aumento IPC</th>
+                                        <th>Próxima Fecha Aumento</th>
                                         <th>Tipo IPC</th>
                                         <th>Periodicidad</th>
                                         <th>Último Cálculo</th>
@@ -126,6 +127,20 @@
                                             {% endif %}
                                         </td>
                                         <td>
+                                            {% if info.proxima_fecha_aumento %}
+                                                {% if info.proxima_fecha_aumento < fecha_actual %}
+                                                    <span class="badge bg-danger" title="La fecha de aumento ya pasó y aún no se ha gestionado">
+                                                        {{ info.proxima_fecha_aumento|date:"d/m/Y" }}
+                                                        <i class="fas fa-exclamation-triangle ms-1"></i>
+                                                    </span>
+                                                {% else %}
+                                                    {{ info.proxima_fecha_aumento|date:"d/m/Y" }}
+                                                {% endif %}
+                                            {% else %}
+                                                <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
                                             {% if info.contrato.tipo_condicion_ipc %}
                                                 <span class="badge bg-primary">
                                                     {{ info.contrato.get_tipo_condicion_ipc_display }}
@@ -146,6 +161,12 @@
                                         <td>
                                             {% if info.ultimo_calculo %}
                                                 <small>
+                                                    {% if info.contrato.tipo_condicion_ipc %}
+                                                        <span class="badge bg-info mb-1">
+                                                            {{ info.contrato.get_tipo_condicion_ipc_display }}
+                                                        </span>
+                                                        <br>
+                                                    {% endif %}
                                                     <strong>{{ info.ultimo_calculo.año_aplicacion }}</strong>
                                                     <br>
                                                     {{ info.ultimo_calculo.fecha_calculo|date:"d/m/Y" }}
