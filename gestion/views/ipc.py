@@ -34,6 +34,7 @@ def lista_ipc_historico(request):
     fecha_actual = date.today()
     
     tipo_filtro_activo = request.GET.get('tipo_contrato_cliente_proveedor', '')
+    estado_filtro = request.GET.get('estado_filtro', 'PENDIENTE')  # Por defecto mostrar pendientes
     
     # Obtener todos los contratos activos
     contratos = Contrato.objects.filter(vigente=True).select_related(
@@ -79,11 +80,27 @@ def lista_ipc_historico(request):
             'ultimo_calculo': ultimo_calculo,
         })
     
+    # Filtrar por estado del último cálculo
+    if estado_filtro == 'PENDIENTE':
+        # Mostrar solo contratos sin cálculos o con último cálculo pendiente
+        contratos_info = [
+            info for info in contratos_info
+            if not info['ultimo_calculo'] or info['ultimo_calculo'].estado == 'PENDIENTE'
+        ]
+    elif estado_filtro == 'APLICADO':
+        # Mostrar solo contratos con último cálculo aplicado
+        contratos_info = [
+            info for info in contratos_info
+            if info['ultimo_calculo'] and info['ultimo_calculo'].estado == 'APLICADO'
+        ]
+    # Si es 'TODOS', no filtrar
+    
     context = {
         'contratos_info': contratos_info,
         'titulo': 'Gestión de IPC - Contratos',
         'fecha_actual': fecha_actual,
         'tipo_filtro_activo': tipo_filtro_activo,
+        'estado_filtro_activo': estado_filtro,
     }
     return render(request, 'gestion/ipc/contratos_lista.html', context)
 
@@ -641,7 +658,7 @@ def lista_calculos_ipc(request):
     # Filtros comunes
     contrato_id = request.GET.get('contrato')
     año = request.GET.get('año')
-    estado_filtro = request.GET.get('estado_filtro', 'PENDIENTE')  # Por defecto mostrar pendientes
+    estado = request.GET.get('estado')
     
     # Obtener cálculos de IPC
     calculos_ipc = CalculoIPC.objects.all().select_related('contrato', 'ipc_historico', 'contrato__arrendatario', 'contrato__proveedor').order_by('-fecha_aplicacion', '-fecha_calculo')
@@ -654,26 +671,16 @@ def lista_calculos_ipc(request):
         calculos_ipc = calculos_ipc.filter(contrato_id=contrato_id)
     if año:
         calculos_ipc = calculos_ipc.filter(año_aplicacion=int(año))
-    
-    # Aplicar filtro de estado (pendientes por defecto)
-    if estado_filtro == 'PENDIENTE':
-        calculos_ipc = calculos_ipc.filter(estado='PENDIENTE')
-    elif estado_filtro == 'APLICADO':
-        calculos_ipc = calculos_ipc.filter(estado='APLICADO')
-    # Si es 'TODOS', no filtrar por estado
+    if estado:
+        calculos_ipc = calculos_ipc.filter(estado=estado)
     
     # Aplicar filtros comunes a Salario Mínimo
     if contrato_id:
         calculos_salario_minimo = calculos_salario_minimo.filter(contrato_id=contrato_id)
     if año:
         calculos_salario_minimo = calculos_salario_minimo.filter(año_aplicacion=int(año))
-    
-    # Aplicar filtro de estado (pendientes por defecto)
-    if estado_filtro == 'PENDIENTE':
-        calculos_salario_minimo = calculos_salario_minimo.filter(estado='PENDIENTE')
-    elif estado_filtro == 'APLICADO':
-        calculos_salario_minimo = calculos_salario_minimo.filter(estado='APLICADO')
-    # Si es 'TODOS', no filtrar por estado
+    if estado:
+        calculos_salario_minimo = calculos_salario_minimo.filter(estado=estado)
     
     # Filtrar por tipo de contrato (Cliente/Proveedor)
     if tipo_contrato_filtro == 'CLIENTE':
@@ -695,7 +702,6 @@ def lista_calculos_ipc(request):
         'calculos_salario_minimo': calculos_salario_minimo,
         'tipo_filtro_activo': tipo_filtro,
         'tipo_contrato_filtro_activo': tipo_contrato_filtro,
-        'estado_filtro_activo': estado_filtro,
         'titulo': 'Cálculos de Ajustes',
     }
     return render(request, 'gestion/ipc/calculos_lista.html', context)

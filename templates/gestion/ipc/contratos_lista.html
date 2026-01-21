@@ -36,15 +36,30 @@
         <div class="col-12">
             <div class="card shadow-sm border-0">
                 <div class="card-header" style="background: linear-gradient(135deg, var(--avenida-cyan) 0%, var(--avenida-blue) 100%); color: white;">
-                    <div class="d-flex justify-content-between align-items-center">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
                         <h5 class="mb-0">
                             <i class="fas fa-file-contract"></i> Contratos Activos
                         </h5>
-                        <div class="btn-group btn-group-sm" role="group">
-                            {% url 'gestion:lista_ipc_historico' as base_url %}
-                            <a href="{{ base_url }}" class="btn {% if not tipo_filtro_activo %}btn-info text-white fw-bold{% else %}btn-light{% endif %}">Todos</a>
-                            <a href="{{ base_url }}?tipo_contrato_cliente_proveedor=CLIENTE" class="btn {% if tipo_filtro_activo == 'CLIENTE' %}btn-info text-white fw-bold{% else %}btn-light{% endif %}">Clientes</a>
-                            <a href="{{ base_url }}?tipo_contrato_cliente_proveedor=PROVEEDOR" class="btn {% if tipo_filtro_activo == 'PROVEEDOR' %}btn-info text-white fw-bold{% else %}btn-light{% endif %}">Proveedores</a>
+                        <div class="d-flex gap-2 flex-wrap">
+                            <div class="btn-group btn-group-sm" role="group">
+                                <span class="btn btn-sm btn-outline-light disabled" style="border-color: rgba(255,255,255,0.3);">Estado:</span>
+                                {% url 'gestion:lista_ipc_historico' as base_url %}
+                                <a href="{{ base_url }}?estado_filtro=PENDIENTE{% if request.GET.tipo_contrato_cliente_proveedor %}&tipo_contrato_cliente_proveedor={{ request.GET.tipo_contrato_cliente_proveedor }}{% endif %}" class="btn {% if estado_filtro_activo == 'PENDIENTE' %}btn-warning text-white fw-bold{% else %}btn-light{% endif %}">
+                                    <i class="fas fa-clock"></i> Pendientes
+                                </a>
+                                <a href="{{ base_url }}?estado_filtro=APLICADO{% if request.GET.tipo_contrato_cliente_proveedor %}&tipo_contrato_cliente_proveedor={{ request.GET.tipo_contrato_cliente_proveedor }}{% endif %}" class="btn {% if estado_filtro_activo == 'APLICADO' %}btn-success text-white fw-bold{% else %}btn-light{% endif %}">
+                                    <i class="fas fa-check-circle"></i> Aplicados
+                                </a>
+                                <a href="{{ base_url }}?estado_filtro=TODOS{% if request.GET.tipo_contrato_cliente_proveedor %}&tipo_contrato_cliente_proveedor={{ request.GET.tipo_contrato_cliente_proveedor }}{% endif %}" class="btn {% if estado_filtro_activo == 'TODOS' %}btn-info text-white fw-bold{% else %}btn-light{% endif %}">
+                                    <i class="fas fa-list"></i> Todos
+                                </a>
+                            </div>
+                            <div class="btn-group btn-group-sm" role="group">
+                                <span class="btn btn-sm btn-outline-light disabled" style="border-color: rgba(255,255,255,0.3);">Contrato:</span>
+                                <a href="{{ base_url }}?estado_filtro={{ estado_filtro_activo }}" class="btn {% if not tipo_filtro_activo %}btn-info text-white fw-bold{% else %}btn-light{% endif %}">Todos</a>
+                                <a href="{{ base_url }}?estado_filtro={{ estado_filtro_activo }}&tipo_contrato_cliente_proveedor=CLIENTE" class="btn {% if tipo_filtro_activo == 'CLIENTE' %}btn-info text-white fw-bold{% else %}btn-light{% endif %}">Clientes</a>
+                                <a href="{{ base_url }}?estado_filtro={{ estado_filtro_activo }}&tipo_contrato_cliente_proveedor=PROVEEDOR" class="btn {% if tipo_filtro_activo == 'PROVEEDOR' %}btn-info text-white fw-bold{% else %}btn-light{% endif %}">Proveedores</a>
+                            </div>
                         </div>
                     </div>
                 </div>
