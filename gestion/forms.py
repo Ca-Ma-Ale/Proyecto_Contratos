@@ -2321,6 +2321,37 @@ class CalculoSalarioMinimoForm(BaseForm):
                     f'al año de aplicación {año_aplicacion}. Debe ser el Salario Mínimo del año {año_aplicacion}.'
                 )
         
+        if contrato and fecha_aplicacion:
+            # Validar que no exista ya un cálculo para este contrato y fecha
+            calculo_existente = CalculoSalarioMinimo.objects.filter(
+                contrato=contrato,
+                fecha_aplicacion=fecha_aplicacion
+            )
+            
+            if calculo_existente.exists():
+                raise ValidationError(
+                    f'Ya existe un cálculo de Salario Mínimo para el contrato {contrato.num_contrato} '
+                    f'en la fecha {fecha_aplicacion.strftime("%d/%m/%Y")}'
+                )
+            
+            # Validar que la fecha de aplicación coincida con la fecha proyectada (±1 día)
+            from gestion.utils_ipc import calcular_proxima_fecha_aumento
+            
+            fecha_referencia = date.today()
+            fecha_proyectada = calcular_proxima_fecha_aumento(contrato, fecha_referencia)
+            
+            if fecha_proyectada:
+                diferencia_dias = abs((fecha_aplicacion - fecha_proyectada).days)
+                if diferencia_dias > 1:
+                    fecha_proyectada_str = fecha_proyectada.strftime("%d/%m/%Y")
+                    fecha_aplicacion_str = fecha_aplicacion.strftime("%d/%m/%Y")
+                    self.add_error(
+                        'fecha_aplicacion',
+                        f'La fecha de aplicación ({fecha_aplicacion_str}) no coincide con la fecha proyectada '
+                        f'({fecha_proyectada_str}). Solo se permite un margen de ±1 día. '
+                        f'Si necesita ajustar en una fecha diferente, debe modificar la fecha de aumento en el contrato u otro sí.'
+                    )
+        
         # Si no es manual y no hay canon, obtenerlo automáticamente
         if contrato and fecha_aplicacion:
             if not canon_anterior_manual and not canon_anterior:
