@@ -296,6 +296,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                         </div>
                                     </div>
                                     <!-- Coberturas -->
+                                    {% if contrato.tipo_contrato_cliente_proveedor == 'CLIENTE' %}
                                     <div class="mb-4 pb-3" style="border-bottom: 2px solid rgba(255, 152, 0, 0.2);">
                                         <h6 class="mb-3 d-flex align-items-center" style="color: var(--avenida-orange); font-weight: 600;">
                                             <i class="fas fa-list-check me-2"></i> Coberturas
@@ -385,6 +386,140 @@ document.addEventListener('DOMContentLoaded', function() {
                                             </div>
                                         </div>
                                     </div>
+                                    {% elif contrato.tipo_contrato_cliente_proveedor == 'PROVEEDOR' %}
+                                    <!-- Coberturas RCE para PROVEEDOR -->
+                                    <div class="mb-4 pb-3" style="border-bottom: 2px solid rgba(255, 152, 0, 0.2);">
+                                        <h6 class="mb-3 d-flex align-items-center" style="color: var(--avenida-orange); font-weight: 600;">
+                                            <i class="fas fa-shield-alt me-2"></i> PÓLIZA DE RESPONSABILIDAD CIVIL EXTRACONTRACTUAL (RCE) – Coberturas
+                                        </h6>
+                                        <div class="row">
+                                            <div class="col-md-3 mb-3">
+                                                <label for="{{ form.nuevo_rce_cobertura_danos_materiales.id_for_label }}" class="form-label fw-semibold">{{ form.nuevo_rce_cobertura_danos_materiales.label }}</label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text" style="background-color: var(--avenida-orange); color: white; font-weight: 600;">$</span>
+                                                    {{ form.nuevo_rce_cobertura_danos_materiales }}
+                                                </div>
+                                                {% if form.nuevo_rce_cobertura_danos_materiales.errors %}
+                                                    <div class="text-danger small">{{ form.nuevo_rce_cobertura_danos_materiales.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                            <div class="col-md-3 mb-3">
+                                                <label for="{{ form.nuevo_rce_cobertura_lesiones_personales.id_for_label }}" class="form-label fw-semibold">{{ form.nuevo_rce_cobertura_lesiones_personales.label }}</label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text" style="background-color: var(--avenida-orange); color: white; font-weight: 600;">$</span>
+                                                    {{ form.nuevo_rce_cobertura_lesiones_personales }}
+                                                </div>
+                                                {% if form.nuevo_rce_cobertura_lesiones_personales.errors %}
+                                                    <div class="text-danger small">{{ form.nuevo_rce_cobertura_lesiones_personales.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                            <div class="col-md-3 mb-3">
+                                                <label for="{{ form.nuevo_rce_cobertura_muerte_terceros.id_for_label }}" class="form-label fw-semibold">{{ form.nuevo_rce_cobertura_muerte_terceros.label }}</label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text" style="background-color: var(--avenida-orange); color: white; font-weight: 600;">$</span>
+                                                    {{ form.nuevo_rce_cobertura_muerte_terceros }}
+                                                </div>
+                                                {% if form.nuevo_rce_cobertura_muerte_terceros.errors %}
+                                                    <div class="text-danger small">{{ form.nuevo_rce_cobertura_muerte_terceros.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                            <div class="col-md-3 mb-3">
+                                                <label for="{{ form.nuevo_rce_cobertura_danos_bienes_terceros.id_for_label }}" class="form-label fw-semibold">{{ form.nuevo_rce_cobertura_danos_bienes_terceros.label }}</label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text" style="background-color: var(--avenida-orange); color: white; font-weight: 600;">$</span>
+                                                    {{ form.nuevo_rce_cobertura_danos_bienes_terceros }}
+                                                </div>
+                                                {% if form.nuevo_rce_cobertura_danos_bienes_terceros.errors %}
+                                                    <div class="text-danger small">{{ form.nuevo_rce_cobertura_danos_bienes_terceros.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="row mt-2">
+                                            <div class="col-md-3 mb-3">
+                                                <label for="{{ form.nuevo_rce_cobertura_responsabilidad_patronal.id_for_label }}" class="form-label fw-semibold">{{ form.nuevo_rce_cobertura_responsabilidad_patronal.label }}</label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text" style="background-color: var(--avenida-orange); color: white; font-weight: 600;">$</span>
+                                                    {{ form.nuevo_rce_cobertura_responsabilidad_patronal }}
+                                                </div>
+                                                {% if form.nuevo_rce_cobertura_responsabilidad_patronal.errors %}
+                                                    <div class="text-danger small">{{ form.nuevo_rce_cobertura_responsabilidad_patronal.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                            <div class="col-md-3 mb-3">
+                                                <label for="{{ form.nuevo_rce_cobertura_responsabilidad_cruzada.id_for_label }}" class="form-label fw-semibold">{{ form.nuevo_rce_cobertura_responsabilidad_cruzada.label }}</label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text" style="background-color: var(--avenida-orange); color: white; font-weight: 600;">$</span>
+                                                    {{ form.nuevo_rce_cobertura_responsabilidad_cruzada }}
+                                                </div>
+                                                {% if form.nuevo_rce_cobertura_responsabilidad_cruzada.errors %}
+                                                    <div class="text-danger small">{{ form.nuevo_rce_cobertura_responsabilidad_cruzada.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                            <div class="col-md-3 mb-3">
+                                                <label for="{{ form.nuevo_rce_cobertura_danos_contratistas.id_for_label }}" class="form-label fw-semibold">{{ form.nuevo_rce_cobertura_danos_contratistas.label }}</label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text" style="background-color: var(--avenida-orange); color: white; font-weight: 600;">$</span>
+                                                    {{ form.nuevo_rce_cobertura_danos_contratistas }}
+                                                </div>
+                                                {% if form.nuevo_rce_cobertura_danos_contratistas.errors %}
+                                                    <div class="text-danger small">{{ form.nuevo_rce_cobertura_danos_contratistas.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                            <div class="col-md-3 mb-3">
+                                                <label for="{{ form.nuevo_rce_cobertura_danos_ejecucion_contrato.id_for_label }}" class="form-label fw-semibold">{{ form.nuevo_rce_cobertura_danos_ejecucion_contrato.label }}</label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text" style="background-color: var(--avenida-orange); color: white; font-weight: 600;">$</span>
+                                                    {{ form.nuevo_rce_cobertura_danos_ejecucion_contrato }}
+                                                </div>
+                                                {% if form.nuevo_rce_cobertura_danos_ejecucion_contrato.errors %}
+                                                    <div class="text-danger small">{{ form.nuevo_rce_cobertura_danos_ejecucion_contrato.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="row mt-2">
+                                            <div class="col-md-3 mb-3">
+                                                <label for="{{ form.nuevo_rce_cobertura_danos_predios_vecinos.id_for_label }}" class="form-label fw-semibold">{{ form.nuevo_rce_cobertura_danos_predios_vecinos.label }}</label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text" style="background-color: var(--avenida-orange); color: white; font-weight: 600;">$</span>
+                                                    {{ form.nuevo_rce_cobertura_danos_predios_vecinos }}
+                                                </div>
+                                                {% if form.nuevo_rce_cobertura_danos_predios_vecinos.errors %}
+                                                    <div class="text-danger small">{{ form.nuevo_rce_cobertura_danos_predios_vecinos.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                            <div class="col-md-3 mb-3">
+                                                <label for="{{ form.nuevo_rce_cobertura_gastos_medicos.id_for_label }}" class="form-label fw-semibold">{{ form.nuevo_rce_cobertura_gastos_medicos.label }}</label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text" style="background-color: var(--avenida-orange); color: white; font-weight: 600;">$</span>
+                                                    {{ form.nuevo_rce_cobertura_gastos_medicos }}
+                                                </div>
+                                                {% if form.nuevo_rce_cobertura_gastos_medicos.errors %}
+                                                    <div class="text-danger small">{{ form.nuevo_rce_cobertura_gastos_medicos.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                            <div class="col-md-3 mb-3">
+                                                <label for="{{ form.nuevo_rce_cobertura_gastos_defensa.id_for_label }}" class="form-label fw-semibold">{{ form.nuevo_rce_cobertura_gastos_defensa.label }}</label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text" style="background-color: var(--avenida-orange); color: white; font-weight: 600;">$</span>
+                                                    {{ form.nuevo_rce_cobertura_gastos_defensa }}
+                                                </div>
+                                                {% if form.nuevo_rce_cobertura_gastos_defensa.errors %}
+                                                    <div class="text-danger small">{{ form.nuevo_rce_cobertura_gastos_defensa.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                            <div class="col-md-3 mb-3">
+                                                <label for="{{ form.nuevo_rce_cobertura_perjuicios_patrimoniales.id_for_label }}" class="form-label fw-semibold">{{ form.nuevo_rce_cobertura_perjuicios_patrimoniales.label }}</label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text" style="background-color: var(--avenida-orange); color: white; font-weight: 600;">$</span>
+                                                    {{ form.nuevo_rce_cobertura_perjuicios_patrimoniales }}
+                                                </div>
+                                                {% if form.nuevo_rce_cobertura_perjuicios_patrimoniales.errors %}
+                                                    <div class="text-danger small">{{ form.nuevo_rce_cobertura_perjuicios_patrimoniales.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endif %}
                                 </div>
                             </div>
 
@@ -445,6 +580,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                         </div>
                                     </div>
                                     <!-- Coberturas -->
+                                    {% if contrato.tipo_contrato_cliente_proveedor == 'CLIENTE' %}
                                     <div class="mb-4 pb-3">
                                         <h6 class="mb-3 d-flex align-items-center" style="color: var(--avenida-orange); font-weight: 600;">
                                             <i class="fas fa-list-check me-2"></i> Coberturas
@@ -492,6 +628,130 @@ document.addEventListener('DOMContentLoaded', function() {
                                             </div>
                                         </div>
                                     </div>
+                                    {% elif contrato.tipo_contrato_cliente_proveedor == 'PROVEEDOR' %}
+                                    <!-- Amparos Cumplimiento para PROVEEDOR -->
+                                    <div class="mb-4 pb-3">
+                                        <h6 class="mb-3 d-flex align-items-center" style="color: var(--avenida-orange); font-weight: 600;">
+                                            <i class="fas fa-shield-alt me-2"></i> PÓLIZA DE CUMPLIMIENTO – Amparos
+                                        </h6>
+                                        <div class="row">
+                                            <div class="col-md-3 mb-3">
+                                                <label for="{{ form.nuevo_cumplimiento_amparo_cumplimiento_contrato.id_for_label }}" class="form-label fw-semibold">{{ form.nuevo_cumplimiento_amparo_cumplimiento_contrato.label }}</label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text" style="background-color: var(--avenida-orange); color: white; font-weight: 600;">$</span>
+                                                    {{ form.nuevo_cumplimiento_amparo_cumplimiento_contrato }}
+                                                </div>
+                                                {% if form.nuevo_cumplimiento_amparo_cumplimiento_contrato.errors %}
+                                                    <div class="text-danger small">{{ form.nuevo_cumplimiento_amparo_cumplimiento_contrato.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                            <div class="col-md-3 mb-3">
+                                                <label for="{{ form.nuevo_cumplimiento_amparo_buen_manejo_anticipo.id_for_label }}" class="form-label fw-semibold">{{ form.nuevo_cumplimiento_amparo_buen_manejo_anticipo.label }}</label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text" style="background-color: var(--avenida-orange); color: white; font-weight: 600;">$</span>
+                                                    {{ form.nuevo_cumplimiento_amparo_buen_manejo_anticipo }}
+                                                </div>
+                                                {% if form.nuevo_cumplimiento_amparo_buen_manejo_anticipo.errors %}
+                                                    <div class="text-danger small">{{ form.nuevo_cumplimiento_amparo_buen_manejo_anticipo.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                            <div class="col-md-3 mb-3">
+                                                <label for="{{ form.nuevo_cumplimiento_amparo_amortizacion_anticipo.id_for_label }}" class="form-label fw-semibold">{{ form.nuevo_cumplimiento_amparo_amortizacion_anticipo.label }}</label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text" style="background-color: var(--avenida-orange); color: white; font-weight: 600;">$</span>
+                                                    {{ form.nuevo_cumplimiento_amparo_amortizacion_anticipo }}
+                                                </div>
+                                                {% if form.nuevo_cumplimiento_amparo_amortizacion_anticipo.errors %}
+                                                    <div class="text-danger small">{{ form.nuevo_cumplimiento_amparo_amortizacion_anticipo.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                            <div class="col-md-3 mb-3">
+                                                <label for="{{ form.nuevo_cumplimiento_amparo_salarios_prestaciones.id_for_label }}" class="form-label fw-semibold">{{ form.nuevo_cumplimiento_amparo_salarios_prestaciones.label }}</label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text" style="background-color: var(--avenida-orange); color: white; font-weight: 600;">$</span>
+                                                    {{ form.nuevo_cumplimiento_amparo_salarios_prestaciones }}
+                                                </div>
+                                                {% if form.nuevo_cumplimiento_amparo_salarios_prestaciones.errors %}
+                                                    <div class="text-danger small">{{ form.nuevo_cumplimiento_amparo_salarios_prestaciones.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="row mt-2">
+                                            <div class="col-md-3 mb-3">
+                                                <label for="{{ form.nuevo_cumplimiento_amparo_aportes_seguridad_social.id_for_label }}" class="form-label fw-semibold">{{ form.nuevo_cumplimiento_amparo_aportes_seguridad_social.label }}</label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text" style="background-color: var(--avenida-orange); color: white; font-weight: 600;">$</span>
+                                                    {{ form.nuevo_cumplimiento_amparo_aportes_seguridad_social }}
+                                                </div>
+                                                {% if form.nuevo_cumplimiento_amparo_aportes_seguridad_social.errors %}
+                                                    <div class="text-danger small">{{ form.nuevo_cumplimiento_amparo_aportes_seguridad_social.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                            <div class="col-md-3 mb-3">
+                                                <label for="{{ form.nuevo_cumplimiento_amparo_calidad_servicio.id_for_label }}" class="form-label fw-semibold">{{ form.nuevo_cumplimiento_amparo_calidad_servicio.label }}</label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text" style="background-color: var(--avenida-orange); color: white; font-weight: 600;">$</span>
+                                                    {{ form.nuevo_cumplimiento_amparo_calidad_servicio }}
+                                                </div>
+                                                {% if form.nuevo_cumplimiento_amparo_calidad_servicio.errors %}
+                                                    <div class="text-danger small">{{ form.nuevo_cumplimiento_amparo_calidad_servicio.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                            <div class="col-md-3 mb-3">
+                                                <label for="{{ form.nuevo_cumplimiento_amparo_estabilidad_obra.id_for_label }}" class="form-label fw-semibold">{{ form.nuevo_cumplimiento_amparo_estabilidad_obra.label }}</label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text" style="background-color: var(--avenida-orange); color: white; font-weight: 600;">$</span>
+                                                    {{ form.nuevo_cumplimiento_amparo_estabilidad_obra }}
+                                                </div>
+                                                {% if form.nuevo_cumplimiento_amparo_estabilidad_obra.errors %}
+                                                    <div class="text-danger small">{{ form.nuevo_cumplimiento_amparo_estabilidad_obra.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                            <div class="col-md-3 mb-3">
+                                                <label for="{{ form.nuevo_cumplimiento_amparo_calidad_bienes.id_for_label }}" class="form-label fw-semibold">{{ form.nuevo_cumplimiento_amparo_calidad_bienes.label }}</label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text" style="background-color: var(--avenida-orange); color: white; font-weight: 600;">$</span>
+                                                    {{ form.nuevo_cumplimiento_amparo_calidad_bienes }}
+                                                </div>
+                                                {% if form.nuevo_cumplimiento_amparo_calidad_bienes.errors %}
+                                                    <div class="text-danger small">{{ form.nuevo_cumplimiento_amparo_calidad_bienes.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="row mt-2">
+                                            <div class="col-md-3 mb-3">
+                                                <label for="{{ form.nuevo_cumplimiento_amparo_multas.id_for_label }}" class="form-label fw-semibold">{{ form.nuevo_cumplimiento_amparo_multas.label }}</label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text" style="background-color: var(--avenida-orange); color: white; font-weight: 600;">$</span>
+                                                    {{ form.nuevo_cumplimiento_amparo_multas }}
+                                                </div>
+                                                {% if form.nuevo_cumplimiento_amparo_multas.errors %}
+                                                    <div class="text-danger small">{{ form.nuevo_cumplimiento_amparo_multas.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                            <div class="col-md-3 mb-3">
+                                                <label for="{{ form.nuevo_cumplimiento_amparo_clausula_penal.id_for_label }}" class="form-label fw-semibold">{{ form.nuevo_cumplimiento_amparo_clausula_penal.label }}</label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text" style="background-color: var(--avenida-orange); color: white; font-weight: 600;">$</span>
+                                                    {{ form.nuevo_cumplimiento_amparo_clausula_penal }}
+                                                </div>
+                                                {% if form.nuevo_cumplimiento_amparo_clausula_penal.errors %}
+                                                    <div class="text-danger small">{{ form.nuevo_cumplimiento_amparo_clausula_penal.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                            <div class="col-md-3 mb-3">
+                                                <label for="{{ form.nuevo_cumplimiento_amparo_sanciones_incumplimiento.id_for_label }}" class="form-label fw-semibold">{{ form.nuevo_cumplimiento_amparo_sanciones_incumplimiento.label }}</label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text" style="background-color: var(--avenida-orange); color: white; font-weight: 600;">$</span>
+                                                    {{ form.nuevo_cumplimiento_amparo_sanciones_incumplimiento }}
+                                                </div>
+                                                {% if form.nuevo_cumplimiento_amparo_sanciones_incumplimiento.errors %}
+                                                    <div class="text-danger small">{{ form.nuevo_cumplimiento_amparo_sanciones_incumplimiento.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endif %}
                                 </div>
                             </div>
 

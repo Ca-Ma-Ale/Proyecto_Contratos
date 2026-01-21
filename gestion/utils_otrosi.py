@@ -638,6 +638,12 @@ def get_polizas_requeridas_contrato(contrato, fecha_referencia=None, permitir_fu
             # Verificar que el evento sea realmente vigente en la fecha de referencia
             # Un evento es vigente si su effective_from <= fecha_referencia
             # y (effective_to >= fecha_referencia o effective_to es None)
+            # IMPORTANTE: Si effective_from > fecha_referencia, el evento NO es vigente
+            if otrosi_modificador.effective_from > fecha_referencia:
+                # El evento es futuro, no es vigente
+                valor_contrato = getattr(contrato, campo_contrato, False)
+                return valor_contrato, None
+            
             es_vigente = otrosi_modificador.effective_from <= fecha_referencia
             if otrosi_modificador.effective_to is not None:
                 es_vigente = es_vigente and otrosi_modificador.effective_to >= fecha_referencia
