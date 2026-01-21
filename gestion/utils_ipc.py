@@ -407,6 +407,7 @@ def calcular_proxima_fecha_aumento(contrato, fecha_referencia=None):
 def obtener_ultimo_calculo_ajuste(contrato):
     """
     Obtiene el último cálculo de ajuste (IPC o Salario Mínimo) para un contrato.
+    Excluye cálculos eliminados o con estado ANULADO.
     
     Args:
         contrato: Instancia del modelo Contrato
@@ -416,15 +417,15 @@ def obtener_ultimo_calculo_ajuste(contrato):
     """
     from gestion.models import CalculoSalarioMinimo
     
-    # Obtener último cálculo de IPC
+    # Obtener último cálculo de IPC (excluyendo ANULADOS)
     ultimo_ipc = CalculoIPC.objects.filter(
         contrato=contrato
-    ).order_by('-fecha_aplicacion', '-fecha_calculo').first()
+    ).exclude(estado='ANULADO').order_by('-fecha_aplicacion', '-fecha_calculo').first()
     
-    # Obtener último cálculo de Salario Mínimo
+    # Obtener último cálculo de Salario Mínimo (excluyendo ANULADOS)
     ultimo_salario = CalculoSalarioMinimo.objects.filter(
         contrato=contrato
-    ).order_by('-fecha_aplicacion', '-fecha_calculo').first()
+    ).exclude(estado='ANULADO').order_by('-fecha_aplicacion', '-fecha_calculo').first()
     
     # Retornar el más reciente
     if ultimo_ipc and ultimo_salario:

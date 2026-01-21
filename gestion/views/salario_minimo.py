@@ -571,7 +571,8 @@ def eliminar_calculo_salario_minimo(request, calculo_id):
         fecha = calculo.fecha_aplicacion.strftime("%d/%m/%Y")
         calculo.delete()
         messages.success(request, f'Cálculo de Salario Mínimo para el contrato {contrato_num} de la fecha {fecha} eliminado exitosamente!')
-        return redirect('gestion:lista_calculos_salario_minimo')
+        # Redirigir a la vista de gestión de IPC para que se actualice la información
+        return redirect('gestion:lista_ipc_historico')
     
     context = {
         'calculo': calculo,
