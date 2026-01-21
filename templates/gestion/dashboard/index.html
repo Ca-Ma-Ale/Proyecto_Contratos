@@ -450,7 +450,7 @@
                             <h5 class="mb-0">
                                 <i class="fas fa-percentage"></i> 
                                 Alertas de Ajuste de IPC en Facturación
-                                <span class="badge bg-light text-dark ms-2">{{ total_alertas_ipc }}</span>
+                                <span class="badge bg-light text-dark ms-2">{{ total_alertas_ajuste_facturacion }}</span>
                             </h5>
                             <small class="d-block mt-2">
                                 <span class="badge bg-danger me-1"><i class="fas fa-exclamation-circle"></i> 0-1 mes</span>
@@ -468,16 +468,23 @@
                             </a>
                             <a
                                 href="{% url 'gestion:exportar_alertas_ipc' %}"
-                                class="btn btn-light btn-sm text-success fw-semibold{% if total_alertas_ipc == 0 %} disabled{% endif %}"
-                                {% if total_alertas_ipc == 0 %}aria-disabled="true"{% endif %}
+                                class="btn btn-light btn-sm text-success fw-semibold{% if total_alertas_ajuste_facturacion == 0 %} disabled{% endif %}"
+                                {% if total_alertas_ajuste_facturacion == 0 %}aria-disabled="true"{% endif %}
                             >
-                                <i class="fas fa-file-excel"></i> Exportar
+                                <i class="fas fa-file-excel"></i> Exportar IPC
+                            </a>
+                            <a
+                                href="{% url 'gestion:exportar_alertas_salario_minimo' %}"
+                                class="btn btn-light btn-sm text-success fw-semibold{% if total_alertas_ajuste_facturacion == 0 %} disabled{% endif %}"
+                                {% if total_alertas_ajuste_facturacion == 0 %}aria-disabled="true"{% endif %}
+                            >
+                                <i class="fas fa-file-excel"></i> Exportar SMLV
                             </a>
                         </div>
                     </div>
                 </div>
                 <div class="card-body">
-                    {% if alertas_ipc %}
+                    {% if alertas_ajuste_facturacion %}
                         <div class="table-responsive alert-collapsible" data-collapsed="true" style="max-height: 64px; overflow: hidden; position: relative;">
                             <table class="table table-sm">
                                 <thead>
@@ -489,7 +496,7 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {% for alerta in alertas_ipc %}
+                                    {% for alerta in alertas_ajuste_facturacion %}
                                     <tr style="{% if alerta.color_alerta == 'danger' %}background-color: #fff5f5;{% elif alerta.color_alerta == 'warning' %}background-color: #fffbf0;{% endif %}">
                                         <td>
                                             <strong>{{ alerta.contrato.num_contrato }}</strong><br>
@@ -509,7 +516,13 @@
                                         </td>
                                         <td>
                                             <span class="badge bg-info">{{ alerta.mes_ajuste }}</span><br>
-                                            <small class="text-muted">{{ alerta.condicion_ipc }}</small>
+                                            <small class="text-muted">
+                                                {% if alerta.condicion_ipc %}
+                                                    {{ alerta.condicion_ipc }}
+                                                {% elif alerta.condicion_salario_minimo %}
+                                                    {{ alerta.condicion_salario_minimo }}
+                                                {% endif %}
+                                            </small>
                                             {% if alerta.otrosi_modificador %}
                                                 <br><small class="text-info" title="Modificado por Otrosí">
                                                     <i class="fas fa-file-signature"></i> {{ alerta.otrosi_modificador }}
@@ -544,9 +557,9 @@
                         <div class="text-center text-muted">
                             <i class="fas fa-check-circle fa-2x mb-2"></i>
                             {% if tipo_filtro %}
-                                <p>No hay alertas de ajuste de IPC para {% if tipo_filtro == 'CLIENTE' %}clientes{% else %}proveedores{% endif %}</p>
+                                <p>No hay alertas de ajuste de IPC/Salario Mínimo para {% if tipo_filtro == 'CLIENTE' %}clientes{% else %}proveedores{% endif %}</p>
                             {% else %}
-                                <p>No hay alertas de ajuste de IPC</p>
+                                <p>No hay alertas de ajuste de IPC/Salario Mínimo</p>
                             {% endif %}
                         </div>
                     {% endif %}

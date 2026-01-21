@@ -139,6 +139,18 @@ def dashboard(request):
         alertas_salario_minimo.append(alerta)
     total_alertas_salario_minimo = len(alertas_salario_minimo)
     
+    # Combinar alertas de IPC y Salario Mínimo para mostrar en la misma sección
+    alertas_ajuste_facturacion = list(alertas_ipc) + list(alertas_salario_minimo)
+    # Ordenar por prioridad (danger primero, luego warning, luego success) y luego por meses restantes
+    alertas_ajuste_facturacion.sort(key=lambda alerta: (
+        0 if alerta.color_alerta == 'danger'
+        else 1 if alerta.color_alerta == 'warning'
+        else 2,
+        alerta.meses_restantes,
+        alerta.contrato.num_contrato,
+    ))
+    total_alertas_ajuste_facturacion = len(alertas_ajuste_facturacion)
+    
     alertas_polizas_requeridas_list = obtener_alertas_polizas_requeridas_no_aportadas(fecha_referencia=fecha_actual)
     alertas_polizas_requeridas = []
     for alerta in alertas_polizas_requeridas_list:
@@ -180,6 +192,8 @@ def dashboard(request):
         'total_alertas_ipc': total_alertas_ipc,
         'alertas_salario_minimo': alertas_salario_minimo,
         'total_alertas_salario_minimo': total_alertas_salario_minimo,
+        'alertas_ajuste_facturacion': alertas_ajuste_facturacion,
+        'total_alertas_ajuste_facturacion': total_alertas_ajuste_facturacion,
         'alertas_polizas_requeridas': alertas_polizas_requeridas,
         'total_alertas_polizas_requeridas': total_alertas_polizas_requeridas,
         'alertas_terminacion': alertas_terminacion,
