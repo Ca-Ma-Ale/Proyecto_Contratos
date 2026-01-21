@@ -230,7 +230,18 @@ def get_ultimo_otrosi_que_modifico_campo_hasta_fecha(contrato, campo_nombre, fec
     ), reverse=True)
     
     # Buscar el primero que tenga el campo modificado (no None y no vacío)
+    # y que sea vigente en la fecha de referencia
     for tipo_evento, evento in eventos:
+        # Verificar que el evento sea vigente en la fecha de referencia
+        # Un evento es vigente si su effective_from <= fecha_referencia
+        # y (effective_to >= fecha_referencia o effective_to es None)
+        es_vigente = evento.effective_from <= fecha_referencia
+        if evento.effective_to is not None:
+            es_vigente = es_vigente and evento.effective_to >= fecha_referencia
+        
+        if not es_vigente:
+            continue
+        
         valor = getattr(evento, campo_nombre, None)
         # Verificar si el campo tiene un valor válido
         if valor is not None:
@@ -617,16 +628,26 @@ def get_polizas_requeridas_contrato(contrato, fecha_referencia=None, permitir_fu
     
     # Función auxiliar para obtener booleano con efecto cadena y el Otro Sí modificador
     def obtener_bool_y_otrosi(campo_otrosi, campo_contrato):
+        # Solo buscar eventos que sean vigentes en la fecha de referencia
+        # No permitir eventos futuros para asegurar que respetamos el estado histórico
         otrosi_modificador = get_ultimo_otrosi_que_modifico_campo_hasta_fecha(
-            contrato, campo_otrosi, fecha_referencia, permitir_futuros=considerar_futuros
+            contrato, campo_otrosi, fecha_referencia, permitir_futuros=False
         )
         
         if otrosi_modificador:
-            valor = getattr(otrosi_modificador, campo_otrosi, None)
-            if valor is not None:
-                return bool(valor), otrosi_modificador
+            # Verificar que el evento sea realmente vigente en la fecha de referencia
+            # Un evento es vigente si su effective_from <= fecha_referencia
+            # y (effective_to >= fecha_referencia o effective_to es None)
+            es_vigente = otrosi_modificador.effective_from <= fecha_referencia
+            if otrosi_modificador.effective_to is not None:
+                es_vigente = es_vigente and otrosi_modificador.effective_to >= fecha_referencia
+            
+            if es_vigente:
+                valor = getattr(otrosi_modificador, campo_otrosi, None)
+                if valor is not None:
+                    return bool(valor), otrosi_modificador
         
-        # Si no hay Otro Sí que lo modificó, usar valor del contrato
+        # Si no hay Otro Sí que lo modificó o el evento no es vigente, usar valor del contrato
         valor_contrato = getattr(contrato, campo_contrato, False)
         return valor_contrato, None
     
