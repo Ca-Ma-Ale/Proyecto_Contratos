@@ -338,6 +338,14 @@ def nuevo_otrosi(request, contrato_id):
             'fecha_fin': str(obtener_valor_inicial('nuevo_fecha_fin_vigencia_otra_1', 'fecha_fin_vigencia_otra_1') or ''),
         }
     
+    # Obtener modalidad de pago actual (del último otro sí aprobado o del contrato)
+    from gestion.utils_otrosi import get_ultimo_otrosi_que_modifico_campo
+    otrosi_modalidad = get_ultimo_otrosi_que_modifico_campo(contrato, 'nueva_modalidad_pago')
+    if otrosi_modalidad and otrosi_modalidad.nueva_modalidad_pago:
+        modalidad_actual = otrosi_modalidad.nueva_modalidad_pago
+    else:
+        modalidad_actual = contrato.modalidad_pago or ''
+    
     context = {
         'form': form,
         'contrato': contrato,
@@ -345,6 +353,7 @@ def nuevo_otrosi(request, contrato_id):
         'otrosi_vigente_actual': otrosi_vigente_actual,
         'fuente_condiciones': fuente_condiciones,
         'valores_iniciales_polizas': json.dumps(valores_iniciales_polizas),
+        'modalidad_actual': modalidad_actual,
         'titulo': f'Nuevo Otro Sí - Contrato {contrato.num_contrato}'
     }
     return render(request, 'gestion/otrosi/form.html', context)
@@ -624,6 +633,14 @@ def editar_otrosi(request, otrosi_id):
             'fecha_fin': str(obtener_valor_inicial('nuevo_fecha_fin_vigencia_otra_1', 'fecha_fin_vigencia_otra_1') or ''),
         }
     
+    # Obtener modalidad de pago actual (del último otro sí aprobado o del contrato)
+    from gestion.utils_otrosi import get_ultimo_otrosi_que_modifico_campo
+    otrosi_modalidad = get_ultimo_otrosi_que_modifico_campo(contrato, 'nueva_modalidad_pago')
+    if otrosi_modalidad and otrosi_modalidad.nueva_modalidad_pago:
+        modalidad_actual = otrosi_modalidad.nueva_modalidad_pago
+    else:
+        modalidad_actual = contrato.modalidad_pago or ''
+    
     context = {
         'form': form,
         'otrosi': otrosi,
@@ -632,6 +649,7 @@ def editar_otrosi(request, otrosi_id):
         'otrosi_vigente_actual': otrosi_vigente_actual,
         'fuente_condiciones': fuente_condiciones,
         'valores_iniciales_polizas': json.dumps(valores_iniciales_polizas),
+        'modalidad_actual': modalidad_actual,
         'titulo': f'Editar Otro Sí - {otrosi.numero_otrosi}'
     }
     return render(request, 'gestion/otrosi/form.html', context)

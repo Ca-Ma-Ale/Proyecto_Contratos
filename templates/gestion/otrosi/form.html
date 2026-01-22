@@ -62,6 +62,163 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
+    // Validación de campos financieros según modalidad de pago
+    function validarCamposFinancierosPorModalidad() {
+        const modalidadSelect = document.querySelector('select[name="nueva_modalidad_pago"]');
+        const nuevoValorCanonInput = document.getElementById('{{ form.nuevo_valor_canon.id_for_label }}');
+        const nuevoCanonMinimoInput = document.getElementById('{{ form.nuevo_canon_minimo_garantizado.id_for_label }}');
+        const modificarCondicionesCheckbox = document.getElementById('modificar_condiciones_financieras');
+        
+        if (!modalidadSelect || !modificarCondicionesCheckbox || !modificarCondicionesCheckbox.checked) {
+            return;
+        }
+        
+        const modalidadSeleccionada = modalidadSelect.value;
+        const modalidadActual = '{{ modalidad_actual|default:"" }}';
+        
+        // En modo edición, si el otro sí ya tiene una modalidad diferente a la actual del contrato,
+        // permitir editar los campos relacionados a esa modalidad
+        {% if otrosi %}
+        const modalidadOtroSi = '{{ otrosi.nueva_modalidad_pago|default:"" }}';
+        // Si el otro sí tiene una modalidad y es diferente a la actual del contrato, permitir editar
+        if (modalidadOtroSi && modalidadOtroSi !== modalidadActual && modalidadSeleccionada === modalidadOtroSi) {
+            // Permitir editar según la modalidad del otro sí
+            if (modalidadSeleccionada === 'Fijo') {
+                if (nuevoValorCanonInput) {
+                    nuevoValorCanonInput.disabled = false;
+                    nuevoValorCanonInput.style.backgroundColor = '';
+                    nuevoValorCanonInput.style.cursor = '';
+                }
+                if (nuevoCanonMinimoInput) {
+                    nuevoCanonMinimoInput.disabled = true;
+                    nuevoCanonMinimoInput.style.backgroundColor = '#e9ecef';
+                    nuevoCanonMinimoInput.style.cursor = 'not-allowed';
+                }
+                return;
+            } else if (modalidadSeleccionada === 'Hibrido (Min Garantizado)') {
+                if (nuevoValorCanonInput) {
+                    nuevoValorCanonInput.disabled = true;
+                    nuevoValorCanonInput.style.backgroundColor = '#e9ecef';
+                    nuevoValorCanonInput.style.cursor = 'not-allowed';
+                }
+                if (nuevoCanonMinimoInput) {
+                    nuevoCanonMinimoInput.disabled = false;
+                    nuevoCanonMinimoInput.style.backgroundColor = '';
+                    nuevoCanonMinimoInput.style.cursor = '';
+                }
+                return;
+            }
+        }
+        {% endif %}
+        
+        // Si la modalidad seleccionada es igual a la actual, deshabilitar ambos campos
+        if (modalidadSeleccionada === modalidadActual) {
+            if (nuevoValorCanonInput) {
+                nuevoValorCanonInput.disabled = true;
+                nuevoValorCanonInput.style.backgroundColor = '#e9ecef';
+                nuevoValorCanonInput.style.cursor = 'not-allowed';
+            }
+            if (nuevoCanonMinimoInput) {
+                nuevoCanonMinimoInput.disabled = true;
+                nuevoCanonMinimoInput.style.backgroundColor = '#e9ecef';
+                nuevoCanonMinimoInput.style.cursor = 'not-allowed';
+            }
+            return;
+        }
+        
+        // Si la modalidad es diferente, habilitar según la nueva modalidad
+        if (modalidadSeleccionada === 'Fijo') {
+            // Solo habilitar Nuevo Valor Canon
+            if (nuevoValorCanonInput) {
+                nuevoValorCanonInput.disabled = false;
+                nuevoValorCanonInput.style.backgroundColor = '';
+                nuevoValorCanonInput.style.cursor = '';
+                nuevoValorCanonInput.required = false;
+            }
+            if (nuevoCanonMinimoInput) {
+                nuevoCanonMinimoInput.disabled = true;
+                nuevoCanonMinimoInput.style.backgroundColor = '#e9ecef';
+                nuevoCanonMinimoInput.style.cursor = 'not-allowed';
+                nuevoCanonMinimoInput.value = '';
+            }
+        } else if (modalidadSeleccionada === 'Variable Puro') {
+            // Ninguno de los dos campos habilitado
+            if (nuevoValorCanonInput) {
+                nuevoValorCanonInput.disabled = true;
+                nuevoValorCanonInput.style.backgroundColor = '#e9ecef';
+                nuevoValorCanonInput.style.cursor = 'not-allowed';
+                nuevoValorCanonInput.value = '';
+            }
+            if (nuevoCanonMinimoInput) {
+                nuevoCanonMinimoInput.disabled = true;
+                nuevoCanonMinimoInput.style.backgroundColor = '#e9ecef';
+                nuevoCanonMinimoInput.style.cursor = 'not-allowed';
+                nuevoCanonMinimoInput.value = '';
+            }
+        } else if (modalidadSeleccionada === 'Hibrido (Min Garantizado)') {
+            // Solo habilitar Nuevo Canon Mínimo Garantizado
+            if (nuevoValorCanonInput) {
+                nuevoValorCanonInput.disabled = true;
+                nuevoValorCanonInput.style.backgroundColor = '#e9ecef';
+                nuevoValorCanonInput.style.cursor = 'not-allowed';
+                nuevoValorCanonInput.value = '';
+            }
+            if (nuevoCanonMinimoInput) {
+                nuevoCanonMinimoInput.disabled = false;
+                nuevoCanonMinimoInput.style.backgroundColor = '';
+                nuevoCanonMinimoInput.style.cursor = '';
+                nuevoCanonMinimoInput.required = false;
+            }
+        } else {
+            // Si no hay modalidad seleccionada o es otra, deshabilitar ambos
+            if (nuevoValorCanonInput) {
+                nuevoValorCanonInput.disabled = true;
+                nuevoValorCanonInput.style.backgroundColor = '#e9ecef';
+                nuevoValorCanonInput.style.cursor = 'not-allowed';
+            }
+            if (nuevoCanonMinimoInput) {
+                nuevoCanonMinimoInput.disabled = true;
+                nuevoCanonMinimoInput.style.backgroundColor = '#e9ecef';
+                nuevoCanonMinimoInput.style.cursor = 'not-allowed';
+            }
+        }
+    }
+    
+    // Configurar eventos para validación de modalidad
+    const modalidadSelect = document.querySelector('select[name="nueva_modalidad_pago"]');
+    const modificarCondicionesCheckbox = document.getElementById('modificar_condiciones_financieras');
+    
+    if (modalidadSelect) {
+        modalidadSelect.addEventListener('change', validarCamposFinancierosPorModalidad);
+    }
+    
+    if (modificarCondicionesCheckbox) {
+        modificarCondicionesCheckbox.addEventListener('change', function() {
+            if (this.checked) {
+                setTimeout(validarCamposFinancierosPorModalidad, 100);
+            } else {
+                // Si se desmarca, restaurar campos
+                const nuevoValorCanonInput = document.getElementById('{{ form.nuevo_valor_canon.id_for_label }}');
+                const nuevoCanonMinimoInput = document.getElementById('{{ form.nuevo_canon_minimo_garantizado.id_for_label }}');
+                if (nuevoValorCanonInput) {
+                    nuevoValorCanonInput.disabled = false;
+                    nuevoValorCanonInput.style.backgroundColor = '';
+                    nuevoValorCanonInput.style.cursor = '';
+                }
+                if (nuevoCanonMinimoInput) {
+                    nuevoCanonMinimoInput.disabled = false;
+                    nuevoCanonMinimoInput.style.backgroundColor = '';
+                    nuevoCanonMinimoInput.style.cursor = '';
+                }
+            }
+        });
+    }
+    
+    // Ejecutar validación inicial si el checkbox ya está marcado
+    if (modificarCondicionesCheckbox && modificarCondicionesCheckbox.checked) {
+        setTimeout(validarCamposFinancierosPorModalidad, 100);
+    }
+
     // Configurar toggles para mostrar/ocultar campos modificables
     const configuracionesToggle = [
         { checkbox: 'modificar_condiciones_financieras', detalles: 'condiciones-financieras-details' },
@@ -75,6 +232,28 @@ document.addEventListener('DOMContentLoaded', function() {
         const detalles = document.getElementById(config.detalles);
         
         if (checkbox && detalles) {
+            // En modo edición, marcar automáticamente si hay valores relacionados
+            {% if otrosi %}
+            let checkboxMarcadoAutomaticamente = false;
+            if (config.checkbox === 'modificar_condiciones_financieras') {
+                const nuevoValorCanon = document.getElementById('{{ form.nuevo_valor_canon.id_for_label }}');
+                const nuevoCanonMinimo = document.getElementById('{{ form.nuevo_canon_minimo_garantizado.id_for_label }}');
+                const nuevaModalidad = document.querySelector('select[name="nueva_modalidad_pago"]');
+                if ((nuevoValorCanon && nuevoValorCanon.value) || 
+                    (nuevoCanonMinimo && nuevoCanonMinimo.value) || 
+                    (nuevaModalidad && nuevaModalidad.value)) {
+                    checkbox.checked = true;
+                    checkboxMarcadoAutomaticamente = true;
+                }
+            } else if (config.checkbox === 'modificar_plazos') {
+                const nuevoPlazoMeses = document.getElementById('{{ form.nuevo_plazo_meses.id_for_label }}');
+                if (nuevoPlazoMeses && nuevoPlazoMeses.value) {
+                    checkbox.checked = true;
+                    checkboxMarcadoAutomaticamente = true;
+                }
+            }
+            {% endif %}
+            
             function toggleDetalles() {
                 // Si el checkbox está deshabilitado (renovación automática), no mostrar detalles
                 if (checkbox.disabled) {
@@ -82,14 +261,30 @@ document.addEventListener('DOMContentLoaded', function() {
                     return;
                 }
                 detalles.style.display = checkbox.checked ? 'block' : 'none';
-                // Si es el checkbox de condiciones financieras, actualizar campos según tipo
+                // Si es el checkbox de condiciones financieras, actualizar campos según tipo y validar modalidad
                 if (config.checkbox === 'modificar_condiciones_financieras') {
                     toggleCamposPorTipoContrato();
+                    if (checkbox.checked) {
+                        setTimeout(validarCamposFinancierosPorModalidad, 100);
+                    }
                 }
             }
             
             checkbox.addEventListener('change', toggleDetalles);
             toggleDetalles(); // Estado inicial
+            
+            // Si se marcó automáticamente en edición, ejecutar validaciones después de un pequeño delay
+            {% if otrosi %}
+            if (checkboxMarcadoAutomaticamente) {
+                setTimeout(function() {
+                    if (config.checkbox === 'modificar_condiciones_financieras') {
+                        validarCamposFinancierosPorModalidad();
+                    } else if (config.checkbox === 'modificar_plazos') {
+                        actualizarFechasPlazos();
+                    }
+                }, 150);
+            }
+            {% endif %}
         }
     });
     
