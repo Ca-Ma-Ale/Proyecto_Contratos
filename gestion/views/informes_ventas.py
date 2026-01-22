@@ -8,7 +8,7 @@ from django.utils import timezone
 
 from django.http import HttpResponse, JsonResponse
 
-from gestion.decorators import login_required_custom
+from gestion.decorators import admin_required, login_required_custom
 from gestion.forms import InformeVentasForm, FiltroContratosVentasForm, FiltroInformesEntregadosForm, CalculoFacturacionVentasForm
 from gestion.models import Contrato, InformeVentas, CalculoFacturacionVentas, TipoContrato
 from gestion.utils_otrosi import (
