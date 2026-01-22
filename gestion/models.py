@@ -598,15 +598,9 @@ class Contrato(models.Model):
         self.calcular_fechas_polizas()
         
         # Si la periodicidad es ANUAL y no hay fecha_aumento_ipc pero hay fecha_inicial_contrato,
-        # establecer fecha_aumento_ipc = fecha_inicial_contrato + 1 año
+        # establecer fecha_aumento_ipc = fecha_inicial_contrato (misma fecha)
         if self.periodicidad_ipc == 'ANUAL' and not self.fecha_aumento_ipc and self.fecha_inicial_contrato:
-            from datetime import date
-            fecha_inicial = self.fecha_inicial_contrato
-            self.fecha_aumento_ipc = date(
-                fecha_inicial.year + 1,
-                fecha_inicial.month,
-                fecha_inicial.day
-            )
+            self.fecha_aumento_ipc = self.fecha_inicial_contrato
         
         super().save(*args, **kwargs)
 
