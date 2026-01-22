@@ -128,24 +128,12 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         {% endif %}
         
-        // Si la modalidad seleccionada es igual a la actual, deshabilitar ambos campos
-        if (modalidadSeleccionada === modalidadActual) {
-            if (nuevoValorCanonInput) {
-                nuevoValorCanonInput.disabled = true;
-                nuevoValorCanonInput.style.backgroundColor = '#e9ecef';
-                nuevoValorCanonInput.style.cursor = 'not-allowed';
-            }
-            if (nuevoCanonMinimoInput) {
-                nuevoCanonMinimoInput.disabled = true;
-                nuevoCanonMinimoInput.style.backgroundColor = '#e9ecef';
-                nuevoCanonMinimoInput.style.cursor = 'not-allowed';
-            }
-            return;
-        }
+        // Habilitar campos según la modalidad seleccionada
+        // Solo se habilitan si la modalidad seleccionada es diferente a la actual
+        const esModalidadDiferente = modalidadSeleccionada !== modalidadActual;
         
-        // Si la modalidad es diferente, habilitar según la nueva modalidad
         if (modalidadSeleccionada === 'Fijo') {
-            // Solo habilitar Nuevo Valor Canon
+            // Siempre habilitar Nuevo Valor Canon cuando se selecciona Fijo
             if (nuevoValorCanonInput) {
                 nuevoValorCanonInput.disabled = false;
                 nuevoValorCanonInput.readOnly = false;
@@ -155,6 +143,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 nuevoValorCanonInput.style.cursor = '';
                 nuevoValorCanonInput.required = false;
             }
+            // Siempre deshabilitar Canon Mínimo para modalidad Fijo
             if (nuevoCanonMinimoInput) {
                 nuevoCanonMinimoInput.disabled = true;
                 nuevoCanonMinimoInput.style.backgroundColor = '#e9ecef';
@@ -176,18 +165,31 @@ document.addEventListener('DOMContentLoaded', function() {
                 nuevoCanonMinimoInput.value = '';
             }
         } else if (modalidadSeleccionada === 'Hibrido (Min Garantizado)') {
-            // Solo habilitar Nuevo Canon Mínimo Garantizado
+            // Solo habilitar Nuevo Canon Mínimo Garantizado si es diferente a la actual
+            // Siempre deshabilitar Nuevo Valor Canon para modalidad Híbrido
             if (nuevoValorCanonInput) {
                 nuevoValorCanonInput.disabled = true;
                 nuevoValorCanonInput.style.backgroundColor = '#e9ecef';
                 nuevoValorCanonInput.style.cursor = 'not-allowed';
                 nuevoValorCanonInput.value = '';
             }
-            if (nuevoCanonMinimoInput) {
-                nuevoCanonMinimoInput.disabled = false;
-                nuevoCanonMinimoInput.style.backgroundColor = '';
-                nuevoCanonMinimoInput.style.cursor = '';
-                nuevoCanonMinimoInput.required = false;
+            if (esModalidadDiferente) {
+                if (nuevoCanonMinimoInput) {
+                    nuevoCanonMinimoInput.disabled = false;
+                    nuevoCanonMinimoInput.readOnly = false;
+                    nuevoCanonMinimoInput.removeAttribute('readonly');
+                    nuevoCanonMinimoInput.removeAttribute('disabled');
+                    nuevoCanonMinimoInput.style.backgroundColor = '';
+                    nuevoCanonMinimoInput.style.cursor = '';
+                    nuevoCanonMinimoInput.required = false;
+                }
+            } else {
+                // Si es igual a la actual, deshabilitar
+                if (nuevoCanonMinimoInput) {
+                    nuevoCanonMinimoInput.disabled = true;
+                    nuevoCanonMinimoInput.style.backgroundColor = '#e9ecef';
+                    nuevoCanonMinimoInput.style.cursor = 'not-allowed';
+                }
             }
         } else {
             // Si no hay modalidad seleccionada o es otra, deshabilitar ambos
@@ -207,6 +209,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Configurar eventos para validación de modalidad
     const modalidadSelect = document.querySelector('select[name="nueva_modalidad_pago"]');
     const modificarCondicionesCheckbox = document.getElementById('modificar_condiciones_financieras');
+    const modalidadActual = '{{ modalidad_actual|default:"" }}';
     
     if (modalidadSelect) {
         modalidadSelect.addEventListener('change', validarCamposFinancierosPorModalidad);
@@ -216,6 +219,20 @@ document.addEventListener('DOMContentLoaded', function() {
         modificarCondicionesCheckbox.addEventListener('change', function() {
             if (this.checked) {
                 setTimeout(validarCamposFinancierosPorModalidad, 100);
+                // Si la modalidad actual es "Fijo", habilitar el campo inmediatamente
+                if (modalidadActual === 'Fijo') {
+                    setTimeout(function() {
+                        const nuevoValorCanonInput = document.getElementById('{{ form.nuevo_valor_canon.id_for_label }}');
+                        if (nuevoValorCanonInput) {
+                            nuevoValorCanonInput.disabled = false;
+                            nuevoValorCanonInput.readOnly = false;
+                            nuevoValorCanonInput.removeAttribute('readonly');
+                            nuevoValorCanonInput.removeAttribute('disabled');
+                            nuevoValorCanonInput.style.backgroundColor = '';
+                            nuevoValorCanonInput.style.cursor = '';
+                        }
+                    }, 150);
+                }
             } else {
                 // Si se desmarca, restaurar campos
                 const nuevoValorCanonInput = document.getElementById('{{ form.nuevo_valor_canon.id_for_label }}');
@@ -237,6 +254,22 @@ document.addEventListener('DOMContentLoaded', function() {
     // Ejecutar validación inicial si el checkbox ya está marcado
     if (modificarCondicionesCheckbox && modificarCondicionesCheckbox.checked) {
         setTimeout(validarCamposFinancierosPorModalidad, 100);
+    }
+    
+    // Si la modalidad actual es "Fijo" y el checkbox está marcado, habilitar el campo desde el inicio
+    const modalidadActualInicial = '{{ modalidad_actual|default:"" }}';
+    if (modalidadActualInicial === 'Fijo' && modificarCondicionesCheckbox && modificarCondicionesCheckbox.checked) {
+        setTimeout(function() {
+            const nuevoValorCanonInput = document.getElementById('{{ form.nuevo_valor_canon.id_for_label }}');
+            if (nuevoValorCanonInput) {
+                nuevoValorCanonInput.disabled = false;
+                nuevoValorCanonInput.readOnly = false;
+                nuevoValorCanonInput.removeAttribute('readonly');
+                nuevoValorCanonInput.removeAttribute('disabled');
+                nuevoValorCanonInput.style.backgroundColor = '';
+                nuevoValorCanonInput.style.cursor = '';
+            }
+        }, 200);
     }
 
     // Configurar toggles para mostrar/ocultar campos modificables
@@ -299,6 +332,19 @@ document.addEventListener('DOMContentLoaded', function() {
                 setTimeout(function() {
                     if (config.checkbox === 'modificar_condiciones_financieras') {
                         validarCamposFinancierosPorModalidad();
+                        // Si la modalidad actual es "Fijo", habilitar el campo inmediatamente
+                        const modalidadActual = '{{ modalidad_actual|default:"" }}';
+                        if (modalidadActual === 'Fijo') {
+                            const nuevoValorCanonInput = document.getElementById('{{ form.nuevo_valor_canon.id_for_label }}');
+                            if (nuevoValorCanonInput) {
+                                nuevoValorCanonInput.disabled = false;
+                                nuevoValorCanonInput.readOnly = false;
+                                nuevoValorCanonInput.removeAttribute('readonly');
+                                nuevoValorCanonInput.removeAttribute('disabled');
+                                nuevoValorCanonInput.style.backgroundColor = '';
+                                nuevoValorCanonInput.style.cursor = '';
+                            }
+                        }
                     } else if (config.checkbox === 'modificar_plazos') {
                         actualizarFechasPlazos();
                     }
