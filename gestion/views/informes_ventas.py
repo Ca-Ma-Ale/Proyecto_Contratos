@@ -830,17 +830,11 @@ def obtener_tipos_contrato_ajax(request):
     
     if tipo_cliente_proveedor == 'CLIENTE':
         from gestion.models import TipoContrato
-        tipos = TipoContrato.objects.filter(
-            contratos__tipo_contrato_cliente_proveedor='CLIENTE',
-            contratos__reporta_ventas=True
-        ).distinct().order_by('nombre')
+        tipos = TipoContrato.objects.all().order_by('nombre')
         tipos_data = [{'id': tipo.id, 'nombre': tipo.nombre} for tipo in tipos]
     elif tipo_cliente_proveedor == 'PROVEEDOR':
         from gestion.models import TipoServicio
-        tipos = TipoServicio.objects.filter(
-            contratos__tipo_contrato_cliente_proveedor='PROVEEDOR',
-            contratos__reporta_ventas=True
-        ).distinct().order_by('nombre')
+        tipos = TipoServicio.objects.all().order_by('nombre')
         tipos_data = [{'id': tipo.id, 'nombre': tipo.nombre} for tipo in tipos]
     else:
         tipos_data = []
