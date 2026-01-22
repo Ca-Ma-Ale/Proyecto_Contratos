@@ -156,7 +156,7 @@ AXES_LOCKOUT_TEMPLATE = 'registration/login.html'  # Template a mostrar cuando e
 AXES_LOCKOUT_URL = None  # Usar template en lugar de URL
 AXES_RESET_ON_SUCCESS = True  # Resetear contador al hacer login exitoso
 AXES_LOCKOUT_PARAMETERS = ['username', 'ip_address']  # Bloquear por combinación usuario+IP
-AXES_VERBOSE = True  # Logging detallado
+AXES_VERBOSE = False  # Logging detallado (desactivado para reducir ruido en logs)
 
 # Security Settings para Producción
 if not DEBUG:
@@ -257,6 +257,11 @@ LOGGING = {
         'gestion': {
             'handlers': ['file', 'console'],
             'level': 'INFO',
+            'propagate': False,
+        },
+        'axes': {
+            'handlers': ['file', 'console'],
+            'level': 'WARNING',  # Solo mostrar WARNING y ERROR de axes, no INFO
             'propagate': False,
         },
     },
