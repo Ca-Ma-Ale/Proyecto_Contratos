@@ -10,7 +10,7 @@ from django.http import HttpResponse, JsonResponse
 
 from gestion.decorators import login_required_custom
 from gestion.forms import InformeVentasForm, FiltroContratosVentasForm, FiltroInformesEntregadosForm, CalculoFacturacionVentasForm
-from gestion.models import Contrato, InformeVentas, CalculoFacturacionVentas
+from gestion.models import Contrato, InformeVentas, CalculoFacturacionVentas, TipoContrato
 from gestion.utils_otrosi import (
     obtener_valores_vigentes_facturacion_ventas,
     es_fecha_fuera_vigencia_contrato,
@@ -811,4 +811,22 @@ def descargar_excel_calculo(request, calculo_id):
     response['Content-Disposition'] = f'attachment; filename="calculo_facturacion_{calculo.contrato.num_contrato}_{calculo.get_mes_display()}_{calculo.año}.xlsx"'
     
     return response
+
+
+@login_required_custom
+def obtener_tipos_contrato_ajax(request):
+    """Vista AJAX para obtener tipos de contrato filtrados por tipo_cliente_proveedor"""
+    tipo_cliente_proveedor = request.GET.get('tipo_cliente_proveedor', '')
+    
+    if tipo_cliente_proveedor == 'CLIENTE':
+        tipos_contrato = TipoContrato.objects.filter(
+            contratos__tipo_contrato_cliente_proveedor='CLIENTE',
+            contratos__reporta_ventas=True
+        ).distinct().order_by('nombre')
+    else:
+        tipos_contrato = TipoContrato.objects.none()
+    
+    tipos_data = [{'id': tipo.id, 'nombre': tipo.nombre} for tipo in tipos_contrato]
+    
+    return JsonResponse({'tipos': tipos_data})
 

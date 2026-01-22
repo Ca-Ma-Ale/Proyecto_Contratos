@@ -83,6 +83,7 @@ from gestion.views.informes_ventas import (
     exportar_informes_excel,
     descargar_pdf_calculo,
     descargar_excel_calculo,
+    obtener_tipos_contrato_ajax,
 )
 from gestion.views.ipc import (
     lista_ipc_historico,
@@ -204,6 +205,7 @@ __all__ = [
     'exportar_informes_excel',
     'descargar_pdf_calculo',
     'descargar_excel_calculo',
+    'obtener_tipos_contrato_ajax',
     'lista_ipc_historico',
     'nuevo_ipc_historico',
     'editar_ipc_historico',

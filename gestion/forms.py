@@ -1523,8 +1523,9 @@ class CalculoFacturacionVentasForm(BaseForm):
             devoluciones = Decimal(str(devoluciones))
         
         # Asegurar que ventas_totales sea Decimal si existe
-        if ventas_totales is not None and not isinstance(ventas_totales, Decimal):
-            ventas_totales = Decimal(str(ventas_totales))
+        if ventas_totales is not None:
+            if not isinstance(ventas_totales, Decimal):
+                ventas_totales = Decimal(str(ventas_totales))
         
         if contrato and mes and año and ventas_totales:
             # Validar que el contrato reporte ventas
@@ -1545,7 +1546,7 @@ class CalculoFacturacionVentasForm(BaseForm):
                 )
             
             # Validar que las devoluciones no sean mayores que las ventas totales
-            if devoluciones > ventas_totales:
+            if isinstance(ventas_totales, Decimal) and devoluciones > ventas_totales:
                 raise ValidationError('Las devoluciones no pueden ser mayores que las ventas totales.')
         
         return cleaned_data
