@@ -195,11 +195,13 @@
                                                    class="btn btn-sm btn-outline-warning" title="Editar">
                                                     <i class="fas fa-edit"></i>
                                                 </a>
+                                                {% if user.is_staff %}
                                                 <a href="{% url 'gestion:eliminar_contrato' item.contrato.id %}" 
                                                    class="btn btn-sm btn-outline-danger" title="Eliminar"
                                                    onclick="return confirm('¿Está seguro de que desea eliminar este contrato?')">
                                                     <i class="fas fa-trash-alt"></i>
                                                 </a>
+                                                {% endif %}
                                             </div>
                                         </td>
                                     </tr>

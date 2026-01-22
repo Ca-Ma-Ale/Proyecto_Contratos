@@ -817,9 +817,11 @@
                                                     <a href="{% url 'gestion:editar_seguimiento_poliza' seguimiento.id %}" class="btn btn-outline-primary" title="Editar seguimiento">
                                                         <i class="fas fa-edit"></i>
                                                     </a>
+                                                    {% if user.is_staff %}
                                                     <a href="{% url 'gestion:eliminar_seguimiento_poliza' seguimiento.id %}" class="btn btn-outline-danger" title="Eliminar seguimiento">
                                                         <i class="fas fa-trash-alt"></i>
                                                     </a>
+                                                    {% endif %}
                                                 </div>
                                             </div>
                                             {% endif %}
@@ -950,9 +952,11 @@
                                                 <a href="{% url 'gestion:editar_seguimiento_contrato' seguimiento.id %}" class="btn btn-outline-primary" title="Editar seguimiento">
                                                     <i class="fas fa-edit"></i>
                                                 </a>
+                                                {% if user.is_staff %}
                                                 <a href="{% url 'gestion:eliminar_seguimiento_contrato' seguimiento.id %}" class="btn btn-outline-danger" title="Eliminar seguimiento">
                                                     <i class="fas fa-trash-alt"></i>
                                                 </a>
+                                                {% endif %}
                                             </div>
                                         </div>
                                         {% endif %}

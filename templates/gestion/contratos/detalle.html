@@ -28,9 +28,11 @@
                     <a href="{% url 'gestion:editar_contrato' contrato.id %}" class="btn btn-warning">
                         <i class="fas fa-edit"></i> Editar
                     </a>
+                    {% if user.is_staff %}
                     <a href="{% url 'gestion:eliminar_contrato' contrato.id %}" class="btn btn-danger">
                         <i class="fas fa-trash-alt"></i> Eliminar
                     </a>
+                    {% endif %}
                     <a href="{% url 'gestion:lista_contratos' %}" class="btn btn-secondary">
                         <i class="fas fa-arrow-left"></i> Volver a Lista
                     </a>
@@ -970,9 +972,11 @@
                                                 <a href="{% url 'gestion:editar_seguimiento_contrato' seguimiento.id %}" class="btn btn-outline-primary" title="Editar seguimiento">
                                                     <i class="fas fa-edit"></i>
                                                 </a>
+                                                {% if user.is_staff %}
                                                 <a href="{% url 'gestion:eliminar_seguimiento_contrato' seguimiento.id %}" class="btn btn-outline-danger" title="Eliminar seguimiento">
                                                     <i class="fas fa-trash-alt"></i>
                                                 </a>
+                                                {% endif %}
                                             </div>
                                         </div>
                                         {% endif %}

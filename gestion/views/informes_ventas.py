@@ -253,7 +253,7 @@ def marcar_pendiente_informe(request, informe_id):
     return render(request, 'gestion/informes/ventas/marcar_pendiente.html', context)
 
 
-@login_required_custom
+@admin_required
 def eliminar_informe_ventas(request, informe_id):
     """Vista para eliminar un informe de ventas"""
     informe = get_object_or_404(InformeVentas, id=informe_id)
