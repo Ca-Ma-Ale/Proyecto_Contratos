@@ -242,6 +242,20 @@ def calcular_salario_minimo(request):
                 puntos_adicionales
             )
             
+            # Si hay un Otro Sí vigente con valor diferente, usar el valor del Otro Sí
+            if otrosi_info['existe'] and otrosi_info['valor_canon']:
+                valor_calculado = resultado['nuevo_canon']
+                valor_otrosi = otrosi_info['valor_canon']
+                if abs(valor_calculado - valor_otrosi) > Decimal('0.01'):  # Tolerancia de 1 centavo
+                    # Actualizar el resultado con el valor del Otro Sí
+                    diferencia = valor_otrosi - canon_anterior
+                    resultado['nuevo_canon'] = valor_otrosi
+                    resultado['valor_incremento'] = diferencia
+                    # Recalcular el porcentaje total basado en el valor del Otro Sí
+                    if canon_anterior > 0:
+                        porcentaje_aplicado = ((valor_otrosi / canon_anterior) - Decimal('1')) * Decimal('100')
+                        resultado['porcentaje_total'] = porcentaje_aplicado
+            
             # Si solo se calcula, mostrar resultado sin guardar
             if accion == 'calcular':
                 canon_info = obtener_canon_base_para_salario_minimo(contrato, fecha_aplicacion)
@@ -261,12 +275,12 @@ def calcular_salario_minimo(request):
                             'valor_calculado': valor_calculado,
                             'diferencia': abs(valor_calculado - valor_otrosi),
                         }
-                        messages.warning(
+                        messages.info(
                             request,
-                            f'⚠️ ATENCIÓN: Existe un Otro Sí vigente ({otrosi_info["otrosi"].numero_otrosi}) '
+                            f'ℹ️ INFORMACIÓN: Existe un Otro Sí vigente ({otrosi_info["otrosi"].numero_otrosi}) '
                             f'que establece un canon de ${valor_otrosi:,.2f} para este período. '
                             f'El cálculo por Salario Mínimo da ${valor_calculado:,.2f}. '
-                            f'Se recomienda usar el valor del Otro Sí vigente como definitivo.'
+                            f'Se utilizará automáticamente el valor del Otro Sí vigente (${valor_otrosi:,.2f}) como definitivo.'
                         )
                 
                 context = {
@@ -353,6 +367,18 @@ def calcular_salario_minimo(request):
                 if canon_anterior_manual:
                     canon_info['fuente'] = 'Manual (Usuario)'
                 
+                # Preparar observaciones: agregar nota si se usó valor de Otro Sí
+                observaciones_finales = observaciones
+                if otrosi_info['existe'] and otrosi_info['valor_canon']:
+                    valor_calculado_original = calcular_ajuste_salario_minimo(
+                        canon_anterior,
+                        variacion_salario_minimo,
+                        puntos_adicionales
+                    )['nuevo_canon']
+                    if abs(valor_calculado_original - otrosi_info['valor_canon']) > Decimal('0.01'):
+                        nota_otrosi = f"\n[Valor ajustado por Otro Sí {otrosi_info['otrosi'].numero_otrosi}: ${otrosi_info['valor_canon']:,.2f} (Cálculo SMLV: ${valor_calculado_original:,.2f})]"
+                        observaciones_finales = (observaciones + nota_otrosi) if observaciones else nota_otrosi.strip()
+                
                 estado_calculo = 'APLICADO' if aplicar_calculo == 'si' else 'PENDIENTE'
                 
                 calculo = CalculoSalarioMinimo.objects.create(
@@ -370,7 +396,7 @@ def calcular_salario_minimo(request):
                     nuevo_canon=resultado['nuevo_canon'],
                     periodicidad_contrato=contrato.periodicidad_ipc,
                     fecha_aumento_contrato=contrato.fecha_aumento_ipc,
-                    observaciones=observaciones,
+                    observaciones=observaciones_finales,
                     estado=estado_calculo,
                     calculado_por=request.user.get_full_name() or request.user.username,
                 )
@@ -490,6 +516,18 @@ def confirmar_calculo_salario_minimo(request):
         
         fuente_porcentaje = obtener_fuente_porcentaje_salario_minimo(contrato, fecha_aplicacion)
         
+        # Preparar observaciones: agregar nota si se usó valor de Otro Sí
+        observaciones_finales = observaciones
+        if otrosi_info['existe'] and otrosi_info['valor_canon']:
+            valor_calculado_original = calcular_ajuste_salario_minimo(
+                canon_anterior,
+                variacion_salario_minimo,
+                puntos_adicionales
+            )['nuevo_canon']
+            if abs(valor_calculado_original - otrosi_info['valor_canon']) > Decimal('0.01'):
+                nota_otrosi = f"\n[Valor ajustado por Otro Sí {otrosi_info['otrosi'].numero_otrosi}: ${otrosi_info['valor_canon']:,.2f} (Cálculo SMLV: ${valor_calculado_original:,.2f})]"
+                observaciones_finales = (observaciones + nota_otrosi) if observaciones else nota_otrosi.strip()
+        
         calculo = CalculoSalarioMinimo.objects.create(
             contrato=contrato,
             año_aplicacion=fecha_aplicacion.year,
@@ -505,7 +543,7 @@ def confirmar_calculo_salario_minimo(request):
             nuevo_canon=resultado['nuevo_canon'],
             periodicidad_contrato=contrato.periodicidad_ipc,
             fecha_aumento_contrato=contrato.fecha_aumento_ipc,
-            observaciones=observaciones,
+            observaciones=observaciones_finales,
             estado=estado_calculo,
             calculado_por=request.user.get_full_name() or request.user.username,
         )
@@ -528,6 +566,20 @@ def confirmar_calculo_salario_minimo(request):
         variacion_salario_minimo,
         puntos_adicionales
     )
+    
+    # Verificar si hay Otro Sí vigente y ajustar resultado si es necesario
+    otrosi_info = verificar_otrosi_vigente_para_fecha(contrato, fecha_aplicacion)
+    if otrosi_info['existe'] and otrosi_info['valor_canon']:
+        valor_calculado_original = resultado['nuevo_canon']
+        valor_otrosi = otrosi_info['valor_canon']
+        if abs(valor_calculado_original - valor_otrosi) > Decimal('0.01'):
+            diferencia = valor_otrosi - canon_anterior
+            resultado['nuevo_canon'] = valor_otrosi
+            resultado['valor_incremento'] = diferencia
+            if canon_anterior > 0:
+                porcentaje_aplicado = ((valor_otrosi / canon_anterior) - Decimal('1')) * Decimal('100')
+                resultado['porcentaje_total'] = porcentaje_aplicado
+    
     canon_info = obtener_canon_base_para_salario_minimo(contrato, fecha_aplicacion)
     if datos.get('canon_anterior_manual'):
         canon_info['fuente'] = 'Manual (Usuario)'
