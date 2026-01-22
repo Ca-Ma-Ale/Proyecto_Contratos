@@ -352,7 +352,13 @@ def calcular_facturacion_ventas(contrato, mes, año, ventas_totales, devolucione
 def calcular_facturacion(request):
     """Vista para calcular facturación por ventas"""
     import logging
+    import traceback
     logger = logging.getLogger(__name__)
+    
+    try:
+        logger.info(f"Iniciando calcular_facturacion - Method: {request.method}, Informe ID: {request.GET.get('informe_id') or request.POST.get('informe_id')}")
+    except:
+        pass
     
     informe_id = request.GET.get('informe_id') or request.POST.get('informe_id')
     informe = None
@@ -369,9 +375,32 @@ def calcular_facturacion(request):
             pass
     
     if request.method == 'POST':
-        form = CalculoFacturacionVentasForm(request.POST)
+        try:
+            logger.info("Procesando POST - Creando formulario")
+            form = CalculoFacturacionVentasForm(request.POST)
+            logger.info(f"Formulario creado - Datos: contrato={request.POST.get('contrato')}, mes={request.POST.get('mes')}, año={request.POST.get('año')}")
+        except Exception as e:
+            logger.error(f"Error al crear formulario: {str(e)}\n{traceback.format_exc()}", exc_info=True)
+            messages.error(request, f'Error al procesar el formulario: {str(e)}')
+            form = CalculoFacturacionVentasForm()
+            if informe:
+                try:
+                    form = CalculoFacturacionVentasForm(initial={
+                        'contrato': informe.contrato.id if informe.contrato else None,
+                        'mes': str(informe.mes),
+                        'año': informe.año,
+                    })
+                except Exception as e2:
+                    logger.error(f"Error al crear formulario con datos iniciales: {str(e2)}\n{traceback.format_exc()}", exc_info=True)
+            context = {
+                'form': form,
+                'titulo': 'Calcular Facturación por Ventas',
+                'informe': informe,
+            }
+            return render(request, 'gestion/calculos/facturacion_form.html', context)
         
         if form.is_valid():
+            logger.info("Formulario válido - Procesando datos")
             contrato = form.cleaned_data['contrato']
             mes = int(form.cleaned_data['mes'])
             año = form.cleaned_data['año']
@@ -490,6 +519,7 @@ def calcular_facturacion(request):
                 )
                 return redirect('gestion:lista_informes_ventas')
         else:
+            logger.warning(f"Formulario inválido - Errores: {form.errors}")
             from gestion.utils import agregar_errores_formulario_a_mensajes
             agregar_errores_formulario_a_mensajes(request, form)
             # Si hay errores y había un informe_id pero no se obtuvo el informe, intentar obtenerlo
@@ -501,7 +531,7 @@ def calcular_facturacion(request):
                     logger.warning(f"No se pudo recuperar informe {informe_id} después de errores")
                     pass
                 except Exception as e:
-                    logger.error(f"Error al recuperar informe {informe_id}: {str(e)}", exc_info=True)
+                    logger.error(f"Error al recuperar informe {informe_id}: {str(e)}\n{traceback.format_exc()}", exc_info=True)
                     pass
     else:
         # Si viene desde un informe, pre-llenar los datos
@@ -537,6 +567,7 @@ def calcular_facturacion(request):
             form.fields['mes'].initial = str(mes_actual)
     
     try:
+        logger.info("Renderizando formulario de cálculo")
         context = {
             'form': form,
             'titulo': 'Calcular Facturación por Ventas',
@@ -545,7 +576,7 @@ def calcular_facturacion(request):
         
         return render(request, 'gestion/calculos/facturacion_form.html', context)
     except Exception as e:
-        logger.error(f"Error al renderizar formulario de cálculo: {str(e)}", exc_info=True)
+        logger.error(f"Error al renderizar formulario de cálculo: {str(e)}\n{traceback.format_exc()}", exc_info=True)
         messages.error(request, f'Error al cargar el formulario: {str(e)}. Por favor, intente nuevamente.')
         return redirect('gestion:lista_informes_ventas')
 

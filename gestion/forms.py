@@ -1496,7 +1496,17 @@ class CalculoFacturacionVentasForm(BaseForm):
         mes = cleaned_data.get('mes')
         año = cleaned_data.get('año')
         ventas_totales = cleaned_data.get('ventas_totales')
-        devoluciones = cleaned_data.get('devoluciones') or Decimal('0')
+        devoluciones = cleaned_data.get('devoluciones')
+        
+        # Asegurar que devoluciones sea Decimal
+        if devoluciones is None:
+            devoluciones = Decimal('0')
+        elif not isinstance(devoluciones, Decimal):
+            devoluciones = Decimal(str(devoluciones))
+        
+        # Asegurar que ventas_totales sea Decimal si existe
+        if ventas_totales is not None and not isinstance(ventas_totales, Decimal):
+            ventas_totales = Decimal(str(ventas_totales))
         
         if contrato and mes and año and ventas_totales:
             # Validar que el contrato reporte ventas
