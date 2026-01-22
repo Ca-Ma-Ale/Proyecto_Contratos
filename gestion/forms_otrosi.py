@@ -573,6 +573,11 @@ class OtroSiForm(BaseModelForm):
                         self.fields[campo].widget = forms.HiddenInput()
                         self.fields[campo].required = False
         
+        # Ocultar nueva_fecha_final_actualizada (se muestra como campo de solo lectura en el template)
+        if 'nueva_fecha_final_actualizada' in self.fields:
+            self.fields['nueva_fecha_final_actualizada'].widget = forms.HiddenInput()
+            self.fields['nueva_fecha_final_actualizada'].required = False
+        
         # Deshabilitar campos de vigencia si el contrato tiene renovación automática
         if self.contrato and self.contrato.prorroga_automatica:
             campos_vigencia = ['nueva_fecha_final_actualizada', 'nuevo_plazo_meses']

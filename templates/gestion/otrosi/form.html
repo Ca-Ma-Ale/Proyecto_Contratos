@@ -817,20 +817,30 @@ document.addEventListener('DOMContentLoaded', function() {
                     <div class="card-body" id="plazos-details" style="display: none;">
                         <div class="alert alert-warning mb-3">
                             <i class="fas fa-exclamation-triangle"></i>
-                            <strong>Impacto:</strong> Cambiar plazos o la fecha final modifica la vigencia del contrato.
+                            <strong>Impacto:</strong> Cambiar plazos modifica la vigencia del contrato.
                             Puede afectar vencimientos, prórrogas y la exigencia de pólizas asociadas.
                         </div>
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    {{ form.nueva_fecha_final_actualizada.label_tag }} <i class="fas fa-info-circle text-info ms-1" data-bs-toggle="tooltip" title="Nueva fecha de terminación del contrato."></i>
-                                    {{ form.nueva_fecha_final_actualizada }}
-                                    <small class="form-text text-warning">Afecta la vigencia y vencimientos</small>
-                                    {% if form.nueva_fecha_final_actualizada.errors %}
-                                        <div class="text-danger">{{ form.nueva_fecha_final_actualizada.errors }}</div>
-                                    {% endif %}
+                                    <label class="form-label">Fecha Inicial:</label> <i class="fas fa-info-circle text-info ms-1" data-bs-toggle="tooltip" title="Fecha inicial de vigencia del Otro Sí (tomada de 'Vigencia Desde')."></i>
+                                    {% with fecha_inicial=form.effective_from.value|default:form.instance.effective_from|default:form.initial.effective_from %}
+                                        <input type="text" class="form-control" value="{% if fecha_inicial %}{{ fecha_inicial|date:'Y-m-d' }}{% endif %}" readonly style="background-color: #e9ecef;">
+                                    {% endwith %}
+                                    <small class="form-text text-muted">Valor tomado de "Vigencia Desde"</small>
                                 </div>
                             </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Fecha Final:</label> <i class="fas fa-info-circle text-info ms-1" data-bs-toggle="tooltip" title="Fecha final de vigencia del Otro Sí (tomada de 'Vigencia Hasta')."></i>
+                                    {% with fecha_final=form.effective_to.value|default:form.instance.effective_to|default:form.initial.effective_to %}
+                                        <input type="text" class="form-control" value="{% if fecha_final %}{{ fecha_final|date:'Y-m-d' }}{% else %}No definida{% endif %}" readonly style="background-color: #e9ecef;">
+                                    {% endwith %}
+                                    <small class="form-text text-muted">Valor tomado de "Vigencia Hasta"</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
                                     {{ form.nuevo_plazo_meses.label_tag }} <i class="fas fa-info-circle text-info ms-1" data-bs-toggle="tooltip" title="Cantidad de meses adicionales o nuevo plazo total."></i>
@@ -842,6 +852,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 </div>
                             </div>
                         </div>
+                        {{ form.nueva_fecha_final_actualizada.as_hidden }}
                     </div>
                 </div>
             </div>
