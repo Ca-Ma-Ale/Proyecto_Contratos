@@ -376,7 +376,14 @@ def exportar_alertas_salario_minimo(request):
         }
         return render(request, 'gestion/exportaciones/seleccionar_tipo.html', context)
     
-    alertas = obtener_alertas_salario_minimo(tipo_contrato_cp=tipo_contrato_cp if tipo_contrato_cp else None)
+    try:
+        alertas = obtener_alertas_salario_minimo(tipo_contrato_cp=tipo_contrato_cp if tipo_contrato_cp else None)
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error al obtener alertas de salario mínimo: {str(e)}", exc_info=True)
+        messages.error(request, 'Error al obtener las alertas de Salario Mínimo. Por favor, intente nuevamente.')
+        return redirect('gestion:exportaciones')
 
     if not alertas:
         messages.warning(request, 'No hay alertas de Salario Mínimo para exportar.')
@@ -425,6 +432,12 @@ def exportar_alertas_salario_minimo(request):
 
     except ExportacionVaciaError:
         messages.warning(request, 'No hay alertas de Salario Mínimo para exportar.')
+        return redirect('gestion:exportaciones')
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error al exportar alertas de salario mínimo: {str(e)}", exc_info=True)
+        messages.error(request, 'Error al generar el archivo Excel. Por favor, intente nuevamente o contacte al administrador.')
         return redirect('gestion:exportaciones')
 
     return _respuesta_archivo_excel(archivo, 'alertas_salario_minimo')

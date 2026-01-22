@@ -141,13 +141,15 @@ class AlertaEmailService:
             'fecha_actual': timezone.now(),
         }
         
-        template_html = f'gestion/emails/alerta_{tipo_alerta.lower()}.html'
         if tipo_alerta == 'ALERTAS_SALARIO_MINIMO':
             template_html = 'gestion/emails/alerta_alertas_salario_minimo.html'
+        else:
+            template_html = f'gestion/emails/alerta_{tipo_alerta.lower()}.html'
         
         try:
             contenido_html = render_to_string(template_html, contexto)
-        except Exception:
+        except Exception as e:
+            logger.warning(f"No se pudo cargar el template {template_html}, usando template genérico: {str(e)}")
             contenido_html = render_to_string('gestion/emails/alerta_generica.html', contexto)
         
         return {

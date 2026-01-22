@@ -387,7 +387,22 @@ def calcular_facturacion(request):
                 return render(request, 'gestion/calculos/facturacion_form.html', context)
             
             # Realizar el cálculo
-            resultado = calcular_facturacion_ventas(contrato, mes, año, ventas_totales, devoluciones)
+            try:
+                resultado = calcular_facturacion_ventas(contrato, mes, año, ventas_totales, devoluciones)
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Error al calcular facturación: {str(e)}", exc_info=True)
+                messages.error(
+                    request,
+                    f'Error al realizar el cálculo: {str(e)}. Por favor, verifique los datos e intente nuevamente.'
+                )
+                context = {
+                    'form': form,
+                    'titulo': 'Calcular Facturación por Ventas',
+                    'informe': informe,
+                }
+                return render(request, 'gestion/calculos/facturacion_form.html', context)
             
             if not resultado:
                 messages.error(
