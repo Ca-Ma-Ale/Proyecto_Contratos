@@ -2172,7 +2172,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 fechaAumentoIpc.style.cursor = 'not-allowed';
                 
                 // Si hay fecha de inicio, usar la misma fecha (no +1 año)
-                if (fechaInicioContrato && fechaInicioContrato.value && !fechaAumentoIpc.value) {
+                // Siempre actualizar cuando se selecciona ANUAL para asegurar que use la fecha de inicio
+                if (fechaInicioContrato && fechaInicioContrato.value) {
                     fechaAumentoIpc.value = fechaInicioContrato.value;
                 }
             } else if (periodicidad === 'FECHA_ESPECIFICA') {
