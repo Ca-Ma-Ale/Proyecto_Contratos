@@ -409,19 +409,35 @@ def exportar_alertas_salario_minimo(request):
 
         registros = []
         for alerta in alertas:
-            tercero = alerta.contrato.obtener_tercero()
-            nombre_tercero = tercero.razon_social if tercero else 'Sin tercero asignado'
-            local_nombre = alerta.contrato.local.nombre_comercial_stand if alerta.contrato.local else '-'
-            registros.append((
-                alerta.contrato.num_contrato,
-                nombre_tercero,
-                local_nombre,
-                alerta.mes_ajuste,
-                alerta.condicion_salario_minimo,
-                int(alerta.meses_restantes),
-                severidades_legibles.get(alerta.color_alerta, alerta.color_alerta),
-                alerta.otrosi_modificador or 'Contrato Original',
-            ))
+            try:
+                tercero = alerta.contrato.obtener_tercero()
+                nombre_tercero = tercero.razon_social if tercero else 'Sin tercero asignado'
+                local_nombre = alerta.contrato.local.nombre_comercial_stand if alerta.contrato.local else '-'
+                mes_ajuste = alerta.mes_ajuste if alerta.mes_ajuste else '-'
+                condicion_sm = alerta.condicion_salario_minimo if alerta.condicion_salario_minimo else '-'
+                meses_restantes_valor = int(alerta.meses_restantes) if alerta.meses_restantes is not None else 0
+                severidad = severidades_legibles.get(alerta.color_alerta, alerta.color_alerta) if alerta.color_alerta else 'N/A'
+                otrosi_mod = alerta.otrosi_modificador if alerta.otrosi_modificador else 'Contrato Original'
+                
+                registros.append((
+                    alerta.contrato.num_contrato,
+                    nombre_tercero,
+                    local_nombre,
+                    mes_ajuste,
+                    condicion_sm,
+                    meses_restantes_valor,
+                    severidad,
+                    otrosi_mod,
+                ))
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Error al procesar alerta de salario mínimo para contrato {alerta.contrato.num_contrato}: {str(e)}", exc_info=True)
+                continue
+
+        if not registros:
+            messages.warning(request, 'No se pudieron procesar las alertas de Salario Mínimo para exportar.')
+            return redirect('gestion:exportaciones')
 
         archivo = generar_excel_corporativo(
             nombre_hoja='Alertas Salario Mínimo',
@@ -433,11 +449,17 @@ def exportar_alertas_salario_minimo(request):
     except ExportacionVaciaError:
         messages.warning(request, 'No hay alertas de Salario Mínimo para exportar.')
         return redirect('gestion:exportaciones')
+    except ValueError as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error de validación al exportar alertas de salario mínimo: {str(e)}", exc_info=True)
+        messages.error(request, f'Error de validación al generar el archivo Excel: {str(e)}. Por favor, verifique los datos.')
+        return redirect('gestion:exportaciones')
     except Exception as e:
         import logging
         logger = logging.getLogger(__name__)
         logger.error(f"Error al exportar alertas de salario mínimo: {str(e)}", exc_info=True)
-        messages.error(request, 'Error al generar el archivo Excel. Por favor, intente nuevamente o contacte al administrador.')
+        messages.error(request, f'Error al generar el archivo Excel: {str(e)}. Por favor, intente nuevamente o contacte al administrador.')
         return redirect('gestion:exportaciones')
 
     return _respuesta_archivo_excel(archivo, 'alertas_salario_minimo')
