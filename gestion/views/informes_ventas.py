@@ -351,7 +351,7 @@ def calcular_facturacion_ventas(contrato, mes, año, ventas_totales, devolucione
 @login_required_custom
 def calcular_facturacion(request):
     """Vista para calcular facturación por ventas"""
-    informe_id = request.GET.get('informe_id')
+    informe_id = request.GET.get('informe_id') or request.POST.get('informe_id')
     informe = None
     
     if informe_id:
@@ -402,12 +402,14 @@ def calcular_facturacion(request):
                 }
                 return render(request, 'gestion/calculos/facturacion_form.html', context)
             
-            # Obtener el informe de ventas asociado
-            informe_ventas = InformeVentas.objects.filter(
-                contrato=contrato,
-                mes=mes,
-                año=año
-            ).first()
+            # Obtener el informe de ventas asociado (usar el informe editado si existe, sino buscar)
+            informe_ventas = informe
+            if not informe_ventas:
+                informe_ventas = InformeVentas.objects.filter(
+                    contrato=contrato,
+                    mes=mes,
+                    año=año
+                ).first()
             
             # Guardar el cálculo
             calculo = CalculoFacturacionVentas.objects.create(
@@ -442,6 +444,12 @@ def calcular_facturacion(request):
         else:
             from gestion.utils import agregar_errores_formulario_a_mensajes
             agregar_errores_formulario_a_mensajes(request, form)
+            # Si hay errores y había un informe_id pero no se obtuvo el informe, intentar obtenerlo
+            if informe_id and not informe:
+                try:
+                    informe = InformeVentas.objects.get(id=informe_id)
+                except InformeVentas.DoesNotExist:
+                    pass
     else:
         # Si viene desde un informe, pre-llenar los datos
         if informe:

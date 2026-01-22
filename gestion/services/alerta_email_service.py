@@ -18,6 +18,7 @@ from gestion.services.email_service import EmailService
 from gestion.services.alertas import (
     obtener_alertas_expiracion_contratos,
     obtener_alertas_ipc,
+    obtener_alertas_salario_minimo,
     obtener_polizas_criticas,
     obtener_alertas_preaviso,
     obtener_alertas_polizas_requeridas_no_aportadas,
@@ -34,6 +35,7 @@ class AlertaEmailService:
     MAPEO_FUNCIONES_ALERTA = {
         'VENCIMIENTO_CONTRATOS': obtener_alertas_expiracion_contratos,
         'ALERTAS_IPC': obtener_alertas_ipc,
+        'ALERTAS_SALARIO_MINIMO': obtener_alertas_salario_minimo,
         'POLIZAS_CRITICAS': obtener_polizas_criticas,
         'PREAVISO_RENOVACION': obtener_alertas_preaviso,
         'POLIZAS_REQUERIDAS': obtener_alertas_polizas_requeridas_no_aportadas,
@@ -44,6 +46,7 @@ class AlertaEmailService:
     MAPEO_NOMBRES_ALERTA = {
         'VENCIMIENTO_CONTRATOS': 'Vencimiento de Contratos',
         'ALERTAS_IPC': 'Alertas IPC',
+        'ALERTAS_SALARIO_MINIMO': 'Alertas de Ajuste de Salario Mínimo',
         'POLIZAS_CRITICAS': 'Pólizas Críticas',
         'PREAVISO_RENOVACION': 'Preaviso de Renovación',
         'POLIZAS_REQUERIDAS': 'Pólizas Requeridas No Aportadas',
@@ -91,6 +94,8 @@ class AlertaEmailService:
         """Filtra solo las alertas críticas"""
         if tipo_alerta == 'ALERTAS_IPC':
             return [a for a in alertas if a.color_alerta == 'danger']
+        elif tipo_alerta == 'ALERTAS_SALARIO_MINIMO':
+            return [a for a in alertas if a.color_alerta == 'danger']
         elif tipo_alerta == 'POLIZAS_CRITICAS':
             return alertas
         elif tipo_alerta in ['VENCIMIENTO_CONTRATOS', 'PREAVISO_RENOVACION']:
@@ -137,6 +142,8 @@ class AlertaEmailService:
         }
         
         template_html = f'gestion/emails/alerta_{tipo_alerta.lower()}.html'
+        if tipo_alerta == 'ALERTAS_SALARIO_MINIMO':
+            template_html = 'gestion/emails/alerta_alertas_salario_minimo.html'
         
         try:
             contenido_html = render_to_string(template_html, contexto)

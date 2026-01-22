@@ -2795,6 +2795,7 @@ class ClienteLicense(models.Model):
 TIPO_ALERTA_CHOICES = [
     ('VENCIMIENTO_CONTRATOS', 'Vencimiento de Contratos'),
     ('ALERTAS_IPC', 'Alertas IPC'),
+    ('ALERTAS_SALARIO_MINIMO', 'Alertas de Ajuste de Salario Mínimo'),
     ('POLIZAS_CRITICAS', 'Pólizas Críticas'),
     ('PREAVISO_RENOVACION', 'Preaviso de Renovación'),
     ('POLIZAS_REQUERIDAS', 'Pólizas Requeridas No Aportadas'),

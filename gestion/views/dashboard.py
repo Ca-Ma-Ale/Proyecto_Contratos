@@ -378,6 +378,10 @@ def exportar_alertas_salario_minimo(request):
     
     alertas = obtener_alertas_salario_minimo(tipo_contrato_cp=tipo_contrato_cp if tipo_contrato_cp else None)
 
+    if not alertas:
+        messages.warning(request, 'No hay alertas de Salario Mínimo para exportar.')
+        return redirect('gestion:exportaciones')
+
     try:
         columnas = [
             ColumnaExportacion('Número de Contrato', ancho=22),
