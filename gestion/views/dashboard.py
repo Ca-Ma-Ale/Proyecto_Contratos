@@ -441,7 +441,6 @@ def exportar_alertas_salario_minimo(request):
 
         archivo = generar_excel_corporativo(
             nombre_hoja='Alertas Salario Mínimo',
-            titulo='Alertas de Ajuste de Salario Mínimo',
             columnas=columnas,
             registros=registros,
         )

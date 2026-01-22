@@ -33,7 +33,12 @@
                         <input type="hidden" name="informe_id" value="{{ informe.id }}">
                         <div class="alert alert-info">
                             <i class="fas fa-info-circle"></i> 
-                            <strong>Informe asociado:</strong> {{ informe.contrato.num_contrato }} - {{ informe.get_mes_display }}/{{ informe.año }}
+                            <strong>Informe asociado:</strong> 
+                            {% if informe.contrato %}
+                                {{ informe.contrato.num_contrato }} - {{ informe.get_mes_display }}/{{ informe.año }}
+                            {% else %}
+                                Informe {{ informe.id }} - {{ informe.get_mes_display }}/{{ informe.año }}
+                            {% endif %}
                         </div>
                         {% endif %}
 

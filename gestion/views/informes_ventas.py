@@ -351,13 +351,21 @@ def calcular_facturacion_ventas(contrato, mes, año, ventas_totales, devolucione
 @login_required_custom
 def calcular_facturacion(request):
     """Vista para calcular facturación por ventas"""
+    import logging
+    logger = logging.getLogger(__name__)
+    
     informe_id = request.GET.get('informe_id') or request.POST.get('informe_id')
     informe = None
     
     if informe_id:
         try:
-            informe = InformeVentas.objects.get(id=informe_id)
+            informe = InformeVentas.objects.select_related('contrato').get(id=informe_id)
+            logger.info(f"Cargando cálculo para informe {informe_id}, estado: {informe.estado}")
         except InformeVentas.DoesNotExist:
+            logger.warning(f"Informe {informe_id} no encontrado")
+            pass
+        except Exception as e:
+            logger.error(f"Error al obtener informe {informe_id}: {str(e)}", exc_info=True)
             pass
     
     if request.method == 'POST':
@@ -462,17 +470,40 @@ def calcular_facturacion(request):
             # Si hay errores y había un informe_id pero no se obtuvo el informe, intentar obtenerlo
             if informe_id and not informe:
                 try:
-                    informe = InformeVentas.objects.get(id=informe_id)
+                    informe = InformeVentas.objects.select_related('contrato').get(id=informe_id)
+                    logger.info(f"Informe {informe_id} recuperado después de errores de validación")
                 except InformeVentas.DoesNotExist:
+                    logger.warning(f"No se pudo recuperar informe {informe_id} después de errores")
+                    pass
+                except Exception as e:
+                    logger.error(f"Error al recuperar informe {informe_id}: {str(e)}", exc_info=True)
                     pass
     else:
         # Si viene desde un informe, pre-llenar los datos
         if informe:
-            form = CalculoFacturacionVentasForm(initial={
-                'contrato': informe.contrato.id,
-                'mes': str(informe.mes),
-                'año': informe.año,
-            })
+            try:
+                # Verificar que el contrato existe y reporta ventas
+                if not informe.contrato:
+                    logger.error(f"El informe {informe_id} no tiene contrato asociado")
+                    messages.error(request, 'El informe no tiene un contrato asociado válido.')
+                    return redirect('gestion:lista_informes_ventas')
+                
+                if not informe.contrato.reporta_ventas:
+                    logger.warning(f"El contrato {informe.contrato.num_contrato} del informe {informe_id} no reporta ventas")
+                    messages.warning(request, f'El contrato {informe.contrato.num_contrato} no reporta ventas.')
+                
+                form = CalculoFacturacionVentasForm(initial={
+                    'contrato': informe.contrato.id,
+                    'mes': str(informe.mes),
+                    'año': informe.año,
+                })
+            except Exception as e:
+                logger.error(f"Error al crear formulario con informe {informe_id}: {str(e)}", exc_info=True)
+                messages.error(request, f'Error al cargar los datos del informe: {str(e)}')
+                form = CalculoFacturacionVentasForm()
+                form.fields['año'].initial = date.today().year
+                mes_actual = date.today().month
+                form.fields['mes'].initial = str(mes_actual)
         else:
             form = CalculoFacturacionVentasForm()
             # Establecer valores por defecto
@@ -480,13 +511,18 @@ def calcular_facturacion(request):
             mes_actual = date.today().month
             form.fields['mes'].initial = str(mes_actual)
     
-    context = {
-        'form': form,
-        'titulo': 'Calcular Facturación por Ventas',
-        'informe': informe,
-    }
-    
-    return render(request, 'gestion/calculos/facturacion_form.html', context)
+    try:
+        context = {
+            'form': form,
+            'titulo': 'Calcular Facturación por Ventas',
+            'informe': informe,
+        }
+        
+        return render(request, 'gestion/calculos/facturacion_form.html', context)
+    except Exception as e:
+        logger.error(f"Error al renderizar formulario de cálculo: {str(e)}", exc_info=True)
+        messages.error(request, f'Error al cargar el formulario: {str(e)}. Por favor, intente nuevamente.')
+        return redirect('gestion:lista_informes_ventas')
 
 
 @login_required_custom
