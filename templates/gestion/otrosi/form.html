@@ -96,6 +96,55 @@ document.addEventListener('DOMContentLoaded', function() {
     // Ejecutar toggle inicial de campos según tipo de contrato
     toggleCamposPorTipoContrato();
 
+    // Función para actualizar campos de solo lectura de Fecha Inicial y Fecha Final
+    function actualizarFechasPlazos() {
+        const fechaInicialInput = document.getElementById('fecha_inicial_plazos');
+        const fechaFinalInput = document.getElementById('fecha_final_plazos');
+        
+        // Buscar los campos de vigencia por su atributo name
+        const effectiveFromInput = document.querySelector('input[name="effective_from"]');
+        const effectiveToInput = document.querySelector('input[name="effective_to"]');
+        
+        if (fechaInicialInput && effectiveFromInput) {
+            fechaInicialInput.value = effectiveFromInput.value || '';
+        }
+        
+        if (fechaFinalInput) {
+            if (effectiveToInput && effectiveToInput.value) {
+                fechaFinalInput.value = effectiveToInput.value;
+            } else {
+                fechaFinalInput.value = 'No definida';
+            }
+        }
+    }
+    
+    // Actualizar fechas cuando cambien los campos de vigencia
+    const effectiveFromInput = document.querySelector('input[name="effective_from"]');
+    const effectiveToInput = document.querySelector('input[name="effective_to"]');
+    
+    if (effectiveFromInput) {
+        effectiveFromInput.addEventListener('change', actualizarFechasPlazos);
+        effectiveFromInput.addEventListener('input', actualizarFechasPlazos);
+    }
+    
+    if (effectiveToInput) {
+        effectiveToInput.addEventListener('change', actualizarFechasPlazos);
+        effectiveToInput.addEventListener('input', actualizarFechasPlazos);
+    }
+    
+    // Actualizar fechas cuando se muestre la sección de plazos
+    const modificarPlazosCheckbox = document.getElementById('modificar_plazos');
+    if (modificarPlazosCheckbox) {
+        modificarPlazosCheckbox.addEventListener('change', function() {
+            if (this.checked) {
+                setTimeout(actualizarFechasPlazos, 100);
+            }
+        });
+    }
+    
+    // Actualizar fechas al cargar la página (con un pequeño delay para asegurar que los campos estén renderizados)
+    setTimeout(actualizarFechasPlazos, 100);
+
     // Inicializar tooltips Bootstrap
     if (window.bootstrap && typeof bootstrap.Tooltip === 'function') {
         const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
@@ -824,18 +873,14 @@ document.addEventListener('DOMContentLoaded', function() {
                             <div class="col-md-6">
                                 <div class="mb-3">
                                     <label class="form-label">Fecha Inicial:</label> <i class="fas fa-info-circle text-info ms-1" data-bs-toggle="tooltip" title="Fecha inicial de vigencia del Otro Sí (tomada de 'Vigencia Desde')."></i>
-                                    {% with fecha_inicial=form.effective_from.value|default:form.instance.effective_from|default:form.initial.effective_from %}
-                                        <input type="text" class="form-control" value="{% if fecha_inicial %}{{ fecha_inicial|date:'Y-m-d' }}{% endif %}" readonly style="background-color: #e9ecef;">
-                                    {% endwith %}
+                                    <input type="text" class="form-control" id="fecha_inicial_plazos" readonly style="background-color: #e9ecef;">
                                     <small class="form-text text-muted">Valor tomado de "Vigencia Desde"</small>
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="mb-3">
                                     <label class="form-label">Fecha Final:</label> <i class="fas fa-info-circle text-info ms-1" data-bs-toggle="tooltip" title="Fecha final de vigencia del Otro Sí (tomada de 'Vigencia Hasta')."></i>
-                                    {% with fecha_final=form.effective_to.value|default:form.instance.effective_to|default:form.initial.effective_to %}
-                                        <input type="text" class="form-control" value="{% if fecha_final %}{{ fecha_final|date:'Y-m-d' }}{% else %}No definida{% endif %}" readonly style="background-color: #e9ecef;">
-                                    {% endwith %}
+                                    <input type="text" class="form-control" id="fecha_final_plazos" readonly style="background-color: #e9ecef;">
                                     <small class="form-text text-muted">Valor tomado de "Vigencia Hasta"</small>
                                 </div>
                             </div>
