@@ -398,8 +398,6 @@ def calcular_facturacion(request):
             try:
                 resultado = calcular_facturacion_ventas(contrato, mes, año, ventas_totales, devoluciones)
             except Exception as e:
-                import logging
-                logger = logging.getLogger(__name__)
                 logger.error(f"Error al calcular facturación: {str(e)}", exc_info=True)
                 messages.error(
                     request,
@@ -435,35 +433,62 @@ def calcular_facturacion(request):
                 ).first()
             
             # Guardar el cálculo
-            calculo = CalculoFacturacionVentas.objects.create(
-                contrato=contrato,
-                informe_ventas=informe_ventas,
-                mes=mes,
-                año=año,
-                ventas_totales=ventas_totales,
-                devoluciones=devoluciones,
-                base_neta=resultado['base_neta'],
-                modalidad_contrato=resultado['modalidad_calculo'],
-                porcentaje_ventas_vigente=resultado['porcentaje_ventas'],
-                canon_minimo_garantizado_vigente=resultado.get('canon_minimo_garantizado'),
-                canon_fijo_vigente=resultado.get('canon_fijo'),
-                valor_calculado_porcentaje=resultado['valor_calculado_porcentaje'],
-                valor_a_facturar_variable=resultado['valor_a_facturar_variable'],
-                excedente_sobre_minimo=resultado.get('excedente_sobre_minimo'),
-                aplica_variable=resultado['aplica_variable'],
-                otrosi_referencia=resultado.get('otrosi_referencia_canon_minimo') or resultado.get('otrosi_referencia_porcentaje') or resultado.get('otrosi_referencia'),
-                observaciones=observaciones,
-                calculado_por=request.user.get_username() if request.user.is_authenticated else None,
-            )
+            try:
+                calculo = CalculoFacturacionVentas.objects.create(
+                    contrato=contrato,
+                    informe_ventas=informe_ventas,
+                    mes=mes,
+                    año=año,
+                    ventas_totales=ventas_totales,
+                    devoluciones=devoluciones,
+                    base_neta=resultado['base_neta'],
+                    modalidad_contrato=resultado['modalidad_calculo'],
+                    porcentaje_ventas_vigente=resultado['porcentaje_ventas'],
+                    canon_minimo_garantizado_vigente=resultado.get('canon_minimo_garantizado'),
+                    canon_fijo_vigente=resultado.get('canon_fijo'),
+                    valor_calculado_porcentaje=resultado['valor_calculado_porcentaje'],
+                    valor_a_facturar_variable=resultado['valor_a_facturar_variable'],
+                    excedente_sobre_minimo=resultado.get('excedente_sobre_minimo'),
+                    aplica_variable=resultado['aplica_variable'],
+                    otrosi_referencia=resultado.get('otrosi_referencia_canon_minimo') or resultado.get('otrosi_referencia_porcentaje') or resultado.get('otrosi_referencia'),
+                    observaciones=observaciones,
+                    calculado_por=request.user.get_username() if request.user.is_authenticated else None,
+                )
+                
+                logger.info(f"Cálculo creado exitosamente: ID={calculo.id}, Contrato={contrato.num_contrato}, Mes={mes}, Año={año}")
+            except Exception as e:
+                logger.error(f"Error al guardar cálculo: {str(e)}", exc_info=True)
+                messages.error(
+                    request,
+                    f'Error al guardar el cálculo: {str(e)}. Por favor, verifique los datos e intente nuevamente.'
+                )
+                context = {
+                    'form': form,
+                    'titulo': 'Calcular Facturación por Ventas',
+                    'informe': informe,
+                }
+                return render(request, 'gestion/calculos/facturacion_form.html', context)
             
-            messages.success(
-                request,
-                f'Cálculo realizado exitosamente para {contrato.num_contrato} - '
-                f'{calculo.get_mes_display()}/{año}. Valor a facturar: ${resultado["valor_a_facturar_variable"]:,.2f}'
-            )
-            
-            # Redirigir a la vista de resultados
-            return redirect('gestion:resultado_calculo_facturacion', calculo_id=calculo.id)
+            try:
+                meses_nombres = ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 
+                                'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
+                mes_nombre = meses_nombres[mes] if 1 <= mes <= 12 else f'Mes {mes}'
+                
+                messages.success(
+                    request,
+                    f'Cálculo realizado exitosamente para {contrato.num_contrato} - '
+                    f'{mes_nombre}/{año}. Valor a facturar: ${resultado["valor_a_facturar_variable"]:,.2f}'
+                )
+                
+                # Redirigir a la vista de resultados
+                return redirect('gestion:resultado_calculo_facturacion', calculo_id=calculo.id)
+            except Exception as e:
+                logger.error(f"Error al redirigir después de crear cálculo: {str(e)}", exc_info=True)
+                messages.error(
+                    request,
+                    f'Cálculo guardado pero error al redirigir: {str(e)}. El cálculo fue guardado con ID {calculo.id}.'
+                )
+                return redirect('gestion:lista_informes_ventas')
         else:
             from gestion.utils import agregar_errores_formulario_a_mensajes
             agregar_errores_formulario_a_mensajes(request, form)
