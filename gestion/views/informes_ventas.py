@@ -669,14 +669,21 @@ def lista_informes_entregados(request):
     filtro_form = FiltroInformesEntregadosForm(request.GET)
     
     if filtro_form.is_valid():
+        tipo_contrato_cliente_proveedor = filtro_form.cleaned_data.get('tipo_contrato_cliente_proveedor')
         tipo_contrato = filtro_form.cleaned_data.get('tipo_contrato')
         mes = filtro_form.cleaned_data.get('mes')
         año = filtro_form.cleaned_data.get('año')
         estado = filtro_form.cleaned_data.get('estado')
         buscar = filtro_form.cleaned_data.get('buscar')
         
+        if tipo_contrato_cliente_proveedor:
+            informes = informes.filter(contrato__tipo_contrato_cliente_proveedor=tipo_contrato_cliente_proveedor)
+        
         if tipo_contrato:
-            informes = informes.filter(contrato__tipo_contrato=tipo_contrato)
+            if tipo_contrato_cliente_proveedor == 'PROVEEDOR':
+                informes = informes.filter(contrato__tipo_servicio=tipo_contrato)
+            else:
+                informes = informes.filter(contrato__tipo_contrato=tipo_contrato)
         
         if mes:
             informes = informes.filter(mes=int(mes))
@@ -755,7 +762,10 @@ def exportar_informes_excel(request):
                 informes = informes.filter(contrato__tipo_contrato_cliente_proveedor=tipo_contrato_cliente_proveedor)
             
             if tipo_contrato:
-                informes = informes.filter(contrato__tipo_contrato=tipo_contrato)
+                if tipo_contrato_cliente_proveedor == 'PROVEEDOR':
+                    informes = informes.filter(contrato__tipo_servicio=tipo_contrato)
+                else:
+                    informes = informes.filter(contrato__tipo_contrato=tipo_contrato)
             
             if mes:
                 informes = informes.filter(mes=int(mes))
@@ -815,18 +825,25 @@ def descargar_excel_calculo(request, calculo_id):
 
 @login_required_custom
 def obtener_tipos_contrato_ajax(request):
-    """Vista AJAX para obtener tipos de contrato filtrados por tipo_cliente_proveedor"""
+    """Vista AJAX para obtener tipos de contrato o tipos de servicio según tipo_cliente_proveedor"""
     tipo_cliente_proveedor = request.GET.get('tipo_cliente_proveedor', '')
     
     if tipo_cliente_proveedor == 'CLIENTE':
-        tipos_contrato = TipoContrato.objects.filter(
+        from gestion.models import TipoContrato
+        tipos = TipoContrato.objects.filter(
             contratos__tipo_contrato_cliente_proveedor='CLIENTE',
             contratos__reporta_ventas=True
         ).distinct().order_by('nombre')
+        tipos_data = [{'id': tipo.id, 'nombre': tipo.nombre} for tipo in tipos]
+    elif tipo_cliente_proveedor == 'PROVEEDOR':
+        from gestion.models import TipoServicio
+        tipos = TipoServicio.objects.filter(
+            contratos__tipo_contrato_cliente_proveedor='PROVEEDOR',
+            contratos__reporta_ventas=True
+        ).distinct().order_by('nombre')
+        tipos_data = [{'id': tipo.id, 'nombre': tipo.nombre} for tipo in tipos]
     else:
-        tipos_contrato = TipoContrato.objects.none()
-    
-    tipos_data = [{'id': tipo.id, 'nombre': tipo.nombre} for tipo in tipos_contrato]
+        tipos_data = []
     
     return JsonResponse({'tipos': tipos_data})
 

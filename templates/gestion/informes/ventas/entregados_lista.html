@@ -192,12 +192,75 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    const tipoContratoCpField = document.getElementById('id_tipo_contrato_cliente_proveedor');
+    const tipoContratoField = document.getElementById('id_tipo_contrato');
+    
+    if (!tipoContratoCpField || !tipoContratoField) {
+        return;
+    }
+    
+    const tipoContratoLabel = document.querySelector('label[for="id_tipo_contrato"]');
+    
+    function actualizarTiposContrato() {
+        const tipoSeleccionado = tipoContratoCpField.value;
+        
+        if (!tipoSeleccionado) {
+            tipoContratoField.innerHTML = '<option value="">Todos los tipos</option>';
+            tipoContratoField.disabled = false;
+            if (tipoContratoLabel) {
+                tipoContratoLabel.textContent = 'Tipo de Contrato/Servicio:';
+            }
+            return;
+        }
+        
+        tipoContratoField.disabled = true;
+        tipoContratoField.innerHTML = '<option value="">Cargando...</option>';
+        
+        fetch(`{% url 'gestion:obtener_tipos_contrato_ajax' %}?tipo_cliente_proveedor=${tipoSeleccionado}`)
+            .then(response => response.json())
+            .then(data => {
+                tipoContratoField.innerHTML = '<option value="">Todos los tipos</option>';
+                
+                if (data.tipos && data.tipos.length > 0) {
+                    data.tipos.forEach(tipo => {
+                        const option = document.createElement('option');
+                        option.value = tipo.id;
+                        option.textContent = tipo.nombre;
+                        tipoContratoField.appendChild(option);
+                    });
+                }
+                
+                if (tipoContratoLabel) {
+                    if (tipoSeleccionado === 'PROVEEDOR') {
+                        tipoContratoLabel.textContent = 'Tipo de Servicio (Proveedor):';
+                    } else {
+                        tipoContratoLabel.textContent = 'Tipo de Contrato (Cliente):';
+                    }
+                }
+                
+                tipoContratoField.disabled = false;
+            })
+            .catch(error => {
+                console.error('Error al cargar tipos:', error);
+                tipoContratoField.innerHTML = '<option value="">Error al cargar</option>';
+                tipoContratoField.disabled = false;
+            });
+    }
+    
+    tipoContratoCpField.addEventListener('change', function() {
+        tipoContratoField.value = '';
+        actualizarTiposContrato();
+    });
+    
+    if (tipoContratoCpField.value) {
+        actualizarTiposContrato();
+    }
+    
     const btnExportar = document.getElementById('btn-exportar-excel');
     if (btnExportar) {
         btnExportar.addEventListener('click', function(event) {
             const totalRegistros = parseInt(btnExportar.getAttribute('data-total-registros')) || 0;
             
-            // Verificar si hay filtros aplicados
             const urlParams = new URLSearchParams(window.location.search);
             const tieneFiltros = urlParams.toString().length > 0;
             

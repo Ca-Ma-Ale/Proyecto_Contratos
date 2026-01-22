@@ -1412,8 +1412,16 @@ class FiltroInformesEntregadosForm(BaseForm):
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        from gestion.models import TipoContrato
-        self.fields['tipo_contrato'].queryset = TipoContrato.objects.all().order_by('nombre')
+        from gestion.models import TipoContrato, TipoServicio
+        
+        tipo_cliente_proveedor = self.data.get('tipo_contrato_cliente_proveedor') if self.data else None
+        
+        if tipo_cliente_proveedor == 'PROVEEDOR':
+            self.fields['tipo_contrato'].queryset = TipoServicio.objects.all().order_by('nombre')
+            self.fields['tipo_contrato'].label = 'Tipo de Servicio (Proveedor)'
+        else:
+            self.fields['tipo_contrato'].queryset = TipoContrato.objects.all().order_by('nombre')
+            self.fields['tipo_contrato'].label = 'Tipo de Contrato (Cliente)'
 
 
 class FiltroExportacionAlertasForm(BaseForm):
