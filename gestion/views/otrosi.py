@@ -87,51 +87,109 @@ def nuevo_otrosi(request, contrato_id):
         otrosi_vigente_actual = None
     
     if request.method == 'POST':
-        form = OtroSiForm(request.POST, contrato=contrato, contrato_id=contrato_id)
+        continuar_desde_advertencia = request.POST.get('continuar_desde_advertencia')
+        
+        # Si viene desde la advertencia, restaurar datos del formulario desde la sesión
+        if continuar_desde_advertencia and 'otrosi_pendiente_advertencia' in request.session:
+            datos_sesion = request.session['otrosi_pendiente_advertencia']
+            # Crear un nuevo QueryDict con los datos guardados
+            from django.http import QueryDict
+            form_data = QueryDict(mutable=True)
+            form_data_dict = datos_sesion.get('form_data', {})
+            for key, value in form_data_dict.items():
+                if isinstance(value, list):
+                    for v in value:
+                        form_data.appendlist(key, v)
+                else:
+                    form_data[key] = value
+            form_data['continuar_desde_advertencia'] = '1'
+            form = OtroSiForm(form_data, contrato=contrato, contrato_id=contrato_id)
+            del request.session['otrosi_pendiente_advertencia']
+        else:
+            form = OtroSiForm(request.POST, contrato=contrato, contrato_id=contrato_id)
         
         if form.is_valid():
             otrosi = form.save(commit=False)
             otrosi.contrato = contrato
             
             # Verificar si el otro sí modifica el canon y si existe un cálculo de IPC/Salario Mínimo
-            if otrosi.nuevo_valor_canon or otrosi.nuevo_canon_minimo_garantizado:
+            if (otrosi.nuevo_valor_canon or otrosi.nuevo_canon_minimo_garantizado) and not continuar_desde_advertencia:
                 from gestion.utils_ipc import verificar_calculo_existente_para_fecha
+                from decimal import Decimal
+                
+                # Obtener el nuevo valor del canon del otro sí
+                nuevo_valor_canon = otrosi.nuevo_valor_canon or otrosi.nuevo_canon_minimo_garantizado
                 
                 # Verificar cálculos existentes para la fecha de vigencia del otro sí
                 fecha_verificacion = otrosi.effective_from
                 calculo_info = verificar_calculo_existente_para_fecha(contrato, fecha_verificacion)
                 
+                # Si no hay cálculo para la fecha exacta, buscar por año
                 if not calculo_info['existe']:
-                    # También verificar si hay cálculos para el año de la fecha de vigencia
                     from datetime import date
                     año_verificacion = fecha_verificacion.year
-                    # Buscar cualquier cálculo en ese año
+                    # Buscar cualquier cálculo aplicado en ese año
                     from gestion.models import CalculoIPC, CalculoSalarioMinimo
-                    calculos_ipc = CalculoIPC.objects.filter(
+                    calculo_ipc = CalculoIPC.objects.filter(
                         contrato=contrato,
-                        año_aplicacion=año_verificacion
-                    ).exists()
-                    calculos_sm = CalculoSalarioMinimo.objects.filter(
+                        año_aplicacion=año_verificacion,
+                        estado='APLICADO'
+                    ).order_by('-fecha_aplicacion').first()
+                    calculo_sm = CalculoSalarioMinimo.objects.filter(
                         contrato=contrato,
-                        año_aplicacion=año_verificacion
-                    ).exists()
+                        año_aplicacion=año_verificacion,
+                        estado='APLICADO'
+                    ).order_by('-fecha_aplicacion').first()
                     
-                    if calculos_ipc or calculos_sm:
-                        tipo_calculo = 'IPC' if calculos_ipc else 'Salario Mínimo'
-                        messages.warning(
-                            request,
-                            f'⚠️ ATENCIÓN: Se ha registrado un Otro Sí que modifica el canon para el año {año_verificacion}. '
-                            f'Existe un cálculo de {tipo_calculo} para este período. '
-                            f'El canon o valor mensual calculado en el ajuste anual deberá actualizarse con el nuevo valor del Otro Sí ({otrosi.numero_otrosi}).'
-                        )
+                    # Determinar cuál cálculo usar (el más reciente si hay ambos)
+                    calculo_existente = None
+                    tipo_calculo = None
+                    if calculo_ipc and calculo_sm:
+                        calculo_existente = calculo_ipc if calculo_ipc.fecha_aplicacion >= calculo_sm.fecha_aplicacion else calculo_sm
+                        tipo_calculo = 'IPC' if calculo_existente == calculo_ipc else 'Salario Mínimo'
+                    elif calculo_ipc:
+                        calculo_existente = calculo_ipc
+                        tipo_calculo = 'IPC'
+                    elif calculo_sm:
+                        calculo_existente = calculo_sm
+                        tipo_calculo = 'Salario Mínimo'
                 else:
+                    calculo_existente = calculo_info['calculo']
                     tipo_calculo = calculo_info['tipo']
-                    messages.warning(
-                        request,
-                        f'⚠️ ATENCIÓN: Se ha registrado un Otro Sí que modifica el canon para la fecha {fecha_verificacion.strftime("%d/%m/%Y")}. '
-                        f'Existe un cálculo de {tipo_calculo} para esta fecha exacta. '
-                        f'El canon o valor mensual calculado en el ajuste anual deberá actualizarse con el nuevo valor del Otro Sí ({otrosi.numero_otrosi}).'
-                    )
+                
+                # Si hay un cálculo existente y el valor es diferente, mostrar advertencia
+                if calculo_existente and calculo_existente.estado == 'APLICADO':
+                    valor_calculo = calculo_existente.nuevo_canon
+                    diferencia = abs(valor_calculo - nuevo_valor_canon)
+                    
+                    if diferencia > Decimal('0.01'):  # Tolerancia de 1 centavo
+                        # Guardar datos del formulario en la sesión para continuar después
+                        # Convertir QueryDict a dict mutable
+                        form_data_dict = {}
+                        for key in request.POST.keys():
+                            values = request.POST.getlist(key)
+                            if len(values) == 1:
+                                form_data_dict[key] = values[0]
+                            else:
+                                form_data_dict[key] = values
+                        
+                        request.session['otrosi_pendiente_advertencia'] = {
+                            'form_data': form_data_dict,
+                            'contrato_id': contrato.id,
+                            'es_edicion': False,
+                        }
+                        
+                        context = {
+                            'otrosi': otrosi,
+                            'contrato': contrato,
+                            'calculo_existente': calculo_existente,
+                            'tipo_calculo': tipo_calculo,
+                            'nuevo_valor_canon': nuevo_valor_canon,
+                            'diferencia': diferencia,
+                            'es_edicion': False,
+                            'titulo': 'Advertencia - Cálculo Existente',
+                        }
+                        return render(request, 'gestion/otrosi/advertencia_calculo_existente.html', context)
             
             guardar_con_auditoria(otrosi, request.user, es_nuevo=True)
             otrosi.save()
@@ -291,50 +349,109 @@ def editar_otrosi(request, otrosi_id):
         otrosi_vigente_actual = None
     
     if request.method == 'POST':
-        form = OtroSiForm(request.POST, instance=otrosi, contrato=contrato, contrato_id=contrato.id)
+        continuar_desde_advertencia = request.POST.get('continuar_desde_advertencia')
+        
+        # Si viene desde la advertencia, restaurar datos del formulario desde la sesión
+        if continuar_desde_advertencia and 'otrosi_pendiente_advertencia' in request.session:
+            datos_sesion = request.session['otrosi_pendiente_advertencia']
+            # Crear un nuevo QueryDict con los datos guardados
+            from django.http import QueryDict
+            form_data = QueryDict(mutable=True)
+            form_data_dict = datos_sesion.get('form_data', {})
+            for key, value in form_data_dict.items():
+                if isinstance(value, list):
+                    for v in value:
+                        form_data.appendlist(key, v)
+                else:
+                    form_data[key] = value
+            form_data['continuar_desde_advertencia'] = '1'
+            form = OtroSiForm(form_data, instance=otrosi, contrato=contrato, contrato_id=contrato.id)
+            del request.session['otrosi_pendiente_advertencia']
+        else:
+            form = OtroSiForm(request.POST, instance=otrosi, contrato=contrato, contrato_id=contrato.id)
         
         if form.is_valid():
             otrosi = form.save(commit=False)
             
             # Verificar si el otro sí modifica el canon y si existe un cálculo de IPC/Salario Mínimo
-            if otrosi.nuevo_valor_canon or otrosi.nuevo_canon_minimo_garantizado:
+            if (otrosi.nuevo_valor_canon or otrosi.nuevo_canon_minimo_garantizado) and not continuar_desde_advertencia:
                 from gestion.utils_ipc import verificar_calculo_existente_para_fecha
+                from decimal import Decimal
+                
+                # Obtener el nuevo valor del canon del otro sí
+                nuevo_valor_canon = otrosi.nuevo_valor_canon or otrosi.nuevo_canon_minimo_garantizado
                 
                 # Verificar cálculos existentes para la fecha de vigencia del otro sí
                 fecha_verificacion = otrosi.effective_from
                 calculo_info = verificar_calculo_existente_para_fecha(contrato, fecha_verificacion)
                 
+                # Si no hay cálculo para la fecha exacta, buscar por año
                 if not calculo_info['existe']:
-                    # También verificar si hay cálculos para el año de la fecha de vigencia
                     from datetime import date
                     año_verificacion = fecha_verificacion.year
-                    # Buscar cualquier cálculo en ese año
+                    # Buscar cualquier cálculo aplicado en ese año
                     from gestion.models import CalculoIPC, CalculoSalarioMinimo
-                    calculos_ipc = CalculoIPC.objects.filter(
+                    calculo_ipc = CalculoIPC.objects.filter(
                         contrato=contrato,
-                        año_aplicacion=año_verificacion
-                    ).exists()
-                    calculos_sm = CalculoSalarioMinimo.objects.filter(
+                        año_aplicacion=año_verificacion,
+                        estado='APLICADO'
+                    ).order_by('-fecha_aplicacion').first()
+                    calculo_sm = CalculoSalarioMinimo.objects.filter(
                         contrato=contrato,
-                        año_aplicacion=año_verificacion
-                    ).exists()
+                        año_aplicacion=año_verificacion,
+                        estado='APLICADO'
+                    ).order_by('-fecha_aplicacion').first()
                     
-                    if calculos_ipc or calculos_sm:
-                        tipo_calculo = 'IPC' if calculos_ipc else 'Salario Mínimo'
-                        messages.warning(
-                            request,
-                            f'⚠️ ATENCIÓN: Se ha actualizado un Otro Sí que modifica el canon para el año {año_verificacion}. '
-                            f'Existe un cálculo de {tipo_calculo} para este período. '
-                            f'El canon o valor mensual calculado en el ajuste anual deberá actualizarse con el nuevo valor del Otro Sí ({otrosi.numero_otrosi}).'
-                        )
+                    # Determinar cuál cálculo usar (el más reciente si hay ambos)
+                    calculo_existente = None
+                    tipo_calculo = None
+                    if calculo_ipc and calculo_sm:
+                        calculo_existente = calculo_ipc if calculo_ipc.fecha_aplicacion >= calculo_sm.fecha_aplicacion else calculo_sm
+                        tipo_calculo = 'IPC' if calculo_existente == calculo_ipc else 'Salario Mínimo'
+                    elif calculo_ipc:
+                        calculo_existente = calculo_ipc
+                        tipo_calculo = 'IPC'
+                    elif calculo_sm:
+                        calculo_existente = calculo_sm
+                        tipo_calculo = 'Salario Mínimo'
                 else:
+                    calculo_existente = calculo_info['calculo']
                     tipo_calculo = calculo_info['tipo']
-                    messages.warning(
-                        request,
-                        f'⚠️ ATENCIÓN: Se ha actualizado un Otro Sí que modifica el canon para la fecha {fecha_verificacion.strftime("%d/%m/%Y")}. '
-                        f'Existe un cálculo de {tipo_calculo} para esta fecha exacta. '
-                        f'El canon o valor mensual calculado en el ajuste anual deberá actualizarse con el nuevo valor del Otro Sí ({otrosi.numero_otrosi}).'
-                    )
+                
+                # Si hay un cálculo existente y el valor es diferente, mostrar advertencia
+                if calculo_existente and calculo_existente.estado == 'APLICADO':
+                    valor_calculo = calculo_existente.nuevo_canon
+                    diferencia = abs(valor_calculo - nuevo_valor_canon)
+                    
+                    if diferencia > Decimal('0.01'):  # Tolerancia de 1 centavo
+                        # Guardar datos del formulario en la sesión para continuar después
+                        # Convertir QueryDict a dict mutable
+                        form_data_dict = {}
+                        for key in request.POST.keys():
+                            values = request.POST.getlist(key)
+                            if len(values) == 1:
+                                form_data_dict[key] = values[0]
+                            else:
+                                form_data_dict[key] = values
+                        
+                        request.session['otrosi_pendiente_advertencia'] = {
+                            'form_data': form_data_dict,
+                            'contrato_id': contrato.id,
+                            'otrosi_id': otrosi.id,
+                            'es_edicion': True,
+                        }
+                        
+                        context = {
+                            'otrosi': otrosi,
+                            'contrato': contrato,
+                            'calculo_existente': calculo_existente,
+                            'tipo_calculo': tipo_calculo,
+                            'nuevo_valor_canon': nuevo_valor_canon,
+                            'diferencia': diferencia,
+                            'es_edicion': True,
+                            'titulo': 'Advertencia - Cálculo Existente',
+                        }
+                        return render(request, 'gestion/otrosi/advertencia_calculo_existente.html', context)
             
             guardar_con_auditoria(otrosi, request.user, es_nuevo=False)
             otrosi.save()
@@ -509,7 +626,29 @@ def aprobar_otrosi(request, otrosi_id):
                 otrosi.fecha_aprobacion = datetime.now()
                 otrosi.save()
                 
-                messages.success(request, f'Otro Sí {otrosi.numero_otrosi} aprobado exitosamente!')
+                # Actualizar cálculos de IPC/Salario Mínimo si el Otro Sí modifica el canon
+                if otrosi.nuevo_valor_canon or otrosi.nuevo_canon_minimo_garantizado:
+                    from gestion.utils_ipc import actualizar_calculos_por_otrosi
+                    resultado_actualizacion = actualizar_calculos_por_otrosi(
+                        otrosi.contrato,
+                        otrosi,
+                        request.user
+                    )
+                    
+                    if resultado_actualizacion['actualizados'] > 0:
+                        detalles_str = ', '.join([
+                            f"{d['tipo']} ({d['fecha'].strftime('%d/%m/%Y')})"
+                            for d in resultado_actualizacion['detalles']
+                        ])
+                        messages.success(
+                            request,
+                            f'Otro Sí {otrosi.numero_otrosi} aprobado exitosamente! '
+                            f'Se actualizaron automáticamente {resultado_actualizacion["actualizados"]} cálculo(s) de ajuste: {detalles_str}.'
+                        )
+                    else:
+                        messages.success(request, f'Otro Sí {otrosi.numero_otrosi} aprobado exitosamente!')
+                else:
+                    messages.success(request, f'Otro Sí {otrosi.numero_otrosi} aprobado exitosamente!')
             else:
                 messages.warning(request, f'Solo se pueden aprobar Otro Sí en estado "En Revisión".')
         

@@ -629,3 +629,99 @@ def verificar_calculo_existente_para_fecha(contrato, fecha_aplicacion):
         'calculo': None,
         'tipo': None,
     }
+
+
+def actualizar_calculos_por_otrosi(contrato, otrosi, usuario_aprobador):
+    """
+    Actualiza los cálculos de IPC o Salario Mínimo aplicados cuando se aprueba un Otro Sí
+    que modifica el canon para el mismo período.
+    
+    Args:
+        contrato: Instancia del modelo Contrato
+        otrosi: Instancia del modelo OtroSi que se está aprobando
+        usuario_aprobador: Usuario que aprueba el Otro Sí
+    
+    Returns:
+        dict con:
+            - actualizados: int con el número de cálculos actualizados
+            - detalles: list con información de cada cálculo actualizado
+    """
+    from gestion.models import CalculoIPC, CalculoSalarioMinimo
+    from decimal import Decimal
+    from datetime import date
+    
+    if not (otrosi.nuevo_valor_canon or otrosi.nuevo_canon_minimo_garantizado):
+        return {'actualizados': 0, 'detalles': []}
+    
+    nuevo_valor_canon = otrosi.nuevo_valor_canon or otrosi.nuevo_canon_minimo_garantizado
+    año_otrosi = otrosi.effective_from.year
+    fecha_otrosi = otrosi.effective_from
+    
+    detalles = []
+    actualizados = 0
+    
+    # Buscar cálculos aplicados para el año del Otro Sí
+    calculos_ipc = CalculoIPC.objects.filter(
+        contrato=contrato,
+        año_aplicacion=año_otrosi,
+        estado='APLICADO'
+    )
+    
+    calculos_sm = CalculoSalarioMinimo.objects.filter(
+        contrato=contrato,
+        año_aplicacion=año_otrosi,
+        estado='APLICADO'
+    )
+    
+    # Actualizar cálculos de IPC
+    for calculo in calculos_ipc:
+        if abs(calculo.nuevo_canon - nuevo_valor_canon) > Decimal('0.01'):
+            valor_anterior = calculo.nuevo_canon
+            diferencia = nuevo_valor_canon - calculo.canon_anterior
+            porcentaje_aplicado = ((nuevo_valor_canon / calculo.canon_anterior) - Decimal('1')) * Decimal('100') if calculo.canon_anterior > 0 else Decimal('0')
+            
+            calculo.nuevo_canon = nuevo_valor_canon
+            calculo.valor_incremento = diferencia
+            calculo.porcentaje_total_aplicar = porcentaje_aplicado
+            
+            # Agregar nota en observaciones
+            nota = f"\n[Actualizado automáticamente por Otro Sí {otrosi.numero_otrosi} aprobado el {date.today().strftime('%d/%m/%Y')}: Valor ajustado de ${valor_anterior:,.2f} a ${nuevo_valor_canon:,.2f}]"
+            calculo.observaciones = (calculo.observaciones + nota) if calculo.observaciones else nota.strip()
+            
+            calculo.save()
+            actualizados += 1
+            detalles.append({
+                'tipo': 'IPC',
+                'fecha': calculo.fecha_aplicacion,
+                'valor_anterior': valor_anterior,
+                'valor_nuevo': nuevo_valor_canon,
+            })
+    
+    # Actualizar cálculos de Salario Mínimo
+    for calculo in calculos_sm:
+        if abs(calculo.nuevo_canon - nuevo_valor_canon) > Decimal('0.01'):
+            valor_anterior = calculo.nuevo_canon
+            diferencia = nuevo_valor_canon - calculo.canon_anterior
+            porcentaje_aplicado = ((nuevo_valor_canon / calculo.canon_anterior) - Decimal('1')) * Decimal('100') if calculo.canon_anterior > 0 else Decimal('0')
+            
+            calculo.nuevo_canon = nuevo_valor_canon
+            calculo.valor_incremento = diferencia
+            calculo.porcentaje_total_aplicar = porcentaje_aplicado
+            
+            # Agregar nota en observaciones
+            nota = f"\n[Actualizado automáticamente por Otro Sí {otrosi.numero_otrosi} aprobado el {date.today().strftime('%d/%m/%Y')}: Valor ajustado de ${valor_anterior:,.2f} a ${nuevo_valor_canon:,.2f}]"
+            calculo.observaciones = (calculo.observaciones + nota) if calculo.observaciones else nota.strip()
+            
+            calculo.save()
+            actualizados += 1
+            detalles.append({
+                'tipo': 'Salario Mínimo',
+                'fecha': calculo.fecha_aplicacion,
+                'valor_anterior': valor_anterior,
+                'valor_nuevo': nuevo_valor_canon,
+            })
+    
+    return {
+        'actualizados': actualizados,
+        'detalles': detalles,
+    }

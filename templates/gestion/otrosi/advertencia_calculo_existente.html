@@ -1,0 +1,137 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load humanize %}
+
+{% block title %}Advertencia - Cálculo Existente{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="display-6">
+                    <i class="fas fa-exclamation-triangle text-warning"></i> Advertencia: Cálculo de Ajuste Existente
+                </h1>
+                <a href="{% url 'gestion:lista_otrosi' contrato.id %}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Volver
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-10 offset-md-1">
+            <div class="card border-warning shadow-lg">
+                <div class="card-header bg-warning text-dark">
+                    <h4 class="mb-0">
+                        <i class="fas fa-exclamation-triangle"></i> 
+                        ACTUALIZACIÓN AUTOMÁTICA DE CÁLCULO DE AJUSTE
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-warning border-warning" role="alert">
+                        <h5 class="alert-heading">
+                            <i class="fas fa-info-circle"></i> Información Importante
+                        </h5>
+                        <hr>
+                        <p class="mb-3">
+                            Se ha detectado un <strong>cálculo de ajuste ({{ tipo_calculo }})</strong> ya aplicado 
+                            para el período en el que el Otro Sí modificará el canon.
+                        </p>
+                        
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <div class="card bg-light">
+                                    <div class="card-body">
+                                        <h6 class="text-muted">Otro Sí a Registrar</h6>
+                                        <h4 class="text-primary">{{ otrosi.numero_otrosi }}</h4>
+                                        <small class="text-muted">
+                                            Vigencia desde: {{ otrosi.effective_from|date:"d/m/Y" }}
+                                            {% if otrosi.effective_to %}
+                                                hasta: {{ otrosi.effective_to|date:"d/m/Y" }}
+                                            {% else %}
+                                                (sin fecha de fin)
+                                            {% endif %}
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card bg-light">
+                                    <div class="card-body">
+                                        <h6 class="text-muted">Año de Aplicación</h6>
+                                        <h4 class="text-info">{{ otrosi.effective_from.year }}</h4>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <div class="card border-danger">
+                                    <div class="card-body">
+                                        <h6 class="text-danger">
+                                            <i class="fas fa-calculator"></i> Valor Actual en el Cálculo
+                                        </h6>
+                                        <h3 class="text-danger">${{ calculo_existente.nuevo_canon|floatformat:2|intcomma }}</h3>
+                                        <small class="text-muted">
+                                            Cálculo {{ tipo_calculo }} del {{ calculo_existente.fecha_aplicacion|date:"d/m/Y" }}
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card border-success">
+                                    <div class="card-body">
+                                        <h6 class="text-success">
+                                            <i class="fas fa-file-contract"></i> Nuevo Valor del Otro Sí
+                                        </h6>
+                                        <h3 class="text-success">${{ nuevo_valor_canon|floatformat:2|intcomma }}</h3>
+                                        <small class="text-muted">
+                                            Valor que se establecerá en el Otro Sí
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="alert alert-info">
+                            <h6 class="mb-2">
+                                <i class="fas fa-info-circle"></i> Diferencia
+                            </h6>
+                            <h4 class="mb-0">${{ diferencia|floatformat:2|intcomma }}</h4>
+                        </div>
+
+                        <div class="alert alert-success border-success">
+                            <h5 class="alert-heading">
+                                <i class="fas fa-check-circle"></i> Acción Automática al Aprobar
+                            </h5>
+                            <p class="mb-0">
+                                Cuando este Otro Sí sea <strong>aprobado</strong>, el sistema actualizará automáticamente 
+                                el cálculo de {{ tipo_calculo }} existente para usar el nuevo valor del Otro Sí 
+                                (<strong>${{ nuevo_valor_canon|floatformat:2|intcomma }}</strong>).
+                            </p>
+                            <hr>
+                            <p class="mb-0">
+                                <strong>Esto es necesario para evitar discrepancias, ya que el próximo ajuste por IPC/Salario Mínimo 
+                                se realizará sobre un valor incorrecto si no se actualiza.</strong>
+                            </p>
+                        </div>
+                    </div>
+
+                    <form method="post" action="{% if es_edicion %}{% url 'gestion:editar_otrosi' otrosi.id %}{% else %}{% url 'gestion:nuevo_otrosi' contrato.id %}{% endif %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="continuar_desde_advertencia" value="1">
+                        
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-success btn-lg">
+                                <i class="fas fa-check"></i> Continuar con el Registro del Otro Sí
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
