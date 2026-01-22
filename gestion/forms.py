@@ -1218,7 +1218,25 @@ class FiltroContratosVentasForm(BaseForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         from gestion.models import TipoContrato
-        self.fields['tipo_contrato'].queryset = TipoContrato.objects.all().order_by('nombre')
+        
+        # Filtrar tipos de contrato según el tipo seleccionado (CLIENTE/PROVEEDOR)
+        tipo_cliente_proveedor = None
+        if self.data:
+            tipo_cliente_proveedor = self.data.get('tipo_contrato_cliente_proveedor', '')
+        elif self.initial:
+            tipo_cliente_proveedor = self.initial.get('tipo_contrato_cliente_proveedor', '')
+        
+        if tipo_cliente_proveedor:
+            # Obtener tipos de contrato únicos de contratos que reportan ventas y son del tipo seleccionado
+            self.fields['tipo_contrato'].queryset = TipoContrato.objects.filter(
+                contratos__tipo_contrato_cliente_proveedor=tipo_cliente_proveedor,
+                contratos__reporta_ventas=True
+            ).distinct().order_by('nombre')
+        else:
+            # Si no hay filtro, mostrar todos los tipos de contratos que tienen contratos que reportan ventas
+            self.fields['tipo_contrato'].queryset = TipoContrato.objects.filter(
+                contratos__reporta_ventas=True
+            ).distinct().order_by('nombre')
         
         # Establecer valores iniciales de mes/año si no vienen en data inicial
         ahora = timezone.now()

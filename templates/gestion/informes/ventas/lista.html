@@ -169,4 +169,65 @@
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const tipoContratoCpField = document.getElementById('id_tipo_contrato_cliente_proveedor_filtro');
+    const tipoContratoField = document.getElementById('id_tipo_contrato_filtro');
+    
+    if (!tipoContratoCpField || !tipoContratoField) {
+        return;
+    }
+    
+    function actualizarTiposContrato() {
+        const tipoSeleccionado = tipoContratoCpField.value;
+        
+        if (!tipoSeleccionado) {
+            // Si no hay selección, mostrar todos los tipos
+            tipoContratoField.innerHTML = '<option value="">Todos los tipos</option>';
+            tipoContratoField.disabled = false;
+            return;
+        }
+        
+        // Deshabilitar el campo mientras se carga
+        tipoContratoField.disabled = true;
+        tipoContratoField.innerHTML = '<option value="">Cargando...</option>';
+        
+        // Hacer petición AJAX
+        fetch(`{% url 'gestion:obtener_tipos_contrato_ajax' %}?tipo_cliente_proveedor=${tipoSeleccionado}`)
+            .then(response => response.json())
+            .then(data => {
+                tipoContratoField.innerHTML = '<option value="">Todos los tipos</option>';
+                
+                if (data.tipos && data.tipos.length > 0) {
+                    data.tipos.forEach(tipo => {
+                        const option = document.createElement('option');
+                        option.value = tipo.id;
+                        option.textContent = tipo.nombre;
+                        tipoContratoField.appendChild(option);
+                    });
+                }
+                
+                tipoContratoField.disabled = false;
+            })
+            .catch(error => {
+                console.error('Error al cargar tipos de contrato:', error);
+                tipoContratoField.innerHTML = '<option value="">Error al cargar</option>';
+                tipoContratoField.disabled = false;
+            });
+    }
+    
+    // Ejecutar al cambiar el campo tipo_contrato_cliente_proveedor
+    tipoContratoCpField.addEventListener('change', function() {
+        // Limpiar la selección actual del tipo_contrato
+        tipoContratoField.value = '';
+        actualizarTiposContrato();
+    });
+    
+    // Ejecutar al cargar la página si ya hay un valor seleccionado
+    if (tipoContratoCpField.value) {
+        actualizarTiposContrato();
+    }
+});
+</script>
 {% endblock %}

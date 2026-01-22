@@ -76,6 +76,7 @@ urlpatterns = [
     path('informes-ventas/exportar-excel/', views.exportar_informes_excel, name='exportar_informes_excel'),
     path('informes-ventas/calculo/<int:calculo_id>/pdf/', views.descargar_pdf_calculo, name='descargar_pdf_calculo'),
     path('informes-ventas/calculo/<int:calculo_id>/excel/', views.descargar_excel_calculo, name='descargar_excel_calculo'),
+    path('informes-ventas/ajax/obtener-tipos-contrato/', views.obtener_tipos_contrato_ajax, name='obtener_tipos_contrato_ajax'),
     
     # URLs de IPC
     path('ipc/', views.lista_ipc_historico, name='lista_ipc_historico'),

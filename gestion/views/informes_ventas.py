@@ -6,7 +6,7 @@ from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 
 from gestion.decorators import login_required_custom
 from gestion.forms import InformeVentasForm, FiltroContratosVentasForm, FiltroInformesEntregadosForm, CalculoFacturacionVentasForm
@@ -714,6 +714,7 @@ def lista_informes_entregados(request):
     return render(request, 'gestion/informes/ventas/entregados_lista.html', context)
 
 
+@login_required_custom
 @login_required_custom
 def descargar_pdf_calculo(request, calculo_id):
     """Vista para descargar el PDF del cálculo"""
