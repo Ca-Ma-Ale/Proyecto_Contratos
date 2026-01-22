@@ -264,28 +264,49 @@ def calcular_salario_minimo(request):
                 
                 # Verificar si hay otro sí vigente con valor diferente
                 alerta_otrosi = None
+                continuar_desde_advertencia = request.POST.get('continuar_desde_advertencia')
+                
                 if otrosi_info['existe'] and otrosi_info['valor_canon']:
-                    valor_calculado = resultado['nuevo_canon']
+                    # Calcular el valor original antes del ajuste
+                    resultado_original = calcular_ajuste_salario_minimo(
+                        canon_anterior,
+                        variacion_salario_minimo,
+                        puntos_adicionales
+                    )
+                    valor_calculado_original = resultado_original['nuevo_canon']
                     valor_otrosi = otrosi_info['valor_canon']
-                    if abs(valor_calculado - valor_otrosi) > Decimal('0.01'):  # Tolerancia de 1 centavo
+                    
+                    if abs(valor_calculado_original - valor_otrosi) > Decimal('0.01'):  # Tolerancia de 1 centavo
                         alerta_otrosi = {
                             'existe': True,
                             'otrosi': otrosi_info['otrosi'],
                             'valor_otrosi': valor_otrosi,
-                            'valor_calculado': valor_calculado,
-                            'diferencia': abs(valor_calculado - valor_otrosi),
+                            'valor_calculado': valor_calculado_original,
+                            'diferencia': abs(valor_calculado_original - valor_otrosi),
                         }
-                        diferencia_valor = abs(valor_calculado - valor_otrosi)
-                        messages.warning(
-                            request,
-                            f'⚠️ AJUSTE AUTOMÁTICO POR OTRO SÍ VIGENTE: '
-                            f'Se detectó un Otro Sí vigente ({otrosi_info["otrosi"].numero_otrosi}) '
-                            f'que establece un canon de ${valor_otrosi:,.2f} para el año {fecha_aplicacion.year}. '
-                            f'El cálculo por Salario Mínimo resultaba en ${valor_calculado:,.2f} '
-                            f'(diferencia: ${diferencia_valor:,.2f}). '
-                            f'El sistema ha ajustado automáticamente el valor a ${valor_otrosi:,.2f} según el Otro Sí vigente. '
-                            f'Este será el valor que se guardará en el cálculo.'
-                        )
+                        
+                        # Si no viene desde la advertencia, mostrar el template de advertencia
+                        if not continuar_desde_advertencia:
+                            context = {
+                                'alerta_otrosi': alerta_otrosi,
+                                'contrato': contrato,
+                                'fecha_aplicacion': fecha_aplicacion,
+                                'salario_minimo_historico': salario_minimo_historico,
+                                'canon_anterior': canon_anterior,
+                                'canon_anterior_manual': canon_anterior_manual,
+                                'observaciones': observaciones,
+                                'titulo': 'Advertencia - Otro Sí Vigente',
+                            }
+                            return render(request, 'gestion/salario_minimo/advertencia_otrosi.html', context)
+                
+                # Si viene desde la advertencia, mostrar mensaje informativo
+                if continuar_desde_advertencia and alerta_otrosi:
+                    messages.success(
+                        request,
+                        f'✅ Valor ajustado automáticamente: Se utilizará ${alerta_otrosi["valor_otrosi"]:,.2f} '
+                        f'del Otro Sí {alerta_otrosi["otrosi"].numero_otrosi} en lugar del valor calculado '
+                        f'(${alerta_otrosi["valor_calculado"]:,.2f}).'
+                    )
                 
                 context = {
                     'form': form,
