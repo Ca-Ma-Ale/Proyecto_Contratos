@@ -633,13 +633,15 @@ def verificar_calculo_existente_para_fecha(contrato, fecha_aplicacion):
 
 def actualizar_calculos_por_otrosi(contrato, otrosi, usuario_aprobador):
     """
-    Actualiza los cálculos de IPC o Salario Mínimo aplicados cuando se aprueba un Otro Sí
+    Actualiza los cálculos de IPC o Salario Mínimo aplicados cuando se crea/edita/aprueba un Otro Sí
     que modifica el canon para el mismo período.
+    
+    Solo actualiza si el Otro Sí está aprobado, ya que solo los Otros Sí aprobados tienen efecto.
     
     Args:
         contrato: Instancia del modelo Contrato
-        otrosi: Instancia del modelo OtroSi que se está aprobando
-        usuario_aprobador: Usuario que aprueba el Otro Sí
+        otrosi: Instancia del modelo OtroSi
+        usuario_aprobador: Usuario que realiza la acción
     
     Returns:
         dict con:
@@ -650,12 +652,15 @@ def actualizar_calculos_por_otrosi(contrato, otrosi, usuario_aprobador):
     from decimal import Decimal
     from datetime import date
     
+    # Solo actualizar si el Otro Sí está aprobado
+    if otrosi.estado != 'APROBADO':
+        return {'actualizados': 0, 'detalles': []}
+    
     if not (otrosi.nuevo_valor_canon or otrosi.nuevo_canon_minimo_garantizado):
         return {'actualizados': 0, 'detalles': []}
     
     nuevo_valor_canon = otrosi.nuevo_valor_canon or otrosi.nuevo_canon_minimo_garantizado
     año_otrosi = otrosi.effective_from.year
-    fecha_otrosi = otrosi.effective_from
     
     detalles = []
     actualizados = 0
@@ -685,7 +690,8 @@ def actualizar_calculos_por_otrosi(contrato, otrosi, usuario_aprobador):
             calculo.porcentaje_total_aplicar = porcentaje_aplicado
             
             # Agregar nota en observaciones
-            nota = f"\n[Actualizado automáticamente por Otro Sí {otrosi.numero_otrosi} aprobado el {date.today().strftime('%d/%m/%Y')}: Valor ajustado de ${valor_anterior:,.2f} a ${nuevo_valor_canon:,.2f}]"
+            fecha_actualizacion = date.today()
+            nota = f"\n[Actualizado automáticamente por Otro Sí {otrosi.numero_otrosi} el {fecha_actualizacion.strftime('%d/%m/%Y')}: Valor ajustado de ${valor_anterior:,.2f} a ${nuevo_valor_canon:,.2f}]"
             calculo.observaciones = (calculo.observaciones + nota) if calculo.observaciones else nota.strip()
             
             calculo.save()
@@ -709,7 +715,8 @@ def actualizar_calculos_por_otrosi(contrato, otrosi, usuario_aprobador):
             calculo.porcentaje_total_aplicar = porcentaje_aplicado
             
             # Agregar nota en observaciones
-            nota = f"\n[Actualizado automáticamente por Otro Sí {otrosi.numero_otrosi} aprobado el {date.today().strftime('%d/%m/%Y')}: Valor ajustado de ${valor_anterior:,.2f} a ${nuevo_valor_canon:,.2f}]"
+            fecha_actualizacion = date.today()
+            nota = f"\n[Actualizado automáticamente por Otro Sí {otrosi.numero_otrosi} el {fecha_actualizacion.strftime('%d/%m/%Y')}: Valor ajustado de ${valor_anterior:,.2f} a ${nuevo_valor_canon:,.2f}]"
             calculo.observaciones = (calculo.observaciones + nota) if calculo.observaciones else nota.strip()
             
             calculo.save()

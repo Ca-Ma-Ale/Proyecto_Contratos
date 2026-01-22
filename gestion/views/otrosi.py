@@ -194,10 +194,41 @@ def nuevo_otrosi(request, contrato_id):
             guardar_con_auditoria(otrosi, request.user, es_nuevo=True)
             otrosi.save()
             
+            # Si el Otro Sí modifica el canon, actualizar cálculos existentes inmediatamente
+            # Esto asegura que la base de datos se actualice cuando se detecta el cálculo existente
+            if otrosi.nuevo_valor_canon or otrosi.nuevo_canon_minimo_garantizado:
+                from gestion.utils_ipc import actualizar_calculos_por_otrosi
+                resultado_actualizacion = actualizar_calculos_por_otrosi(
+                    otrosi.contrato,
+                    otrosi,
+                    request.user
+                )
+                
+                if resultado_actualizacion['actualizados'] > 0:
+                    detalles_str = ', '.join([
+                        f"{d['tipo']} ({d['fecha'].strftime('%d/%m/%Y')})"
+                        for d in resultado_actualizacion['detalles']
+                    ])
+                    if otrosi.estado == 'APROBADO':
+                        messages.success(
+                            request,
+                            f'✅ Otro Sí {otrosi.numero_otrosi} creado exitosamente! '
+                            f'Se actualizaron automáticamente {resultado_actualizacion["actualizados"]} cálculo(s) de ajuste: {detalles_str}.'
+                        )
+                    else:
+                        messages.success(
+                            request,
+                            f'✅ Otro Sí {otrosi.numero_otrosi} creado exitosamente! '
+                            f'Cuando se apruebe este Otro Sí, se actualizarán automáticamente {resultado_actualizacion["actualizados"]} cálculo(s) de ajuste: {detalles_str}.'
+                        )
+                else:
+                    messages.success(request, f'✅ Otro Sí {otrosi.numero_otrosi} creado exitosamente!')
+            else:
+                messages.success(request, f'✅ Otro Sí {otrosi.numero_otrosi} creado exitosamente!')
+            
             # Los valores de pólizas ya se guardan en los campos nuevo_* del OtroSi mediante el formulario
             # No necesitamos procesar condiciones adicionales
             
-            messages.success(request, f'✅ Otro Sí {otrosi.numero_otrosi} creado exitosamente!')
             return redirect('gestion:detalle_otrosi', otrosi_id=otrosi.id)
         else:
             # Agregar mensajes de error específicos
@@ -456,10 +487,41 @@ def editar_otrosi(request, otrosi_id):
             guardar_con_auditoria(otrosi, request.user, es_nuevo=False)
             otrosi.save()
             
+            # Si el Otro Sí modifica el canon, actualizar cálculos existentes inmediatamente
+            # Esto asegura que la base de datos se actualice cuando se detecta el cálculo existente
+            if otrosi.nuevo_valor_canon or otrosi.nuevo_canon_minimo_garantizado:
+                from gestion.utils_ipc import actualizar_calculos_por_otrosi
+                resultado_actualizacion = actualizar_calculos_por_otrosi(
+                    otrosi.contrato,
+                    otrosi,
+                    request.user
+                )
+                
+                if resultado_actualizacion['actualizados'] > 0:
+                    detalles_str = ', '.join([
+                        f"{d['tipo']} ({d['fecha'].strftime('%d/%m/%Y')})"
+                        for d in resultado_actualizacion['detalles']
+                    ])
+                    if otrosi.estado == 'APROBADO':
+                        messages.success(
+                            request,
+                            f'✅ Otro Sí {otrosi.numero_otrosi} actualizado exitosamente! '
+                            f'Se actualizaron automáticamente {resultado_actualizacion["actualizados"]} cálculo(s) de ajuste: {detalles_str}.'
+                        )
+                    else:
+                        messages.success(
+                            request,
+                            f'✅ Otro Sí {otrosi.numero_otrosi} actualizado exitosamente! '
+                            f'Cuando se apruebe este Otro Sí, se actualizarán automáticamente {resultado_actualizacion["actualizados"]} cálculo(s) de ajuste: {detalles_str}.'
+                        )
+                else:
+                    messages.success(request, f'✅ Otro Sí {otrosi.numero_otrosi} actualizado exitosamente!')
+            else:
+                messages.success(request, f'✅ Otro Sí {otrosi.numero_otrosi} actualizado exitosamente!')
+            
             # Los valores de pólizas ya se guardan en los campos nuevo_* del OtroSi mediante el formulario
             # No necesitamos procesar condiciones adicionales
             
-            messages.success(request, f'✅ Otro Sí {otrosi.numero_otrosi} actualizado exitosamente!')
             return redirect('gestion:detalle_otrosi', otrosi_id=otrosi.id)
         else:
             # Agregar mensajes de error específicos
