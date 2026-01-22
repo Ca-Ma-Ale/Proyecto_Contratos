@@ -293,12 +293,16 @@ def calcular_ipc(request):
                             'valor_calculado': valor_calculado,
                             'diferencia': abs(valor_calculado - valor_otrosi),
                         }
-                        messages.info(
+                        diferencia_valor = abs(valor_calculado - valor_otrosi)
+                        messages.warning(
                             request,
-                            f'ℹ️ INFORMACIÓN: Existe un Otro Sí vigente ({otrosi_info["otrosi"].numero_otrosi}) '
-                            f'que establece un canon de ${valor_otrosi:,.2f} para este período. '
-                            f'El cálculo por IPC da ${valor_calculado:,.2f}. '
-                            f'Se utilizará automáticamente el valor del Otro Sí vigente (${valor_otrosi:,.2f}) como definitivo.'
+                            f'⚠️ AJUSTE AUTOMÁTICO POR OTRO SÍ VIGENTE: '
+                            f'Se detectó un Otro Sí vigente ({otrosi_info["otrosi"].numero_otrosi}) '
+                            f'que establece un canon de ${valor_otrosi:,.2f} para el año {fecha_aplicacion.year}. '
+                            f'El cálculo por IPC resultaba en ${valor_calculado:,.2f} '
+                            f'(diferencia: ${diferencia_valor:,.2f}). '
+                            f'El sistema ha ajustado automáticamente el valor a ${valor_otrosi:,.2f} según el Otro Sí vigente. '
+                            f'Este será el valor que se guardará en el cálculo.'
                         )
                 
                 context = {
