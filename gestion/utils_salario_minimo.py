@@ -342,11 +342,14 @@ def obtener_ultimo_calculo_salario_minimo_aplicado(contrato):
 
 def verificar_otrosi_vigente_para_fecha(contrato, fecha_aplicacion):
     """
-    Verifica si existe un Otro Sí vigente que modifica el canon para una fecha específica.
+    Verifica si existe un Otro Sí vigente que modifica el canon para el año de aplicación.
+    
+    Si la fecha de aplicación es 01/01/2026, el canon estará activo durante todo el año 2026.
+    Por lo tanto, se verifica si hay algún Otro Sí vigente durante el año 2026 que modifique el canon.
     
     Args:
         contrato: Instancia del modelo Contrato
-        fecha_aplicacion: date con la fecha de aplicación del cálculo
+        fecha_aplicacion: date con la fecha de aplicación del cálculo (ej: 01/01/2026)
     
     Returns:
         dict con:
@@ -354,45 +357,53 @@ def verificar_otrosi_vigente_para_fecha(contrato, fecha_aplicacion):
             - otrosi: OtroSi vigente que modifica el canon o None
             - valor_canon: Decimal con el valor del canon del otro sí o None
     """
-    from datetime import timedelta
+    from datetime import date
+    from django.db.models import Q
+    from gestion.models import OtroSi
     
-    # Calcular fecha de referencia (día anterior exacto)
-    fecha_referencia = fecha_aplicacion - timedelta(days=1)
+    # Obtener el año de aplicación
+    año_aplicacion = fecha_aplicacion.year
     
-    # Buscar Otro Sí vigente que modifique el canon hasta la fecha de referencia
-    otrosi_canon = get_ultimo_otrosi_que_modifico_campo_hasta_fecha(
-        contrato,
-        'nuevo_valor_canon',
-        fecha_referencia,
-        permitir_futuros=False
-    )
+    # Definir el rango del año: desde el primer día hasta el último día del año
+    primer_dia_año = date(año_aplicacion, 1, 1)
+    ultimo_dia_año = date(año_aplicacion, 12, 31)
+    
+    # Buscar Otros Sí aprobados que modifiquen el canon y que estén vigentes durante el año
+    # Un Otro Sí está vigente en un año si:
+    # - effective_from <= ultimo_dia_año (empieza antes o durante el año)
+    # - (effective_to >= primer_dia_año O effective_to es None) (termina después o durante el año, o no tiene fin)
+    otrosi_canon = OtroSi.objects.filter(
+        contrato=contrato,
+        estado='APROBADO',
+        nuevo_valor_canon__isnull=False,
+        effective_from__lte=ultimo_dia_año
+    ).filter(
+        Q(effective_to__gte=primer_dia_año) | Q(effective_to__isnull=True)
+    ).order_by('-effective_from', '-version').first()
     
     if otrosi_canon and otrosi_canon.nuevo_valor_canon:
-        # Verificar que el otro sí esté vigente en la fecha de aplicación
-        if otrosi_canon.effective_from <= fecha_aplicacion:
-            if otrosi_canon.effective_to is None or otrosi_canon.effective_to >= fecha_aplicacion:
-                return {
-                    'existe': True,
-                    'otrosi': otrosi_canon,
-                    'valor_canon': otrosi_canon.nuevo_valor_canon,
-                }
+        return {
+            'existe': True,
+            'otrosi': otrosi_canon,
+            'valor_canon': otrosi_canon.nuevo_valor_canon,
+        }
     
     # También verificar canon mínimo garantizado
-    otrosi_canon_min = get_ultimo_otrosi_que_modifico_campo_hasta_fecha(
-        contrato,
-        'nuevo_canon_minimo_garantizado',
-        fecha_referencia,
-        permitir_futuros=False
-    )
+    otrosi_canon_min = OtroSi.objects.filter(
+        contrato=contrato,
+        estado='APROBADO',
+        nuevo_canon_minimo_garantizado__isnull=False,
+        effective_from__lte=ultimo_dia_año
+    ).filter(
+        Q(effective_to__gte=primer_dia_año) | Q(effective_to__isnull=True)
+    ).order_by('-effective_from', '-version').first()
     
     if otrosi_canon_min and otrosi_canon_min.nuevo_canon_minimo_garantizado:
-        if otrosi_canon_min.effective_from <= fecha_aplicacion:
-            if otrosi_canon_min.effective_to is None or otrosi_canon_min.effective_to >= fecha_aplicacion:
-                return {
-                    'existe': True,
-                    'otrosi': otrosi_canon_min,
-                    'valor_canon': otrosi_canon_min.nuevo_canon_minimo_garantizado,
-                }
+        return {
+            'existe': True,
+            'otrosi': otrosi_canon_min,
+            'valor_canon': otrosi_canon_min.nuevo_canon_minimo_garantizado,
+        }
     
     return {
         'existe': False,
