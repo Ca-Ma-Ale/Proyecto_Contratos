@@ -94,7 +94,7 @@ from gestion.views.ipc import (
     calcular_ipc,
     confirmar_calculo_ipc,
     detalle_calculo_ipc,
-    editar_calculo_ipc,
+    # editar_calculo_ipc,  # Deshabilitado - no se permite editar cálculos
     eliminar_calculo_ipc,
     lista_calculos_ipc,
     contratos_pendientes_ipc,
@@ -119,7 +119,7 @@ from gestion.views.salario_minimo import (
     calcular_salario_minimo,
     confirmar_calculo_salario_minimo,
     detalle_calculo_salario_minimo,
-    editar_calculo_salario_minimo,
+    # editar_calculo_salario_minimo,  # Deshabilitado - no se permite editar cálculos
     eliminar_calculo_salario_minimo,
     lista_calculos_salario_minimo,
     contratos_pendientes_salario_minimo,
@@ -213,7 +213,7 @@ __all__ = [
     'calcular_ipc',
     'confirmar_calculo_ipc',
     'detalle_calculo_ipc',
-    'editar_calculo_ipc',
+    # 'editar_calculo_ipc',  # Deshabilitado - no se permite editar cálculos
     'eliminar_calculo_ipc',
     'lista_calculos_ipc',
     'contratos_pendientes_ipc',
@@ -234,7 +234,7 @@ __all__ = [
     'calcular_salario_minimo',
     'confirmar_calculo_salario_minimo',
     'detalle_calculo_salario_minimo',
-    'editar_calculo_salario_minimo',
+    # 'editar_calculo_salario_minimo',  # Deshabilitado - no se permite editar cálculos
     'eliminar_calculo_salario_minimo',
     'lista_calculos_salario_minimo',
     'contratos_pendientes_salario_minimo',

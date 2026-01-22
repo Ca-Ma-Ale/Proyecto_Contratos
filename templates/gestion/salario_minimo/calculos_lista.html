@@ -92,9 +92,6 @@
                                                     <i class="fas fa-eye"></i>
                                                 </a>
                                                 {% if user.is_staff %}
-                                                <a href="{% url 'gestion:editar_calculo_salario_minimo' calculo.id %}" class="btn btn-sm btn-warning" title="Editar">
-                                                    <i class="fas fa-edit"></i>
-                                                </a>
                                                 <a href="{% url 'gestion:eliminar_calculo_salario_minimo' calculo.id %}" class="btn btn-sm btn-danger" title="Eliminar">
                                                     <i class="fas fa-trash"></i>
                                                 </a>

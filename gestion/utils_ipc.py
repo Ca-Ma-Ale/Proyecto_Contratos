@@ -509,3 +509,113 @@ def obtener_ultimo_calculo_aplicado_hasta_fecha(contrato, fecha_referencia=None)
         return ultimo_salario
     
     return None
+
+
+def verificar_otrosi_vigente_para_fecha(contrato, fecha_aplicacion):
+    """
+    Verifica si existe un Otro Sí vigente que modifica el canon para una fecha específica.
+    
+    Args:
+        contrato: Instancia del modelo Contrato
+        fecha_aplicacion: date con la fecha de aplicación del cálculo
+    
+    Returns:
+        dict con:
+            - existe: bool indicando si existe un otro sí vigente
+            - otrosi: OtroSi vigente que modifica el canon o None
+            - valor_canon: Decimal con el valor del canon del otro sí o None
+    """
+    from datetime import timedelta
+    
+    # Calcular fecha de referencia (día anterior exacto)
+    fecha_referencia = fecha_aplicacion - timedelta(days=1)
+    
+    # Buscar Otro Sí vigente que modifique el canon hasta la fecha de referencia
+    otrosi_canon = get_ultimo_otrosi_que_modifico_campo_hasta_fecha(
+        contrato,
+        'nuevo_valor_canon',
+        fecha_referencia,
+        permitir_futuros=False
+    )
+    
+    if otrosi_canon and otrosi_canon.nuevo_valor_canon:
+        # Verificar que el otro sí esté vigente en la fecha de aplicación
+        if otrosi_canon.effective_from <= fecha_aplicacion:
+            if otrosi_canon.effective_to is None or otrosi_canon.effective_to >= fecha_aplicacion:
+                return {
+                    'existe': True,
+                    'otrosi': otrosi_canon,
+                    'valor_canon': otrosi_canon.nuevo_valor_canon,
+                }
+    
+    # También verificar canon mínimo garantizado
+    otrosi_canon_min = get_ultimo_otrosi_que_modifico_campo_hasta_fecha(
+        contrato,
+        'nuevo_canon_minimo_garantizado',
+        fecha_referencia,
+        permitir_futuros=False
+    )
+    
+    if otrosi_canon_min and otrosi_canon_min.nuevo_canon_minimo_garantizado:
+        if otrosi_canon_min.effective_from <= fecha_aplicacion:
+            if otrosi_canon_min.effective_to is None or otrosi_canon_min.effective_to >= fecha_aplicacion:
+                return {
+                    'existe': True,
+                    'otrosi': otrosi_canon_min,
+                    'valor_canon': otrosi_canon_min.nuevo_canon_minimo_garantizado,
+                }
+    
+    return {
+        'existe': False,
+        'otrosi': None,
+        'valor_canon': None,
+    }
+
+
+def verificar_calculo_existente_para_fecha(contrato, fecha_aplicacion):
+    """
+    Verifica si existe un cálculo de IPC o Salario Mínimo para una fecha específica.
+    
+    Args:
+        contrato: Instancia del modelo Contrato
+        fecha_aplicacion: date con la fecha de aplicación
+    
+    Returns:
+        dict con:
+            - existe: bool indicando si existe un cálculo
+            - calculo: CalculoIPC o CalculoSalarioMinimo o None
+            - tipo: str con 'IPC' o 'SALARIO_MINIMO' o None
+    """
+    from gestion.models import CalculoSalarioMinimo
+    
+    # Buscar cálculo de IPC para esta fecha exacta
+    calculo_ipc = CalculoIPC.objects.filter(
+        contrato=contrato,
+        fecha_aplicacion=fecha_aplicacion
+    ).first()
+    
+    if calculo_ipc:
+        return {
+            'existe': True,
+            'calculo': calculo_ipc,
+            'tipo': 'IPC',
+        }
+    
+    # Buscar cálculo de Salario Mínimo para esta fecha exacta
+    calculo_salario = CalculoSalarioMinimo.objects.filter(
+        contrato=contrato,
+        fecha_aplicacion=fecha_aplicacion
+    ).first()
+    
+    if calculo_salario:
+        return {
+            'existe': True,
+            'calculo': calculo_salario,
+            'tipo': 'SALARIO_MINIMO',
+        }
+    
+    return {
+        'existe': False,
+        'calculo': None,
+        'tipo': None,
+    }

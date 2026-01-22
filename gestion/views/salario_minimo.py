@@ -22,6 +22,8 @@ from gestion.utils_salario_minimo import (
     obtener_ultimo_calculo_salario_minimo_contrato,
     obtener_fuente_porcentaje_salario_minimo,
     obtener_fuente_puntos_adicionales_salario_minimo,
+    verificar_otrosi_vigente_para_fecha,
+    verificar_calculo_existente_para_fecha,
 )
 from gestion.utils_formateo import limpiar_valor_numerico
 
@@ -230,6 +232,9 @@ def calcular_salario_minimo(request):
             fuente_puntos_info = obtener_fuente_puntos_adicionales_salario_minimo(contrato, fecha_aplicacion)
             puntos_adicionales = fuente_puntos_info['puntos']
             
+            # Verificar si existe un Otro Sí vigente que modifica el canon para esta fecha
+            otrosi_info = verificar_otrosi_vigente_para_fecha(contrato, fecha_aplicacion)
+            
             # Calcular el ajuste usando la variación del salario mínimo
             resultado = calcular_ajuste_salario_minimo(
                 canon_anterior,
@@ -242,6 +247,27 @@ def calcular_salario_minimo(request):
                 canon_info = obtener_canon_base_para_salario_minimo(contrato, fecha_aplicacion)
                 if canon_anterior_manual:
                     canon_info['fuente'] = 'Manual (Usuario)'
+                
+                # Verificar si hay otro sí vigente con valor diferente
+                alerta_otrosi = None
+                if otrosi_info['existe'] and otrosi_info['valor_canon']:
+                    valor_calculado = resultado['nuevo_canon']
+                    valor_otrosi = otrosi_info['valor_canon']
+                    if abs(valor_calculado - valor_otrosi) > Decimal('0.01'):  # Tolerancia de 1 centavo
+                        alerta_otrosi = {
+                            'existe': True,
+                            'otrosi': otrosi_info['otrosi'],
+                            'valor_otrosi': valor_otrosi,
+                            'valor_calculado': valor_calculado,
+                            'diferencia': abs(valor_calculado - valor_otrosi),
+                        }
+                        messages.warning(
+                            request,
+                            f'⚠️ ATENCIÓN: Existe un Otro Sí vigente ({otrosi_info["otrosi"].numero_otrosi}) '
+                            f'que establece un canon de ${valor_otrosi:,.2f} para este período. '
+                            f'El cálculo por Salario Mínimo da ${valor_calculado:,.2f}. '
+                            f'Se recomienda usar el valor del Otro Sí vigente como definitivo.'
+                        )
                 
                 context = {
                     'form': form,
@@ -258,6 +284,7 @@ def calcular_salario_minimo(request):
                     'fecha_aplicacion': fecha_aplicacion,
                     'observaciones': observaciones,
                     'canon_anterior_manual': canon_anterior_manual,
+                    'alerta_otrosi': alerta_otrosi,
                     'user': request.user,
                 }
                 return render(request, 'gestion/salario_minimo/calcular_form.html', context)
@@ -272,6 +299,20 @@ def calcular_salario_minimo(request):
                         canon_info['fuente'] = 'Manual (Usuario)'
                     
                     fuente_porcentaje = obtener_fuente_porcentaje_salario_minimo(contrato, fecha_aplicacion)
+                    
+                    # Verificar si hay otro sí vigente con valor diferente
+                    alerta_otrosi = None
+                    if otrosi_info['existe'] and otrosi_info['valor_canon']:
+                        valor_calculado = resultado['nuevo_canon']
+                        valor_otrosi = otrosi_info['valor_canon']
+                        if abs(valor_calculado - valor_otrosi) > Decimal('0.01'):  # Tolerancia de 1 centavo
+                            alerta_otrosi = {
+                                'existe': True,
+                                'otrosi': otrosi_info['otrosi'],
+                                'valor_otrosi': valor_otrosi,
+                                'valor_calculado': valor_calculado,
+                                'diferencia': abs(valor_calculado - valor_otrosi),
+                            }
                     
                     context = {
                         'form': form,
@@ -288,6 +329,7 @@ def calcular_salario_minimo(request):
                         'fecha_aplicacion': fecha_aplicacion,
                         'observaciones': observaciones,
                         'canon_anterior_manual': canon_anterior_manual,
+                        'alerta_otrosi': alerta_otrosi,
                         'user': request.user,
                     }
                     return render(request, 'gestion/salario_minimo/calcular_form.html', context)
@@ -524,41 +566,13 @@ def detalle_calculo_salario_minimo(request, calculo_id):
     return render(request, 'gestion/salario_minimo/calculo_detalle.html', context)
 
 
-@login_required_custom
-def editar_calculo_salario_minimo(request, calculo_id):
-    """Vista para editar un cálculo de Salario Mínimo existente"""
-    calculo = get_object_or_404(CalculoSalarioMinimo, id=calculo_id)
-    
-    if request.method == 'POST':
-        form = EditarCalculoSalarioMinimoForm(request.POST, instance=calculo)
-        if form.is_valid():
-            porcentaje_total = form.cleaned_data.get('_porcentaje_total')
-            valor_incremento = form.cleaned_data.get('_valor_incremento')
-            nuevo_canon = form.cleaned_data.get('_nuevo_canon')
-            
-            if porcentaje_total is not None:
-                calculo.porcentaje_total_aplicar = porcentaje_total
-            if valor_incremento is not None:
-                calculo.valor_incremento = valor_incremento
-            if nuevo_canon is not None:
-                calculo.nuevo_canon = nuevo_canon
-            
-            calculo.save()
-            
-            messages.success(request, 'Cálculo de Salario Mínimo actualizado exitosamente!')
-            return redirect('gestion:detalle_calculo_salario_minimo', calculo_id=calculo.id)
-        else:
-            from gestion.utils import agregar_errores_formulario_a_mensajes
-            agregar_errores_formulario_a_mensajes(request, form)
-    else:
-        form = EditarCalculoSalarioMinimoForm(instance=calculo)
-    
-    context = {
-        'form': form,
-        'calculo': calculo,
-        'titulo': f'Editar Cálculo Salario Mínimo {calculo.fecha_aplicacion.strftime("%d/%m/%Y")} - {calculo.contrato.num_contrato}',
-    }
-    return render(request, 'gestion/salario_minimo/editar_calculo.html', context)
+# Vista de edición deshabilitada - Los cálculos de Salario Mínimo no deben editarse
+# @login_required_custom
+# def editar_calculo_salario_minimo(request, calculo_id):
+#     """Vista para editar un cálculo de Salario Mínimo existente"""
+#     calculo = get_object_or_404(CalculoSalarioMinimo, id=calculo_id)
+#     messages.error(request, 'La edición de cálculos de Salario Mínimo está deshabilitada. Si necesita corregir un cálculo, elimínelo y créelo nuevamente.')
+#     return redirect('gestion:detalle_calculo_salario_minimo', calculo_id=calculo.id)
 
 
 @admin_required
