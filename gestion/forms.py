@@ -1886,6 +1886,30 @@ class CalculoIPCForm(BaseForm):
                     f'(año anterior al de aplicación).'
                 )
             
+            # Validar que la fecha de aplicación esté dentro de la vigencia del contrato
+            from gestion.utils_otrosi import es_fecha_fuera_vigencia_contrato
+            from gestion.views.utils import _obtener_fecha_final_contrato
+            
+            if es_fecha_fuera_vigencia_contrato(contrato, fecha_aplicacion):
+                fecha_inicio = getattr(contrato, 'fecha_inicial_contrato', None)
+                fecha_final = _obtener_fecha_final_contrato(contrato, fecha_aplicacion)
+                
+                if fecha_inicio and fecha_aplicacion < fecha_inicio:
+                    self.add_error(
+                        'fecha_aplicacion',
+                        f'La fecha de aplicación ({fecha_aplicacion.strftime("%d/%m/%Y")}) es anterior al inicio del contrato '
+                        f'({fecha_inicio.strftime("%d/%m/%Y")}).'
+                    )
+                elif fecha_final and fecha_aplicacion > fecha_final:
+                    self.add_error(
+                        'fecha_aplicacion',
+                        f'La fecha de aplicación ({fecha_aplicacion.strftime("%d/%m/%Y")}) está fuera de la vigencia del contrato. '
+                        f'El contrato está vigente hasta {fecha_final.strftime("%d/%m/%Y")}. '
+                        f'Según la documentación (Contrato, Otro Sí o Renovación Automática), '
+                        f'solo estos tres tipos de documentos pueden aumentar la vigencia del contrato. '
+                        f'Para la fecha seleccionada, el contrato no está activo.'
+                    )
+            
             # Validar que la fecha de aplicación coincida con la fecha proyectada (±1 día)
             from gestion.utils_ipc import calcular_proxima_fecha_aumento
             from gestion.utils_otrosi import get_ultimo_otrosi_que_modifico_campo_hasta_fecha
@@ -2370,6 +2394,30 @@ class CalculoSalarioMinimoForm(BaseForm):
                     f'Ya existe un cálculo de Salario Mínimo para el contrato {contrato.num_contrato} '
                     f'en la fecha {fecha_aplicacion.strftime("%d/%m/%Y")}'
                 )
+            
+            # Validar que la fecha de aplicación esté dentro de la vigencia del contrato
+            from gestion.utils_otrosi import es_fecha_fuera_vigencia_contrato
+            from gestion.views.utils import _obtener_fecha_final_contrato
+            
+            if es_fecha_fuera_vigencia_contrato(contrato, fecha_aplicacion):
+                fecha_inicio = getattr(contrato, 'fecha_inicial_contrato', None)
+                fecha_final = _obtener_fecha_final_contrato(contrato, fecha_aplicacion)
+                
+                if fecha_inicio and fecha_aplicacion < fecha_inicio:
+                    self.add_error(
+                        'fecha_aplicacion',
+                        f'La fecha de aplicación ({fecha_aplicacion.strftime("%d/%m/%Y")}) es anterior al inicio del contrato '
+                        f'({fecha_inicio.strftime("%d/%m/%Y")}).'
+                    )
+                elif fecha_final and fecha_aplicacion > fecha_final:
+                    self.add_error(
+                        'fecha_aplicacion',
+                        f'La fecha de aplicación ({fecha_aplicacion.strftime("%d/%m/%Y")}) está fuera de la vigencia del contrato. '
+                        f'El contrato está vigente hasta {fecha_final.strftime("%d/%m/%Y")}. '
+                        f'Según la documentación (Contrato, Otro Sí o Renovación Automática), '
+                        f'solo estos tres tipos de documentos pueden aumentar la vigencia del contrato. '
+                        f'Para la fecha seleccionada, el contrato no está activo.'
+                    )
             
             # Validar que la fecha de aplicación coincida con la fecha proyectada (±1 día)
             from gestion.utils_ipc import calcular_proxima_fecha_aumento

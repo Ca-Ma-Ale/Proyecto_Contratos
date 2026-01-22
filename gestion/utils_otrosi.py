@@ -30,12 +30,22 @@ def _obtener_label_evento(evento):
 
 def es_fecha_fuera_vigencia_contrato(contrato, fecha_referencia):
     """
-    Determina si una fecha es anterior al inicio del contrato.
+    Determina si una fecha está fuera de la vigencia del contrato.
+    Retorna True si la fecha es anterior al inicio o posterior a la fecha final del contrato.
     """
-    fecha_inicio = getattr(contrato, 'fecha_inicial_contrato', None)
-    if not fecha_inicio or not fecha_referencia:
+    if not fecha_referencia:
         return False
-    return fecha_referencia < fecha_inicio
+    
+    fecha_inicio = getattr(contrato, 'fecha_inicial_contrato', None)
+    if fecha_inicio and fecha_referencia < fecha_inicio:
+        return True
+    
+    from gestion.views.utils import _obtener_fecha_final_contrato
+    fecha_final = _obtener_fecha_final_contrato(contrato, fecha_referencia)
+    if fecha_final and fecha_referencia > fecha_final:
+        return True
+    
+    return False
 
 
 def tiene_otrosi_posteriores(otrosi):
@@ -312,6 +322,27 @@ def get_vista_vigente_contrato(contrato, fecha_referencia=None):
         fecha_referencia = date.today()
 
     if es_fecha_fuera_vigencia_contrato(contrato, fecha_referencia):
+        fecha_inicio = getattr(contrato, 'fecha_inicial_contrato', None)
+        from gestion.views.utils import _obtener_fecha_final_contrato
+        fecha_final = _obtener_fecha_final_contrato(contrato, fecha_referencia)
+        
+        mensaje = None
+        if fecha_inicio and fecha_referencia < fecha_inicio:
+            mensaje = (
+                f'La fecha {fecha_referencia} es anterior al inicio del contrato '
+                f'({fecha_inicio}).'
+            )
+        elif fecha_final and fecha_referencia > fecha_final:
+            mensaje = (
+                f'La fecha {fecha_referencia} está fuera de la vigencia del contrato. '
+                f'El contrato está vigente hasta {fecha_final}. '
+                f'Según la documentación (Contrato, Otro Sí o Renovación Automática), '
+                f'solo estos tres tipos de documentos pueden aumentar la vigencia del contrato. '
+                f'Para la fecha seleccionada, el contrato no está activo.'
+            )
+        else:
+            mensaje = f'La fecha {fecha_referencia} está fuera de la vigencia del contrato.'
+        
         return {
             'contrato': contrato,
             'num_contrato': contrato.num_contrato,
@@ -320,10 +351,7 @@ def get_vista_vigente_contrato(contrato, fecha_referencia=None):
             'campos_modificados': {},
             'tiene_modificaciones': False,
             'vista_disponible': False,
-            'mensaje_sin_vigencia': (
-                f'La fecha {fecha_referencia} es anterior al inicio del contrato '
-                f'({contrato.fecha_inicial_contrato}).'
-            ),
+            'mensaje_sin_vigencia': mensaje,
         }
     
     # Función auxiliar para obtener valor de un campo con efecto cadena
