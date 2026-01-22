@@ -76,6 +76,21 @@ document.addEventListener('DOMContentLoaded', function() {
         const modalidadSeleccionada = modalidadSelect.value;
         const modalidadActual = '{{ modalidad_actual|default:"" }}';
         
+        // Si no hay modalidad seleccionada, deshabilitar ambos campos
+        if (!modalidadSeleccionada || modalidadSeleccionada === '') {
+            if (nuevoValorCanonInput) {
+                nuevoValorCanonInput.disabled = true;
+                nuevoValorCanonInput.style.backgroundColor = '#e9ecef';
+                nuevoValorCanonInput.style.cursor = 'not-allowed';
+            }
+            if (nuevoCanonMinimoInput) {
+                nuevoCanonMinimoInput.disabled = true;
+                nuevoCanonMinimoInput.style.backgroundColor = '#e9ecef';
+                nuevoCanonMinimoInput.style.cursor = 'not-allowed';
+            }
+            return;
+        }
+        
         // En modo edición, si el otro sí ya tiene una modalidad diferente a la actual del contrato,
         // permitir editar los campos relacionados a esa modalidad
         {% if otrosi %}
@@ -86,6 +101,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (modalidadSeleccionada === 'Fijo') {
                 if (nuevoValorCanonInput) {
                     nuevoValorCanonInput.disabled = false;
+                    nuevoValorCanonInput.removeAttribute('readonly');
                     nuevoValorCanonInput.style.backgroundColor = '';
                     nuevoValorCanonInput.style.cursor = '';
                 }
@@ -103,6 +119,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 if (nuevoCanonMinimoInput) {
                     nuevoCanonMinimoInput.disabled = false;
+                    nuevoCanonMinimoInput.removeAttribute('readonly');
                     nuevoCanonMinimoInput.style.backgroundColor = '';
                     nuevoCanonMinimoInput.style.cursor = '';
                 }
@@ -131,6 +148,9 @@ document.addEventListener('DOMContentLoaded', function() {
             // Solo habilitar Nuevo Valor Canon
             if (nuevoValorCanonInput) {
                 nuevoValorCanonInput.disabled = false;
+                nuevoValorCanonInput.readOnly = false;
+                nuevoValorCanonInput.removeAttribute('readonly');
+                nuevoValorCanonInput.removeAttribute('disabled');
                 nuevoValorCanonInput.style.backgroundColor = '';
                 nuevoValorCanonInput.style.cursor = '';
                 nuevoValorCanonInput.required = false;
