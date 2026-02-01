@@ -268,8 +268,11 @@ def get_ultimo_otrosi_que_modifico_campo_hasta_fecha(contrato, campo_nombre, fec
         valor = getattr(evento, campo_nombre, None)
         # Verificar si el campo tiene un valor válido
         if valor is not None:
+            # Para booleanos, siempre retornar (True o False son valores válidos)
+            if isinstance(valor, bool):
+                return evento
             # Para strings, verificar que no esté vacío
-            if isinstance(valor, str) and valor.strip() != '':
+            elif isinstance(valor, str) and valor.strip() != '':
                 return evento
             # Para Decimal, verificar que no sea 0 (0 puede indicar que no se modificó)
             elif isinstance(valor, (Decimal, int, float)):
@@ -283,7 +286,7 @@ def get_ultimo_otrosi_que_modifico_campo_hasta_fecha(contrato, campo_nombre, fec
                 except (ValueError, TypeError):
                     # Si no se puede convertir a Decimal, tratar como valor válido
                     return evento
-            # Para otros tipos (bool, date), si no es None, es válido
+            # Para otros tipos (date), si no es None, es válido
             elif not isinstance(valor, str):
                 return evento
     
