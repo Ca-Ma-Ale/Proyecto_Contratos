@@ -30,6 +30,48 @@ document.addEventListener('DOMContentLoaded', function() {
         tipoField.addEventListener('change', toggleDetallePoliza);
         toggleDetallePoliza();
     }
+    
+    // Manejar campo de colchón
+    const tieneColchonField = document.getElementById('{{ form.tiene_colchon.id_for_label }}');
+    const mesesColchonGroup = document.getElementById('meses_colchon_group');
+    const fechasInfo = document.getElementById('fechas_info');
+    const fechaVencimientoField = document.getElementById('{{ form.fecha_vencimiento.id_for_label }}');
+    
+    function toggleColchonFields() {
+        if (tieneColchonField && mesesColchonGroup && fechasInfo) {
+            if (tieneColchonField.checked) {
+                mesesColchonGroup.style.display = 'block';
+                fechasInfo.style.display = 'block';
+                actualizarFechasColchon();
+            } else {
+                mesesColchonGroup.style.display = 'none';
+                fechasInfo.style.display = 'none';
+            }
+        }
+    }
+    
+    function actualizarFechasColchon() {
+        if (fechaVencimientoField && fechaVencimientoField.value) {
+            const fechaRegistrada = fechaVencimientoField.value;
+            document.getElementById('fecha_registrada').textContent = fechaRegistrada;
+            
+            // Calcular fecha real basada en fecha final del contrato
+            // Esto se puede mejorar con una llamada AJAX si es necesario
+            const fechaRealElement = document.getElementById('fecha_real');
+            if (fechaRealElement) {
+                fechaRealElement.textContent = 'Se calculará automáticamente al guardar';
+            }
+        }
+    }
+    
+    if (tieneColchonField) {
+        tieneColchonField.addEventListener('change', toggleColchonFields);
+        toggleColchonFields();
+    }
+    
+    if (fechaVencimientoField) {
+        fechaVencimientoField.addEventListener('change', actualizarFechasColchon);
+    }
 });
 </script>
 {% endblock %}
@@ -1043,11 +1085,80 @@ document.addEventListener('DOMContentLoaded', function() {
                                     </div>
                                 </div>
 
-                                <!-- 3. Vigencia y Fechas -->
+                                <!-- 3. Documento Origen y Colchón -->
+                                <div class="form-section">
+                                    <div class="form-section-header" style="background: linear-gradient(135deg, #6c757d 0%, #495057 100%);">
+                                        <h4>
+                                            <i class="fas fa-file-contract"></i> 3. Documento Origen y Colchón
+                                        </h4>
+                                    </div>
+                                    <div class="form-section-body">
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="form-group-enhanced">
+                                                    <label for="{{ form.documento_origen.id_for_label }}" class="form-label-enhanced">
+                                                        <i class="fas fa-file-signature"></i> {{ form.documento_origen.label }}
+                                                    </label>
+                                                    {{ form.documento_origen|add_class:"form-control form-control-enhanced" }}
+                                                    {% if form.documento_origen.errors %}
+                                                        <div class="text-danger mt-1">{{ form.documento_origen.errors }}</div>
+                                                    {% endif %}
+                                                    <small class="small-text">
+                                                        <i class="fas fa-info-circle"></i> Seleccione a qué documento pertenece esta póliza. Las condiciones se validarán según este documento.
+                                                    </small>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="form-group-enhanced">
+                                                    <div class="form-check mt-4">
+                                                        <input type="checkbox" name="{{ form.tiene_colchon.name }}" id="{{ form.tiene_colchon.id_for_label }}" 
+                                                               class="form-check-input" {% if form.tiene_colchon.value %}checked{% endif %}>
+                                                        <label class="form-check-label" for="{{ form.tiene_colchon.id_for_label }}">
+                                                            <i class="fas fa-shield-alt"></i> {{ form.tiene_colchon.label }}
+                                                        </label>
+                                                    </div>
+                                                    {% if form.tiene_colchon.errors %}
+                                                        <div class="text-danger mt-1">{{ form.tiene_colchon.errors }}</div>
+                                                    {% endif %}
+                                                    <small class="small-text">
+                                                        <i class="fas fa-info-circle"></i> Marque si esta póliza incluye meses adicionales como colchón de seguridad.
+                                                    </small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="row" id="meses_colchon_group" style="display: {% if form.tiene_colchon.value %}block{% else %}none{% endif %};">
+                                            <div class="col-md-6">
+                                                <div class="form-group-enhanced">
+                                                    <label for="{{ form.meses_colchon.id_for_label }}" class="form-label-enhanced">
+                                                        <i class="fas fa-calendar-plus"></i> {{ form.meses_colchon.label }}
+                                                    </label>
+                                                    {{ form.meses_colchon|add_class:"form-control form-control-enhanced" }}
+                                                    {% if form.meses_colchon.errors %}
+                                                        <div class="text-danger mt-1">{{ form.meses_colchon.errors }}</div>
+                                                    {% endif %}
+                                                    <small class="small-text">
+                                                        <i class="fas fa-info-circle"></i> Número de meses adicionales agregados como colchón.
+                                                    </small>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div id="fechas_info" style="display: {% if form.tiene_colchon.value %}block{% else %}none{% endif %};">
+                                                    <div class="alert alert-info">
+                                                        <strong><i class="fas fa-calendar-check"></i> Fechas de Vencimiento:</strong><br>
+                                                        <span id="fecha_registrada_label">Fecha Registrada:</span> <span id="fecha_registrada"></span><br>
+                                                        <span id="fecha_real_label">Fecha Real (sin colchón):</span> <span id="fecha_real"></span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- 4. Vigencia y Fechas -->
                                 <div class="form-section">
                                     <div class="form-section-header" style="background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%); color: #212529;">
                                         <h4>
-                                            <i class="fas fa-calendar-alt"></i> 3. Vigencia y Fechas
+                                            <i class="fas fa-calendar-alt"></i> 4. Vigencia y Fechas
                                         </h4>
                                     </div>
                                     <div class="form-section-body">
@@ -1102,11 +1213,11 @@ document.addEventListener('DOMContentLoaded', function() {
                                     </div>
                                 </div>
 
-                                <!-- 4. Condiciones y Garantías -->
+                                <!-- 5. Condiciones y Garantías -->
                                 <div class="form-section">
                                     <div class="form-section-header" style="background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);">
                                         <h4>
-                                            <i class="fas fa-file-contract"></i> 4. Condiciones y Garantías
+                                            <i class="fas fa-file-contract"></i> 5. Condiciones y Garantías
                                         </h4>
                                     </div>
                                     <div class="form-section-body">

@@ -1867,10 +1867,18 @@ def anular_renovacion_automatica(request, renovacion_id):
     contrato = renovacion.contrato
     numero_renovacion = renovacion.numero_renovacion
     
+    # Verificar si tiene pólizas asociadas
+    polizas_count = renovacion.polizas.count()
+    polizas = renovacion.polizas.all() if polizas_count > 0 else []
+    
     if request.method == 'POST':
         if request.POST.get('accion') == 'confirmar':
+            # Las pólizas se eliminarán automáticamente por la señal pre_delete
             renovacion.delete()
-            messages.success(request, f'✅ Renovación Automática {numero_renovacion} eliminada exitosamente.')
+            mensaje = f'✅ Renovación Automática {numero_renovacion} eliminada exitosamente'
+            if polizas_count > 0:
+                mensaje += f' junto con {polizas_count} póliza(s) asociada(s)'
+            messages.success(request, mensaje)
             return redirect('gestion:gestion_renovaciones_automaticas')
         else:
             messages.info(request, 'Eliminación de renovación automática cancelada.')
@@ -1879,6 +1887,8 @@ def anular_renovacion_automatica(request, renovacion_id):
     context = {
         'renovacion': renovacion,
         'contrato': contrato,
+        'polizas_count': polizas_count,
+        'polizas': polizas,
         'titulo': f'Eliminar Renovación Automática {numero_renovacion}',
     }
     return render(request, 'gestion/renovaciones_automaticas/anular.html', context)

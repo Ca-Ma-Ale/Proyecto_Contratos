@@ -794,6 +794,10 @@ def eliminar_otrosi(request, otrosi_id):
     # Validar si hay Otros Sí posteriores
     tiene_posteriores = tiene_otrosi_posteriores(otrosi)
     
+    # Verificar si tiene pólizas asociadas
+    polizas_count = otrosi.polizas.count()
+    polizas = otrosi.polizas.all() if polizas_count > 0 else []
+    
     if request.method == 'POST':
         accion = request.POST.get('accion')
         if accion == 'confirmar':
@@ -808,8 +812,13 @@ def eliminar_otrosi(request, otrosi_id):
             
             registrar_eliminacion(otrosi, request.user)
             numero = otrosi.numero_otrosi
+            # Las pólizas se eliminarán automáticamente por la señal pre_delete
             otrosi.delete()
-            messages.success(request, f'✅ Otro Sí {numero} eliminado exitosamente!')
+            
+            mensaje = f'✅ Otro Sí {numero} eliminado exitosamente'
+            if polizas_count > 0:
+                mensaje += f' junto con {polizas_count} póliza(s) asociada(s)'
+            messages.success(request, mensaje)
             return redirect('gestion:lista_otrosi', contrato_id=contrato.id)
         elif accion == 'cancelar':
             return redirect('gestion:detalle_otrosi', otrosi_id=otrosi.id)
@@ -818,6 +827,8 @@ def eliminar_otrosi(request, otrosi_id):
         'otrosi': otrosi,
         'contrato': contrato,
         'tiene_posteriores': tiene_posteriores,
+        'polizas_count': polizas_count,
+        'polizas': polizas,
         'titulo': f'Eliminar Otro Sí - {otrosi.numero_otrosi}'
     }
     return render(request, 'gestion/otrosi/eliminar.html', context)

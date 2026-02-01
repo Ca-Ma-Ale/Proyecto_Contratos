@@ -123,6 +123,7 @@ def nueva_poliza(request, contrato_id):
             from gestion.utils import agregar_errores_formulario_a_mensajes
             agregar_errores_formulario_a_mensajes(request, form)
         else:
+            # El formulario ya maneja la asignación del documento origen y colchón en su método save()
             poliza = form.save(commit=False)
             poliza.contrato = contrato
             
@@ -147,6 +148,7 @@ def nueva_poliza(request, contrato_id):
             
             try:
                 guardar_con_auditoria(poliza, request.user, es_nuevo=True)
+                # El método save() del formulario ya guarda la póliza con todos los campos
                 poliza.save()
                 
                 # Validar si cumple con los requisitos del contrato
@@ -204,6 +206,7 @@ def editar_poliza(request, poliza_id):
     if request.method == 'POST':
         form = PolizaForm(request.POST, instance=poliza, contrato=contrato, es_edicion=True)
         if form.is_valid():
+            # El formulario ya maneja la asignación del documento origen y colchón en su método save()
             poliza = form.save(commit=False)
             
             # Manejar campos adicionales del formulario
@@ -216,6 +219,7 @@ def editar_poliza(request, poliza_id):
                 poliza.fecha_vencimiento = calcular_fecha_vencimiento(poliza.fecha_inicio_vigencia, meses)
             
             guardar_con_auditoria(poliza, request.user, es_nuevo=False)
+            # El método save() del formulario ya guarda la póliza con todos los campos
             poliza.save()
             
             # Validar si cumple con los requisitos del contrato

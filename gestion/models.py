@@ -626,7 +626,43 @@ class RequerimientoPoliza(AuditoriaMixin):
 # Mantener el modelo Poliza para compatibilidad (deprecated)
 class Poliza(PolizaMixin, AuditoriaMixin):
     contrato = models.ForeignKey(Contrato, on_delete=models.CASCADE, related_name='polizas', verbose_name='Contrato')
-    otrosi = models.ForeignKey('OtroSi', on_delete=models.SET_NULL, null=True, blank=True, related_name='polizas_modificadas', verbose_name='Otro Sí', help_text='Si pertenece a un Otro Sí específico')
+    otrosi = models.ForeignKey('OtroSi', on_delete=models.CASCADE, null=True, blank=True, related_name='polizas', verbose_name='Otro Sí', help_text='Otro Sí al que pertenece esta póliza')
+    renovacion_automatica = models.ForeignKey('RenovacionAutomatica', on_delete=models.CASCADE, null=True, blank=True, related_name='polizas', verbose_name='Renovación Automática', help_text='Renovación Automática a la que pertenece esta póliza')
+    
+    # Campo para identificar el documento origen
+    DOCUMENTO_ORIGEN_CHOICES = [
+        ('CONTRATO', 'Contrato Base'),
+        ('OTROSI', 'Otro Sí'),
+        ('RENOVACION', 'Renovación Automática'),
+    ]
+    documento_origen_tipo = models.CharField(
+        max_length=20,
+        choices=DOCUMENTO_ORIGEN_CHOICES,
+        default='CONTRATO',
+        verbose_name='Tipo de Documento Origen',
+        help_text='Tipo de documento al que pertenece esta póliza'
+    )
+    
+    # Campos de colchón (meses adicionales)
+    tiene_colchon = models.BooleanField(
+        default=False,
+        verbose_name='Tiene Colchón',
+        help_text='Indica si esta póliza tiene meses adicionales como colchón de seguridad'
+    )
+    meses_colchon = models.IntegerField(
+        null=True,
+        blank=True,
+        default=0,
+        verbose_name='Meses Colchón',
+        help_text='Meses adicionales agregados como colchón de seguridad'
+    )
+    fecha_vencimiento_real = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name='Fecha Vencimiento Real',
+        help_text='Fecha real de vencimiento (sin colchón). Se calcula automáticamente basada en la fecha final del contrato.'
+    )
+    
     tipo = models.CharField(max_length=30, choices=POLIZA_TIPO_CHOICES, verbose_name='Tipo de Póliza')
     numero_poliza = models.CharField(max_length=50, verbose_name='Número de Póliza')
     valor_asegurado = models.DecimalField(max_digits=15, decimal_places=2, verbose_name='Valor Asegurado')
@@ -790,10 +826,95 @@ class Poliza(PolizaMixin, AuditoriaMixin):
     def __str__(self):
         return self.numero_poliza
     
+    def clean(self):
+        """Validar que solo un documento esté asignado y consistencia de datos"""
+        from django.core.exceptions import ValidationError
+        
+        documentos_asignados = sum([
+            bool(self.otrosi),
+            bool(self.renovacion_automatica),
+            self.documento_origen_tipo == 'CONTRATO'
+        ])
+        
+        # Validar consistencia de documento_origen_tipo
+        if self.otrosi and self.documento_origen_tipo != 'OTROSI':
+            self.documento_origen_tipo = 'OTROSI'
+        elif self.renovacion_automatica and self.documento_origen_tipo != 'RENOVACION':
+            self.documento_origen_tipo = 'RENOVACION'
+        elif not self.otrosi and not self.renovacion_automatica:
+            self.documento_origen_tipo = 'CONTRATO'
+        
+        # Validar colchón
+        if self.tiene_colchon and (not self.meses_colchon or self.meses_colchon <= 0):
+            raise ValidationError({
+                'meses_colchon': 'Si la póliza tiene colchón, debe especificar los meses adicionales (mayor a 0).'
+            })
+        
+        if not self.tiene_colchon and self.meses_colchon and self.meses_colchon > 0:
+            self.tiene_colchon = True
+    
+    def save(self, *args, **kwargs):
+        """Auto-asignar documento_origen_tipo y calcular fecha_vencimiento_real antes de guardar"""
+        from datetime import date
+        
+        # Auto-asignar documento_origen_tipo según relaciones
+        if self.otrosi:
+            self.documento_origen_tipo = 'OTROSI'
+        elif self.renovacion_automatica:
+            self.documento_origen_tipo = 'RENOVACION'
+        else:
+            self.documento_origen_tipo = 'CONTRATO'
+        
+        # Calcular fecha_vencimiento_real si tiene colchón
+        if self.tiene_colchon and self.contrato:
+            try:
+                from gestion.services.alertas import _obtener_fecha_final_contrato
+                fecha_final = _obtener_fecha_final_contrato(self.contrato, date.today())
+                if fecha_final:
+                    self.fecha_vencimiento_real = fecha_final
+            except Exception:
+                # Si hay error al calcular, no establecer fecha_vencimiento_real
+                pass
+        
+        super().save(*args, **kwargs)
+    
+    def obtener_documento_origen(self):
+        """Retorna el documento al que pertenece esta póliza"""
+        if self.otrosi:
+            return self.otrosi
+        elif self.renovacion_automatica:
+            return self.renovacion_automatica
+        return self.contrato
+    
+    def obtener_numero_documento_origen(self):
+        """Retorna el número/identificador del documento origen"""
+        if self.otrosi:
+            return self.otrosi.numero_otrosi
+        elif self.renovacion_automatica:
+            return self.renovacion_automatica.numero_renovacion
+        return self.contrato.num_contrato
+    
+    def obtener_fecha_vencimiento_efectiva(self, fecha_referencia=None):
+        """Retorna la fecha de vencimiento efectiva para alertas y cálculos"""
+        if self.tiene_colchon and self.fecha_vencimiento_real:
+            return self.fecha_vencimiento_real
+        return self.fecha_vencimiento
+    
+    def necesita_renovacion_por_contrato(self, fecha_final_contrato_nueva):
+        """
+        Determina si la póliza necesita renovación porque el contrato se renovó.
+        Retorna True si la fecha_final_contrato_nueva es posterior a fecha_vencimiento_real.
+        """
+        if not self.tiene_colchon:
+            return False
+        if not self.fecha_vencimiento_real:
+            return False
+        return fecha_final_contrato_nueva > self.fecha_vencimiento_real
+    
     def cumple_requisitos_contrato(self):
         """
-        Valida si la póliza cumple con los requisitos del contrato.
-        Considera el último Otro Sí vigente o el último documento que modificó las condiciones.
+        Valida si la póliza cumple con los requisitos del documento al que pertenece.
+        Considera el documento origen (Contrato, OtroSi o RenovacionAutomatica).
         """
         from datetime import date
         from gestion.utils_otrosi import get_polizas_requeridas_contrato
@@ -802,8 +923,15 @@ class Poliza(PolizaMixin, AuditoriaMixin):
         cumple = True
         observaciones = []
         
+        # Determinar fecha de referencia según documento origen
+        documento = self.obtener_documento_origen()
         fecha_referencia = date.today()
         
+        if hasattr(documento, 'effective_from') and documento.effective_from:
+            # Si el documento tiene effective_from, usar esa fecha como referencia
+            fecha_referencia = documento.effective_from
+        
+        # Obtener requisitos según el documento origen
         polizas_requeridas = get_polizas_requeridas_contrato(contrato, fecha_referencia)
         
         def verificar_detalle(valor_poliza, valor_requerido, etiqueta):

@@ -606,12 +606,13 @@ def obtener_polizas_criticas(
     
     # Obtener todas las pólizas que cumplen los criterios de fecha
     # Incluir pólizas vencidas o que vencen dentro de la ventana
+    # Nota: El filtro inicial usa fecha_vencimiento, pero luego verificamos fecha_vencimiento_real si tiene colchón
     polizas_candidatas = (
         Poliza.objects.filter(
             fecha_vencimiento__isnull=False,
             fecha_vencimiento__lte=fecha_limite
         )
-        .select_related('contrato', 'contrato__arrendatario', 'contrato__proveedor')
+        .select_related('contrato', 'contrato__arrendatario', 'contrato__proveedor', 'otrosi', 'renovacion_automatica')
         .prefetch_related('contrato__otrosi', 'contrato__renovaciones_automaticas')
         .order_by('fecha_vencimiento')
     )
@@ -648,9 +649,12 @@ def obtener_polizas_criticas(
                     continue
             # Si no tiene fecha final, se considera vigente (contrato indefinido)
             
+            # Usar fecha de vencimiento efectiva (considerando colchón si aplica)
+            fecha_vencimiento_efectiva = poliza.obtener_fecha_vencimiento_efectiva(fecha_base)
+            
             # Verificar que la póliza realmente vence dentro de la ventana o ya venció
             # Esto asegura que solo mostramos pólizas que realmente necesitan atención
-            dias_para_vencer = (poliza.fecha_vencimiento - fecha_base).days
+            dias_para_vencer = (fecha_vencimiento_efectiva - fecha_base).days
             
             # Incluir pólizas vencidas o que vencen dentro de la ventana
             if dias_para_vencer <= ventana_dias:

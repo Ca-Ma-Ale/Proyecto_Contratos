@@ -749,9 +749,32 @@ RequerimientoPolizaFormSet = inlineformset_factory(
 )
 
 class PolizaForm(BaseModelForm):
+    # Campo para seleccionar documento origen
+    documento_origen = forms.ChoiceField(
+        required=True,
+        label='Documento Origen',
+        help_text='Seleccione a qué documento pertenece esta póliza'
+    )
+    
+    # Campos de colchón
+    tiene_colchon = forms.BooleanField(
+        required=False,
+        initial=False,
+        label='Tiene Meses Colchón',
+        help_text='Marque si esta póliza incluye meses adicionales como colchón de seguridad'
+    )
+    
+    meses_colchon = forms.IntegerField(
+        required=False,
+        min_value=0,
+        initial=0,
+        label='Meses Colchón',
+        help_text='Número de meses adicionales agregados como colchón'
+    )
+    
     class Meta:
         model = Poliza
-        exclude = ['contrato', 'fecha_creacion', 'fecha_modificacion', 'creado_por', 'modificado_por', 'eliminado_por', 'fecha_eliminacion']  # Excluir contrato y campos de auditoría que se asignan automáticamente
+        exclude = ['contrato', 'fecha_creacion', 'fecha_modificacion', 'creado_por', 'modificado_por', 'eliminado_por', 'fecha_eliminacion', 'documento_origen_tipo', 'fecha_vencimiento_real']  # Excluir contrato y campos de auditoría que se asignan automáticamente
         widgets = {
             'fecha_inicio_vigencia': forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d'),
             'fecha_vencimiento': forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d'),
@@ -842,6 +865,65 @@ class PolizaForm(BaseModelForm):
             kwargs['data'] = data
         
         super().__init__(*args, **kwargs)
+        
+        # Construir opciones de documentos disponibles
+        opciones_documentos = [('CONTRATO', 'Contrato Base')]
+        
+        if self.contrato:
+            # Otros Sí aprobados
+            otrosis_aprobados = self.contrato.otrosi.filter(
+                estado='APROBADO'
+            ).order_by('-effective_from', '-version')
+            
+            for otrosi in otrosis_aprobados:
+                opciones_documentos.append(
+                    (f'OTROSI_{otrosi.id}', f'Otro Sí {otrosi.numero_otrosi} (v{otrosi.version})')
+                )
+            
+            # Renovaciones Automáticas aprobadas
+            renovaciones = self.contrato.renovaciones_automaticas.filter(
+                estado='APROBADO'
+            ).order_by('-effective_from', '-version')
+            
+            for renovacion in renovaciones:
+                opciones_documentos.append(
+                    (f'RENOVACION_{renovacion.id}', f'Renovación {renovacion.numero_renovacion} (v{renovacion.version})')
+                )
+        
+        self.fields['documento_origen'].choices = opciones_documentos
+        
+        # Si es edición, establecer valor actual
+        if self.es_edicion and self.instance.pk:
+            if self.instance.otrosi:
+                self.fields['documento_origen'].initial = f'OTROSI_{self.instance.otrosi.id}'
+            elif self.instance.renovacion_automatica:
+                self.fields['documento_origen'].initial = f'RENOVACION_{self.instance.renovacion_automatica.id}'
+            else:
+                self.fields['documento_origen'].initial = 'CONTRATO'
+            
+            # Establecer valores de colchón
+            self.fields['tiene_colchon'].initial = self.instance.tiene_colchon
+            self.fields['meses_colchon'].initial = self.instance.meses_colchon or 0
+        else:
+            # Por defecto, asignar al documento vigente más reciente
+            if self.contrato:
+                from gestion.utils_otrosi import get_otrosi_vigente
+                from datetime import date
+                
+                otrosi_vigente = get_otrosi_vigente(self.contrato)
+                if otrosi_vigente:
+                    self.fields['documento_origen'].initial = f'OTROSI_{otrosi_vigente.id}'
+                else:
+                    # Verificar renovación automática vigente
+                    renovacion_vigente = self.contrato.renovaciones_automaticas.filter(
+                        estado='APROBADO',
+                        effective_from__lte=date.today()
+                    ).order_by('-effective_from', '-version').first()
+                    
+                    if renovacion_vigente:
+                        self.fields['documento_origen'].initial = f'RENOVACION_{renovacion_vigente.id}'
+                    else:
+                        self.fields['documento_origen'].initial = 'CONTRATO'
         
         # Configurar formato de fecha
         fecha_fields = ['fecha_inicio_vigencia', 'fecha_vencimiento']
@@ -987,7 +1069,54 @@ class PolizaForm(BaseModelForm):
             fecha_fin_calculada = calcular_fecha_vencimiento(fecha_inicio, meses_cobertura)
             cleaned_data['fecha_fin_vigencia'] = fecha_fin_calculada
         
+        # Validar colchón
+        tiene_colchon = cleaned_data.get('tiene_colchon', False)
+        meses_colchon = cleaned_data.get('meses_colchon', 0) or 0
+        
+        if tiene_colchon and meses_colchon <= 0:
+            raise forms.ValidationError({
+                'meses_colchon': 'Si la póliza tiene colchón, debe especificar los meses adicionales (mayor a 0).'
+            })
+        
+        if not tiene_colchon and meses_colchon > 0:
+            cleaned_data['tiene_colchon'] = True
+        
         return cleaned_data
+    
+    def save(self, commit=True):
+        poliza = super().save(commit=False)
+        
+        documento_origen = self.cleaned_data.get('documento_origen', 'CONTRATO')
+        
+        # Asignar documento según selección
+        if documento_origen.startswith('OTROSI_'):
+            otrosi_id = int(documento_origen.split('_')[1])
+            poliza.otrosi_id = otrosi_id
+            poliza.renovacion_automatica = None
+        elif documento_origen.startswith('RENOVACION_'):
+            renovacion_id = int(documento_origen.split('_')[1])
+            poliza.renovacion_automatica_id = renovacion_id
+            poliza.otrosi = None
+        else:
+            poliza.otrosi = None
+            poliza.renovacion_automatica = None
+        
+        # Calcular fecha_vencimiento_real si tiene colchón
+        if poliza.tiene_colchon and poliza.contrato:
+            from datetime import date
+            try:
+                from gestion.services.alertas import _obtener_fecha_final_contrato
+                fecha_final = _obtener_fecha_final_contrato(poliza.contrato, date.today())
+                if fecha_final:
+                    poliza.fecha_vencimiento_real = fecha_final
+            except Exception:
+                # Si hay error al calcular, no establecer fecha_vencimiento_real
+                pass
+        
+        if commit:
+            poliza.save()
+        
+        return poliza
 
 
 

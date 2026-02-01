@@ -1058,7 +1058,25 @@
                                     <td>{{ poliza.numero_poliza }}</td>
                                     <td>{{ poliza.get_tipo_display }}</td>
                                     <td>$<span class="formato-moneda">{{ poliza.valor_asegurado|floatformat:0 }}</span></td>
-                                    <td>{{ poliza.fecha_vencimiento }}</td>
+                                    <td>
+                                        {{ poliza.fecha_vencimiento }}
+                                        {% if poliza.tiene_colchon and poliza.fecha_vencimiento_real %}
+                                            <br><small class="text-muted">
+                                                <i class="fas fa-shield-alt"></i> Real: {{ poliza.fecha_vencimiento_real|date:"d/m/Y" }}
+                                                <span class="badge bg-info ms-1">{{ poliza.meses_colchon }} mes(es) colchón</span>
+                                            </small>
+                                        {% endif %}
+                                        {% if poliza.otrosi or poliza.renovacion_automatica %}
+                                            <br><small class="text-muted">
+                                                <i class="fas fa-file-contract"></i> 
+                                                {% if poliza.otrosi %}
+                                                    Otro Sí: {{ poliza.otrosi.numero_otrosi }}
+                                                {% elif poliza.renovacion_automatica %}
+                                                    Renovación: {{ poliza.renovacion_automatica.numero_renovacion }}
+                                                {% endif %}
+                                            </small>
+                                        {% endif %}
+                                    </td>
                                     <td>
                                         {% if poliza.obtener_estado_vigencia == 'Vencida' %}
                                             <span class="badge bg-danger">
