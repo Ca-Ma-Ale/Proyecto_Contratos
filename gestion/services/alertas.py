@@ -97,26 +97,40 @@ def _obtener_fecha_final_contrato(contrato: Contrato, fecha_referencia: date) ->
         Fecha final actualizada o None si no existe.
     """
     from gestion.models import RenovacionAutomatica
+    from gestion.utils_otrosi import get_otrosi_vigente
     
     # Primero verificar si hay una Renovación Automática vigente (tiene prioridad)
     renovacion_vigente = RenovacionAutomatica.objects.filter(
         contrato=contrato,
         estado='APROBADO',
         effective_from__lte=fecha_referencia
+    ).filter(
+        Q(effective_to__gte=fecha_referencia) | Q(effective_to__isnull=True)
     ).order_by('-effective_from', '-fecha_aprobacion', '-version').first()
     
     if renovacion_vigente and renovacion_vigente.nueva_fecha_final_actualizada:
         return renovacion_vigente.nueva_fecha_final_actualizada
     
-    # Si no hay renovación vigente, verificar Otrosí
+    # Si no hay renovación vigente, verificar Otro Sí vigente
+    otrosi_vigente_actual = get_otrosi_vigente(contrato, fecha_referencia)
+    
+    if otrosi_vigente_actual:
+        # Si tiene effective_to, esa es la fecha final vigente
+        if otrosi_vigente_actual.effective_to:
+            return otrosi_vigente_actual.effective_to
+        # Si no tiene effective_to pero tiene nueva_fecha_final_actualizada, usar esa
+        elif otrosi_vigente_actual.nueva_fecha_final_actualizada:
+            return otrosi_vigente_actual.nueva_fecha_final_actualizada
+    
+    # Si no hay Otro Sí vigente, usar efecto cadena para obtener fecha final vigente hasta fecha_referencia
     otrosi_modificador = get_ultimo_otrosi_que_modifico_campo_hasta_fecha(
         contrato, 'nueva_fecha_final_actualizada', fecha_referencia
     )
     if otrosi_modificador and otrosi_modificador.nueva_fecha_final_actualizada:
         return otrosi_modificador.nueva_fecha_final_actualizada
     
-    # Si no hay modificaciones, usar fecha final inicial del contrato (NO fecha_final_actualizada)
-    return contrato.fecha_final_inicial
+    # Si no hay modificaciones, usar fecha_final_actualizada del contrato si existe, sino fecha_final_inicial
+    return contrato.fecha_final_actualizada or contrato.fecha_final_inicial
 
 
 def obtener_alertas_expiracion_contratos(
@@ -139,7 +153,7 @@ def obtener_alertas_expiracion_contratos(
     contratos_vigentes = (
         Contrato.objects.filter(vigente=True)
         .select_related('arrendatario', 'proveedor', 'local')
-        .prefetch_related('otrosi')
+        .prefetch_related('otrosi', 'renovaciones_automaticas')
     )
     
     if tipo_contrato_cp:
@@ -147,11 +161,15 @@ def obtener_alertas_expiracion_contratos(
     
     alertas_con_fecha = []
     for contrato in contratos_vigentes:
-        # Obtener la fecha final actualizada usando efecto cadena (considera otrosí vigentes hasta fecha_referencia)
-        fecha_final_actual = _obtener_fecha_final_contrato(contrato, fecha_base)
-        
-        if fecha_final_actual and fecha_base <= fecha_final_actual <= fecha_limite:
-            alertas_con_fecha.append((contrato, fecha_final_actual))
+        try:
+            # Obtener la fecha final actualizada usando efecto cadena (considera Otrosí y Renovaciones Automáticas vigentes)
+            fecha_final_actual = _obtener_fecha_final_contrato(contrato, fecha_base)
+            
+            if fecha_final_actual and fecha_base <= fecha_final_actual <= fecha_limite:
+                alertas_con_fecha.append((contrato, fecha_final_actual))
+        except Exception:
+            # Si hay error al obtener la fecha final, continuar con el siguiente contrato
+            continue
     
     # Ordenar por fecha final actualizada
     alertas_con_fecha.sort(key=lambda x: x[1])
@@ -571,7 +589,7 @@ def obtener_polizas_criticas(
     """
     Obtiene pólizas con problemas de vigencia o pendientes de aporte.
     Incluye pólizas vencidas o que vencen dentro de la ventana de días especificada.
-    Solo incluye pólizas de contratos vigentes (verificado por fechas al día de hoy).
+    Solo incluye pólizas de contratos vigentes (verificado por fechas considerando renovaciones y Otrosí).
 
     Args:
         fecha_referencia: Fecha base para evaluar vencimientos.
@@ -581,50 +599,66 @@ def obtener_polizas_criticas(
     Returns:
         Lista de pólizas críticas ordenadas por fecha de vencimiento.
     """
+    from gestion.utils_otrosi import get_otrosi_vigente
+    
     fecha_base = fecha_referencia or timezone.now().date()
     fecha_limite = fecha_base + timedelta(days=ventana_dias)
     
     # Obtener todas las pólizas que cumplen los criterios de fecha
+    # Incluir pólizas vencidas o que vencen dentro de la ventana
     polizas_candidatas = (
         Poliza.objects.filter(
             fecha_vencimiento__isnull=False,
             fecha_vencimiento__lte=fecha_limite
         )
         .select_related('contrato', 'contrato__arrendatario', 'contrato__proveedor')
+        .prefetch_related('contrato__otrosi', 'contrato__renovaciones_automaticas')
         .order_by('fecha_vencimiento')
     )
     
     if tipo_contrato_cp:
         polizas_candidatas = polizas_candidatas.filter(contrato__tipo_contrato_cliente_proveedor=tipo_contrato_cp)
     
-    # Filtrar solo las de contratos vigentes (verificado por fechas)
+    # Filtrar solo las de contratos vigentes (verificado por fechas considerando renovaciones)
     polizas_criticas = []
     for poliza in polizas_candidatas:
         contrato = poliza.contrato
         
-        # Verificar vigencia basándose en fechas, no solo en el campo booleano
-        # Considerar Otrosí que puedan haber modificado la fecha final
-        fecha_final_contrato = _obtener_fecha_final_contrato(contrato, fecha_base)
-        
-        # El contrato está vigente si:
-        # 1. Tiene fecha final y no ha pasado
-        # 2. O no tiene fecha final (contrato indefinido)
-        # 3. Y la fecha inicial ya pasó o es hoy
-        fecha_inicial = contrato.fecha_inicial_contrato
-        
-        if fecha_inicial and fecha_inicial > fecha_base:
-            # El contrato aún no ha iniciado
-            continue
-        
-        # Verificar que el contrato no haya vencido
-        if fecha_final_contrato:
-            # El contrato está vigente solo si la fecha final es mayor o igual a la fecha base
-            if fecha_final_contrato < fecha_base:
-                # El contrato ya venció
+        try:
+            # Verificar vigencia basándose en fechas, no solo en el campo booleano
+            # Considerar Otrosí y Renovaciones Automáticas que puedan haber modificado la fecha final
+            fecha_final_contrato = _obtener_fecha_final_contrato(contrato, fecha_base)
+            
+            # El contrato está vigente si:
+            # 1. Tiene fecha final y no ha pasado
+            # 2. O no tiene fecha final (contrato indefinido)
+            # 3. Y la fecha inicial ya pasó o es hoy
+            
+            fecha_inicial = contrato.fecha_inicial_contrato
+            
+            if fecha_inicial and fecha_inicial > fecha_base:
+                # El contrato aún no ha iniciado
                 continue
-        # Si no tiene fecha final, se considera vigente (contrato indefinido)
-        
-        polizas_criticas.append(poliza)
+            
+            # Verificar que el contrato no haya vencido
+            if fecha_final_contrato:
+                # El contrato está vigente solo si la fecha final es mayor o igual a la fecha base
+                if fecha_final_contrato < fecha_base:
+                    # El contrato ya venció
+                    continue
+            # Si no tiene fecha final, se considera vigente (contrato indefinido)
+            
+            # Verificar que la póliza realmente vence dentro de la ventana o ya venció
+            # Esto asegura que solo mostramos pólizas que realmente necesitan atención
+            dias_para_vencer = (poliza.fecha_vencimiento - fecha_base).days
+            
+            # Incluir pólizas vencidas o que vencen dentro de la ventana
+            if dias_para_vencer <= ventana_dias:
+                polizas_criticas.append(poliza)
+        except Exception:
+            # Si hay algún error al verificar la vigencia, continuar con la siguiente póliza
+            # Esto evita que errores en un contrato afecten a otros
+            continue
     
     return polizas_criticas
 
@@ -649,7 +683,7 @@ def obtener_alertas_preaviso(
     contratos_vigentes = (
         Contrato.objects.filter(vigente=True)
         .select_related('arrendatario', 'proveedor', 'local')
-        .prefetch_related('otrosi')
+        .prefetch_related('otrosi', 'renovaciones_automaticas')
     )
     
     if tipo_contrato_cp:
@@ -657,14 +691,18 @@ def obtener_alertas_preaviso(
     
     alertas_con_fecha = []
     for contrato in contratos_vigentes:
-        # Obtener la fecha final actualizada usando efecto cadena (considera otrosí vigentes hasta fecha_referencia)
-        fecha_final_actual = _obtener_fecha_final_contrato(contrato, fecha_base)
-        
-        # Usar prórroga automática del contrato (no existe campo en OtroSi para esto)
-        prorroga_automatica = contrato.prorroga_automatica
-        
-        if fecha_final_actual and fecha_final_actual <= fecha_limite and not prorroga_automatica:
-            alertas_con_fecha.append((contrato, fecha_final_actual))
+        try:
+            # Obtener la fecha final actualizada usando efecto cadena (considera Otrosí y Renovaciones Automáticas vigentes)
+            fecha_final_actual = _obtener_fecha_final_contrato(contrato, fecha_base)
+            
+            # Usar prórroga automática del contrato (no existe campo en OtroSi para esto)
+            prorroga_automatica = contrato.prorroga_automatica
+            
+            if fecha_final_actual and fecha_final_actual <= fecha_limite and not prorroga_automatica:
+                alertas_con_fecha.append((contrato, fecha_final_actual))
+        except Exception:
+            # Si hay error al obtener la fecha final, continuar con el siguiente contrato
+            continue
     
     # Ordenar por fecha final actualizada
     alertas_con_fecha.sort(key=lambda x: x[1])
@@ -707,7 +745,7 @@ def obtener_alertas_polizas_requeridas_no_aportadas(
     contratos_vigentes = (
         Contrato.objects.filter(vigente=True)
         .select_related('arrendatario', 'proveedor', 'local')
-        .prefetch_related('otrosi', 'polizas')
+        .prefetch_related('otrosi', 'renovaciones_automaticas', 'polizas')
     )
     
     if tipo_contrato_cp:
@@ -716,14 +754,18 @@ def obtener_alertas_polizas_requeridas_no_aportadas(
     alertas: List[AlertaPolizaRequerida] = []
     
     for contrato in contratos_vigentes:
-        # Verificar que el contrato esté vigente por fechas
-        fecha_final_contrato = _obtener_fecha_final_contrato(contrato, fecha_base)
-        fecha_inicial = contrato.fecha_inicial_contrato
-        
-        if fecha_inicial and fecha_inicial > fecha_base:
-            continue
-        
-        if fecha_final_contrato and fecha_final_contrato < fecha_base:
+        try:
+            # Verificar que el contrato esté vigente por fechas (considerando renovaciones y Otrosí)
+            fecha_final_contrato = _obtener_fecha_final_contrato(contrato, fecha_base)
+            fecha_inicial = contrato.fecha_inicial_contrato
+            
+            if fecha_inicial and fecha_inicial > fecha_base:
+                continue
+            
+            if fecha_final_contrato and fecha_final_contrato < fecha_base:
+                continue
+        except Exception:
+            # Si hay error al verificar la vigencia, continuar con el siguiente contrato
             continue
         
         # Obtener pólizas requeridas aplicando efecto cadena
@@ -871,7 +913,7 @@ def obtener_alertas_terminacion_anticipada(
     contratos_vigentes = (
         Contrato.objects.filter(vigente=True)
         .select_related('arrendatario', 'proveedor', 'local')
-        .prefetch_related('otrosi')
+        .prefetch_related('otrosi', 'renovaciones_automaticas')
     )
     
     if tipo_contrato_cp:
@@ -880,51 +922,55 @@ def obtener_alertas_terminacion_anticipada(
     alertas: List[AlertaTerminacionAnticipada] = []
     
     for contrato in contratos_vigentes:
-        # Obtener la fecha final actualizada usando efecto cadena
-        fecha_final_actual = _obtener_fecha_final_contrato(contrato, fecha_base)
-        
-        if not fecha_final_actual:
-            continue
-        
-        # Verificar que el contrato esté vigente
-        fecha_inicial = contrato.fecha_inicial_contrato
-        if fecha_inicial and fecha_inicial > fecha_base:
-            continue
-        
-        if fecha_final_actual < fecha_base:
-            continue
-        
-        # Obtener días de terminación anticipada (no hay campo en OtroSi para esto, usar del contrato)
-        dias_terminacion = contrato.dias_terminacion_anticipada or 0
-        
-        if dias_terminacion <= 0:
-            continue
-        
-        # Calcular días restantes hasta el vencimiento
-        dias_restantes = (fecha_final_actual - fecha_base).days
-        
-        # Si los días restantes son menores o iguales a los días de terminación anticipada,
-        # el contrato está dentro del período de terminación anticipada
-        if dias_restantes <= dias_terminacion and dias_restantes >= 0:
-            # Calcular fecha límite para ejercer terminación anticipada
-            fecha_limite_terminacion = fecha_final_actual - timedelta(days=dias_terminacion)
+        try:
+            # Obtener la fecha final actualizada usando efecto cadena (considerando renovaciones y Otrosí)
+            fecha_final_actual = _obtener_fecha_final_contrato(contrato, fecha_base)
             
-            # Determinar qué Otrosí modificó la fecha final
-            otrosi_modificador = get_ultimo_otrosi_que_modifico_campo_hasta_fecha(
-                contrato, 'nueva_fecha_final_actualizada', fecha_base
-            )
-            otrosi_modificador_numero = obtener_numero_evento(otrosi_modificador)
+            if not fecha_final_actual:
+                continue
             
-            alertas.append(
-                AlertaTerminacionAnticipada(
-                    contrato=contrato,
-                    fecha_final_actualizada=fecha_final_actual,
-                    dias_restantes=dias_restantes,
-                    dias_terminacion_anticipada=dias_terminacion,
-                    fecha_limite_terminacion=fecha_limite_terminacion,
-                    otrosi_modificador=otrosi_modificador_numero,
+            # Verificar que el contrato esté vigente
+            fecha_inicial = contrato.fecha_inicial_contrato
+            if fecha_inicial and fecha_inicial > fecha_base:
+                continue
+            
+            if fecha_final_actual < fecha_base:
+                continue
+            
+            # Obtener días de terminación anticipada (no hay campo en OtroSi para esto, usar del contrato)
+            dias_terminacion = contrato.dias_terminacion_anticipada or 0
+            
+            if dias_terminacion <= 0:
+                continue
+            
+            # Calcular días restantes hasta el vencimiento
+            dias_restantes = (fecha_final_actual - fecha_base).days
+            
+            # Si los días restantes son menores o iguales a los días de terminación anticipada,
+            # el contrato está dentro del período de terminación anticipada
+            if dias_restantes <= dias_terminacion and dias_restantes >= 0:
+                # Calcular fecha límite para ejercer terminación anticipada
+                fecha_limite_terminacion = fecha_final_actual - timedelta(days=dias_terminacion)
+                
+                # Determinar qué Otrosí o Renovación Automática modificó la fecha final
+                otrosi_modificador = get_ultimo_otrosi_que_modifico_campo_hasta_fecha(
+                    contrato, 'nueva_fecha_final_actualizada', fecha_base
                 )
-            )
+                otrosi_modificador_numero = obtener_numero_evento(otrosi_modificador)
+                
+                alertas.append(
+                    AlertaTerminacionAnticipada(
+                        contrato=contrato,
+                        fecha_final_actualizada=fecha_final_actual,
+                        dias_restantes=dias_restantes,
+                        dias_terminacion_anticipada=dias_terminacion,
+                        fecha_limite_terminacion=fecha_limite_terminacion,
+                        otrosi_modificador=otrosi_modificador_numero,
+                    )
+                )
+        except Exception:
+            # Si hay error al procesar el contrato, continuar con el siguiente
+            continue
     
     return sorted(
         alertas,
@@ -970,61 +1016,65 @@ def obtener_alertas_renovacion_automatica(
     alertas: List[AlertaRenovacionAutomatica] = []
     
     for contrato in contratos_vigentes:
-        # Obtener la fecha final actual del contrato sin considerar renovaciones futuras
-        fecha_final_actual = _obtener_fecha_final_contrato(contrato, fecha_base)
-        
-        # Verificar si el contrato ya tiene una renovación automática aprobada
-        # Si la tiene, significa que ya fue gestionada y no debe aparecer en las alertas pendientes
-        renovacion_aprobada = RenovacionAutomatica.objects.filter(
-            contrato=contrato,
-            estado='APROBADO'
-        ).order_by('-fecha_aprobacion', '-effective_from', '-version').first()
-        
-        # Si existe una renovación aprobada, verificar si ya gestionó este contrato
-        if renovacion_aprobada:
-            # Si la renovación tiene effective_from y es posterior a la fecha final actual,
-            # significa que ya está gestionada para el período siguiente (renovación futura aprobada)
-            if renovacion_aprobada.effective_from and fecha_final_actual:
-                # Si la renovación inicia después de la fecha final actual, ya está gestionado
-                if renovacion_aprobada.effective_from > fecha_final_actual:
-                    continue
-                # Si la renovación ya está vigente (effective_from <= fecha_base), también está gestionado
-                elif renovacion_aprobada.effective_from <= fecha_base:
-                    continue
-            # Si no tiene effective_from pero tiene nueva_fecha_final_actualizada y está aprobada,
-            # verificar si extiende más allá de la ventana de alerta
-            elif renovacion_aprobada.nueva_fecha_final_actualizada:
-                if renovacion_aprobada.nueva_fecha_final_actualizada > fecha_limite:
-                    continue
-        
-        
-        if not fecha_final_actual:
-            continue
-        
-        fecha_inicial = contrato.fecha_inicial_contrato
-        if fecha_inicial and fecha_inicial > fecha_base:
-            continue
-        
-        if fecha_final_actual < fecha_base:
-            dias_restantes = 0
-        else:
-            dias_restantes = (fecha_final_actual - fecha_base).days
-        
-        if fecha_final_actual <= fecha_limite:
-            otrosi_modificador = get_ultimo_otrosi_que_modifico_campo_hasta_fecha(
-                contrato, 'nueva_fecha_final_actualizada', fecha_base
-            )
-            otrosi_modificador_numero = obtener_numero_evento(otrosi_modificador)
+        try:
+            # Obtener la fecha final actual del contrato considerando renovaciones y Otrosí vigentes
+            fecha_final_actual = _obtener_fecha_final_contrato(contrato, fecha_base)
             
-            alertas.append(
-                AlertaRenovacionAutomatica(
-                    contrato=contrato,
-                    fecha_final_actualizada=fecha_final_actual,
-                    dias_restantes=dias_restantes,
-                    duracion_inicial_meses=contrato.duracion_inicial_meses,
-                    otrosi_modificador=otrosi_modificador_numero,
+            # Verificar si el contrato ya tiene una renovación automática aprobada
+            # Si la tiene, significa que ya fue gestionada y no debe aparecer en las alertas pendientes
+            renovacion_aprobada = RenovacionAutomatica.objects.filter(
+                contrato=contrato,
+                estado='APROBADO'
+            ).order_by('-fecha_aprobacion', '-effective_from', '-version').first()
+            
+            # Si existe una renovación aprobada, verificar si ya gestionó este contrato
+            if renovacion_aprobada:
+                # Si la renovación tiene effective_from y es posterior a la fecha final actual,
+                # significa que ya está gestionada para el período siguiente (renovación futura aprobada)
+                if renovacion_aprobada.effective_from and fecha_final_actual:
+                    # Si la renovación inicia después de la fecha final actual, ya está gestionado
+                    if renovacion_aprobada.effective_from > fecha_final_actual:
+                        continue
+                    # Si la renovación ya está vigente (effective_from <= fecha_base), también está gestionado
+                    elif renovacion_aprobada.effective_from <= fecha_base:
+                        continue
+                # Si no tiene effective_from pero tiene nueva_fecha_final_actualizada y está aprobada,
+                # verificar si extiende más allá de la ventana de alerta
+                elif renovacion_aprobada.nueva_fecha_final_actualizada:
+                    if renovacion_aprobada.nueva_fecha_final_actualizada > fecha_limite:
+                        continue
+            
+            
+            if not fecha_final_actual:
+                continue
+            
+            fecha_inicial = contrato.fecha_inicial_contrato
+            if fecha_inicial and fecha_inicial > fecha_base:
+                continue
+            
+            if fecha_final_actual < fecha_base:
+                dias_restantes = 0
+            else:
+                dias_restantes = (fecha_final_actual - fecha_base).days
+            
+            if fecha_final_actual <= fecha_limite:
+                otrosi_modificador = get_ultimo_otrosi_que_modifico_campo_hasta_fecha(
+                    contrato, 'nueva_fecha_final_actualizada', fecha_base
                 )
-            )
+                otrosi_modificador_numero = obtener_numero_evento(otrosi_modificador)
+                
+                alertas.append(
+                    AlertaRenovacionAutomatica(
+                        contrato=contrato,
+                        fecha_final_actualizada=fecha_final_actual,
+                        dias_restantes=dias_restantes,
+                        duracion_inicial_meses=contrato.duracion_inicial_meses,
+                        otrosi_modificador=otrosi_modificador_numero,
+                    )
+                )
+        except Exception:
+            # Si hay error al procesar el contrato, continuar con el siguiente
+            continue
     
     return sorted(
         alertas,
