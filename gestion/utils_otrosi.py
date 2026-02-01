@@ -272,13 +272,16 @@ def get_ultimo_otrosi_que_modifico_campo_hasta_fecha(contrato, campo_nombre, fec
             if isinstance(valor, str) and valor.strip() != '':
                 return evento
             # Para Decimal, verificar que no sea 0 (0 puede indicar que no se modificó)
-            elif isinstance(valor, (type(Decimal('0')), int, float)):
-                from decimal import Decimal
+            elif isinstance(valor, (Decimal, int, float)):
                 # Convertir a Decimal para comparación
-                valor_decimal = Decimal(str(valor)) if valor is not None else None
-                # Para campos financieros, 0 generalmente significa que no se modificó
-                # Solo retornar si el valor es diferente de 0
-                if valor_decimal is not None and valor_decimal != Decimal('0'):
+                try:
+                    valor_decimal = Decimal(str(valor)) if valor is not None else None
+                    # Para campos financieros, 0 generalmente significa que no se modificó
+                    # Solo retornar si el valor es diferente de 0
+                    if valor_decimal is not None and valor_decimal != Decimal('0'):
+                        return evento
+                except (ValueError, TypeError):
+                    # Si no se puede convertir a Decimal, tratar como valor válido
                     return evento
             # Para otros tipos (bool, date), si no es None, es válido
             elif not isinstance(valor, str):
