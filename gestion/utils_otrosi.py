@@ -258,7 +258,16 @@ def get_ultimo_otrosi_que_modifico_campo_hasta_fecha(contrato, campo_nombre, fec
             # Para strings, verificar que no esté vacío
             if isinstance(valor, str) and valor.strip() != '':
                 return evento
-            # Para otros tipos (Decimal, int, bool, date), si no es None, es válido
+            # Para Decimal, verificar que no sea 0 (0 puede indicar que no se modificó)
+            elif isinstance(valor, (type(Decimal('0')), int, float)):
+                from decimal import Decimal
+                # Convertir a Decimal para comparación
+                valor_decimal = Decimal(str(valor)) if valor is not None else None
+                # Para campos financieros, 0 generalmente significa que no se modificó
+                # Solo retornar si el valor es diferente de 0
+                if valor_decimal is not None and valor_decimal != Decimal('0'):
+                    return evento
+            # Para otros tipos (bool, date), si no es None, es válido
             elif not isinstance(valor, str):
                 return evento
     
@@ -392,11 +401,17 @@ def get_vista_vigente_contrato(contrato, fecha_referencia=None):
         """
         Obtiene el valor de un campo usando efecto cadena.
         
+        Si encuentra un Otro Sí que modificó el campo, retorna ese valor.
+        Si no encuentra un Otro Sí o el Otro Sí no tiene un valor válido, retorna el valor del contrato base.
+        
         Args:
             campo_otrosi: Nombre del campo en OtroSi (ej: 'nuevo_valor_canon')
             campo_contrato: Nombre del campo en Contrato (ej: 'valor_canon_fijo')
             tipo: 'valor', 'bool', 'fecha'
         """
+        # Obtener valor del contrato base primero
+        valor_contrato = getattr(contrato, campo_contrato, None)
+        
         otrosi_modificador = get_ultimo_otrosi_que_modifico_campo_hasta_fecha(
             contrato, campo_otrosi, fecha_referencia
         )
@@ -407,12 +422,17 @@ def get_vista_vigente_contrato(contrato, fecha_referencia=None):
                 # Para strings, verificar que no esté vacío
                 if isinstance(valor, str) and valor.strip() != '':
                     return valor, otrosi_modificador
-                # Para otros tipos, si no es None, es válido
+                # Para Decimal y otros tipos numéricos, verificar que no sea 0
                 elif not isinstance(valor, str):
+                    from decimal import Decimal
+                    # Si es Decimal, verificar que no sea 0
+                    if isinstance(valor, Decimal) and valor == Decimal('0'):
+                        # Si el Otro Sí tiene 0, usar el valor del contrato base
+                        return valor_contrato, None
+                    # Para otros tipos numéricos o valores válidos, retornar el valor del Otro Sí
                     return valor, otrosi_modificador
         
-        # Si no hay Otro Sí que lo modificó, usar valor del contrato
-        valor_contrato = getattr(contrato, campo_contrato, None)
+        # Si no hay Otro Sí que lo modificó o el Otro Sí no tiene valor válido, usar valor del contrato
         return valor_contrato, None
     
     # Vista base del contrato
@@ -443,6 +463,9 @@ def get_vista_vigente_contrato(contrato, fecha_referencia=None):
         from decimal import Decimal
         valor_otrosi_decimal = Decimal(str(valor_canon)) if valor_canon else None
         if valor_otrosi_decimal is not None and valor_otrosi_decimal != Decimal('0'):
+            # Obtener el valor que estaba vigente ANTES de este Otro Sí
+            valor_antes_otrosi = obtener_valor_vigente_antes_de_otrosi(otrosi_canon, 'valor_canon_fijo')
+            
             # Comparar valores considerando None y Decimal
             es_diferente = False
             if valor_antes_otrosi is None:
@@ -520,21 +543,30 @@ def get_vista_vigente_contrato(contrato, fecha_referencia=None):
         
         if contrato.tipo_contrato_cliente_proveedor == 'PROVEEDOR':
             # Para proveedores, actualizar "Valor mensual" (canon_minimo_garantizado)
-            # Solo aplicar si no hay un Otro Sí que lo haya modificado después del cálculo
-            if not otrosi_canon_min:
+            # Solo aplicar si no hay un Otro Sí que realmente haya modificado el campo después del cálculo
+            # Si otrosi_canon_min existe pero no tiene valor válido (None o 0), tratarlo como si no existiera
+            otrosi_modifico_realmente = otrosi_canon_min and canon_minimo is not None
+            if otrosi_modifico_realmente:
+                from decimal import Decimal
+                valor_otrosi_decimal = Decimal(str(canon_minimo)) if canon_minimo else None
+                otrosi_modifico_realmente = valor_otrosi_decimal is not None and valor_otrosi_decimal != Decimal('0')
+            
+            if not otrosi_modifico_realmente:
                 aplicar_calculo = True
             elif hasattr(otrosi_canon_min, 'fecha_aprobacion') and otrosi_canon_min.fecha_aprobacion:
-                # Si hay Otro Sí, solo aplicar si el cálculo es posterior o igual
+                # Si hay Otro Sí que realmente modificó, solo aplicar si el cálculo es posterior o igual
                 fecha_otrosi = otrosi_canon_min.fecha_aprobacion.date() if hasattr(otrosi_canon_min.fecha_aprobacion, 'date') else otrosi_canon_min.fecha_aprobacion
                 aplicar_calculo = ultimo_calculo_aplicado.fecha_aplicacion >= fecha_otrosi
             else:
                 aplicar_calculo = True
             
             if aplicar_calculo:
+                # Usar el valor del cálculo o el valor vigente actual (que puede ser del contrato base)
+                valor_base_para_calculo = canon_minimo if canon_minimo is not None else contrato.canon_minimo_garantizado
                 vista['canon_minimo_garantizado'] = ultimo_calculo_aplicado.nuevo_canon
                 if 'canon_minimo_garantizado' not in vista['campos_modificados']:
                     vista['campos_modificados']['canon_minimo_garantizado'] = {
-                        'original': canon_minimo or contrato.canon_minimo_garantizado,
+                        'original': valor_base_para_calculo,
                         'nuevo': ultimo_calculo_aplicado.nuevo_canon,
                         'calculo': True,
                         'tipo_calculo': 'IPC' if hasattr(ultimo_calculo_aplicado, 'ipc_historico') else 'Salario Mínimo',
@@ -543,21 +575,30 @@ def get_vista_vigente_contrato(contrato, fecha_referencia=None):
                     vista['tiene_modificaciones'] = True
         else:
             # Para arrendatarios, actualizar "Canon" (valor_canon)
-            # Solo aplicar si no hay un Otro Sí que lo haya modificado después del cálculo
-            if not otrosi_canon:
+            # Solo aplicar si no hay un Otro Sí que realmente haya modificado el campo después del cálculo
+            # Si otrosi_canon existe pero no tiene valor válido (None o 0), tratarlo como si no existiera
+            otrosi_modifico_realmente = otrosi_canon and valor_canon is not None
+            if otrosi_modifico_realmente:
+                from decimal import Decimal
+                valor_otrosi_decimal = Decimal(str(valor_canon)) if valor_canon else None
+                otrosi_modifico_realmente = valor_otrosi_decimal is not None and valor_otrosi_decimal != Decimal('0')
+            
+            if not otrosi_modifico_realmente:
                 aplicar_calculo = True
             elif hasattr(otrosi_canon, 'fecha_aprobacion') and otrosi_canon.fecha_aprobacion:
-                # Si hay Otro Sí, solo aplicar si el cálculo es posterior o igual
+                # Si hay Otro Sí que realmente modificó, solo aplicar si el cálculo es posterior o igual
                 fecha_otrosi = otrosi_canon.fecha_aprobacion.date() if hasattr(otrosi_canon.fecha_aprobacion, 'date') else otrosi_canon.fecha_aprobacion
                 aplicar_calculo = ultimo_calculo_aplicado.fecha_aplicacion >= fecha_otrosi
             else:
                 aplicar_calculo = True
             
             if aplicar_calculo:
+                # Usar el valor del cálculo o el valor vigente actual (que puede ser del contrato base)
+                valor_base_para_calculo = valor_canon if valor_canon is not None else contrato.valor_canon_fijo
                 vista['valor_canon'] = ultimo_calculo_aplicado.nuevo_canon
                 if 'valor_canon' not in vista['campos_modificados']:
                     vista['campos_modificados']['valor_canon'] = {
-                        'original': valor_canon or contrato.valor_canon_fijo,
+                        'original': valor_base_para_calculo,
                         'nuevo': ultimo_calculo_aplicado.nuevo_canon,
                         'calculo': True,
                         'tipo_calculo': 'IPC' if hasattr(ultimo_calculo_aplicado, 'ipc_historico') else 'Salario Mínimo',

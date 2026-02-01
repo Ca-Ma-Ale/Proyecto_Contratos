@@ -132,19 +132,21 @@
                             <td>
                                 {% if vista_vigente.valor_canon %}
                                     ${{ vista_vigente.valor_canon|formato_moneda }}
+                                    {% if 'valor_canon' in vista_vigente.campos_modificados %}
+                                        {% if vista_vigente.campos_modificados.valor_canon.calculo %}
+                                            <span class="badge bg-success ms-2" title="Ajuste por {{ vista_vigente.campos_modificados.valor_canon.tipo_calculo }} aplicado el {{ vista_vigente.campos_modificados.valor_canon.fecha_calculo|date:'d/m/Y' }}">
+                                                <i class="fas fa-calculator"></i> {{ vista_vigente.campos_modificados.valor_canon.tipo_calculo }} {{ vista_vigente.campos_modificados.valor_canon.fecha_calculo|date:'d/m/Y' }}
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-info ms-2" title="Del documento {{ vista_vigente.campos_modificados.valor_canon.otrosi }}">
+                                                <i class="fas fa-file-signature"></i> {{ vista_vigente.campos_modificados.valor_canon.otrosi }}
+                                            </span>
+                                        {% endif %}
+                                    {% endif %}
+                                {% elif contrato.valor_canon_fijo %}
+                                    ${{ contrato.valor_canon_fijo|formato_moneda }}
                                 {% else %}
                                     N/A
-                                {% endif %}
-                                {% if 'valor_canon' in vista_vigente.campos_modificados %}
-                                    {% if vista_vigente.campos_modificados.valor_canon.calculo %}
-                                        <span class="badge bg-success ms-2" title="Ajuste por {{ vista_vigente.campos_modificados.valor_canon.tipo_calculo }} aplicado el {{ vista_vigente.campos_modificados.valor_canon.fecha_calculo|date:'d/m/Y' }}">
-                                            <i class="fas fa-calculator"></i> {{ vista_vigente.campos_modificados.valor_canon.tipo_calculo }} {{ vista_vigente.campos_modificados.valor_canon.fecha_calculo|date:'d/m/Y' }}
-                                        </span>
-                                    {% else %}
-                                        <span class="badge bg-info ms-2" title="Del documento {{ vista_vigente.campos_modificados.valor_canon.otrosi }}">
-                                            <i class="fas fa-file-signature"></i> {{ vista_vigente.campos_modificados.valor_canon.otrosi }}
-                                        </span>
-                                    {% endif %}
                                 {% endif %}
                             </td>
                         </tr>
@@ -178,6 +180,8 @@
                                             </span>
                                         {% endif %}
                                     {% endif %}
+                                {% elif contrato.canon_minimo_garantizado %}
+                                    ${{ contrato.canon_minimo_garantizado|formato_moneda }}
                                 {% else %}
                                     <span class="text-muted">N/A</span>
                                 {% endif %}
@@ -216,6 +220,8 @@
                                             </span>
                                         {% endif %}
                                     {% endif %}
+                                {% elif contrato.canon_minimo_garantizado %}
+                                    ${{ contrato.canon_minimo_garantizado|formato_moneda }}
                                 {% else %}
                                     <span class="text-muted">N/A</span>
                                 {% endif %}
