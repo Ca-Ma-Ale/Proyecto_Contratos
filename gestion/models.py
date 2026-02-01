@@ -917,24 +917,77 @@ class Poliza(PolizaMixin, AuditoriaMixin):
         """
         Valida si la póliza cumple con los requisitos del documento al que pertenece.
         Considera el documento origen (Contrato, OtroSi o RenovacionAutomatica).
+        Usa los requisitos específicos del documento origen de la póliza.
         """
         from datetime import date
-        from gestion.utils_otrosi import get_polizas_requeridas_contrato
+        from gestion.views.utils import (
+            _construir_requisitos_poliza_desde_contrato_base,
+            _construir_requisitos_poliza_desde_otrosi,
+            _construir_requisitos_poliza_desde_renovacion
+        )
         
         contrato = self.contrato
         cumple = True
         observaciones = []
         
-        # Determinar fecha de referencia según documento origen
+        # Obtener requisitos según el documento origen específico de la póliza
         documento = self.obtener_documento_origen()
-        fecha_referencia = date.today()
+        requisitos = {}
         
-        if hasattr(documento, 'effective_from') and documento.effective_from:
-            # Si el documento tiene effective_from, usar esa fecha como referencia
-            fecha_referencia = documento.effective_from
+        if documento == contrato:
+            # Si el documento es el contrato base
+            requisitos = _construir_requisitos_poliza_desde_contrato_base(contrato)
+        elif hasattr(documento, 'numero_otrosi'):
+            # Si el documento es un Otro Sí
+            requisitos = _construir_requisitos_poliza_desde_otrosi(contrato, documento)
+        elif hasattr(documento, 'numero_renovacion'):
+            # Si el documento es una Renovación Automática
+            requisitos = _construir_requisitos_poliza_desde_renovacion(contrato, documento)
+        else:
+            # Fallback: usar contrato base
+            requisitos = _construir_requisitos_poliza_desde_contrato_base(contrato)
         
-        # Obtener requisitos según el documento origen
-        polizas_requeridas = get_polizas_requeridas_contrato(contrato, fecha_referencia)
+        # Convertir requisitos al formato esperado por la validación
+        polizas_requeridas = {}
+        
+        if requisitos.get('rce', {}).get('exigida'):
+            detalles_rce = requisitos['rce'].get('detalles', {})
+            polizas_requeridas['RCE - Responsabilidad Civil'] = {
+                'valor_requerido': requisitos['rce'].get('valor'),
+                'fecha_fin_requerida': requisitos['rce'].get('fecha_fin'),
+                'detalles': detalles_rce
+            }
+        
+        if requisitos.get('cumplimiento', {}).get('exigida'):
+            detalles_cumpl = requisitos['cumplimiento'].get('detalles', {})
+            polizas_requeridas['Cumplimiento'] = {
+                'valor_requerido': requisitos['cumplimiento'].get('valor'),
+                'fecha_fin_requerida': requisitos['cumplimiento'].get('fecha_fin'),
+                'detalles': detalles_cumpl
+            }
+        
+        if requisitos.get('arrendamiento', {}).get('exigida'):
+            detalles_arr = requisitos['arrendamiento'].get('detalles', {})
+            polizas_requeridas['Poliza de Arrendamiento'] = {
+                'valor_requerido': requisitos['arrendamiento'].get('valor'),
+                'fecha_fin_requerida': requisitos['arrendamiento'].get('fecha_fin'),
+                'detalles': detalles_arr
+            }
+        
+        if requisitos.get('todo_riesgo', {}).get('exigida'):
+            polizas_requeridas['Arrendamiento'] = {
+                'valor_requerido': requisitos['todo_riesgo'].get('valor'),
+                'fecha_fin_requerida': requisitos['todo_riesgo'].get('fecha_fin'),
+                'detalles': {}
+            }
+        
+        if requisitos.get('otra', {}).get('exigida'):
+            polizas_requeridas['Otra'] = {
+                'valor_requerido': requisitos['otra'].get('valor'),
+                'fecha_fin_requerida': requisitos['otra'].get('fecha_fin'),
+                'nombre': requisitos['otra'].get('nombre'),
+                'detalles': {}
+            }
         
         def verificar_detalle(valor_poliza, valor_requerido, etiqueta):
             if valor_requerido is not None:

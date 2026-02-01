@@ -414,9 +414,28 @@ def validar_poliza(request, poliza_id):
     poliza = get_object_or_404(Poliza, id=poliza_id)
     contrato = poliza.contrato
     
-    vista_vigente = get_vista_vigente_contrato(contrato)
-    requisitos_contrato = _construir_requisitos_poliza(contrato, vista_vigente, permitir_fuera_vigencia=True)
+    # Obtener requisitos del documento origen específico de la póliza
+    documento = poliza.obtener_documento_origen()
+    requisitos_contrato = {}
     
+    if documento == contrato:
+        # Si el documento es el contrato base
+        from gestion.views.utils import _construir_requisitos_poliza_desde_contrato_base
+        requisitos_contrato = _construir_requisitos_poliza_desde_contrato_base(contrato)
+    elif hasattr(documento, 'numero_otrosi'):
+        # Si el documento es un Otro Sí
+        from gestion.views.utils import _construir_requisitos_poliza_desde_otrosi
+        requisitos_contrato = _construir_requisitos_poliza_desde_otrosi(contrato, documento)
+    elif hasattr(documento, 'numero_renovacion'):
+        # Si el documento es una Renovación Automática
+        from gestion.views.utils import _construir_requisitos_poliza_desde_renovacion
+        requisitos_contrato = _construir_requisitos_poliza_desde_renovacion(contrato, documento)
+    else:
+        # Fallback: usar contrato base
+        from gestion.views.utils import _construir_requisitos_poliza_desde_contrato_base
+        requisitos_contrato = _construir_requisitos_poliza_desde_contrato_base(contrato)
+    
+    # Validar la póliza contra los requisitos del documento origen
     validacion = poliza.cumple_requisitos_contrato()
     
     context = {
@@ -424,6 +443,7 @@ def validar_poliza(request, poliza_id):
         'contrato': contrato,
         'validacion': validacion,
         'requisitos_contrato': requisitos_contrato,
+        'documento_origen': documento,
         'titulo': f'Validar Póliza - {poliza.numero_poliza}'
     }
     return render(request, 'gestion/polizas/validar.html', context)
