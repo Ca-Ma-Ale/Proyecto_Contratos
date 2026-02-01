@@ -25,9 +25,21 @@ def _obtener_requisitos_por_documento(contrato, documento_origen_id):
         Diccionario con los requisitos de pólizas
     """
     fecha_referencia = date.today()
+    usar_contrato_base = False
     
     # Determinar fecha de referencia según documento origen
-    if documento_origen_id.startswith('OTROSI_'):
+    if documento_origen_id == 'CONTRATO':
+        # Para contrato base, usar fecha anterior al inicio del contrato
+        # para asegurar que no se consideren Otros Sí
+        if contrato.fecha_inicio:
+            # Usar un día antes del inicio del contrato para obtener valores del contrato base
+            from datetime import timedelta
+            fecha_referencia = contrato.fecha_inicio - timedelta(days=1)
+        else:
+            # Si no hay fecha de inicio, usar una fecha muy antigua
+            fecha_referencia = date(1900, 1, 1)
+        usar_contrato_base = True
+    elif documento_origen_id.startswith('OTROSI_'):
         otrosi_id = int(documento_origen_id.split('_')[1])
         try:
             otrosi = OtroSi.objects.get(id=otrosi_id, contrato=contrato)
@@ -43,6 +55,11 @@ def _obtener_requisitos_por_documento(contrato, documento_origen_id):
                 fecha_referencia = renovacion.effective_from
         except RenovacionAutomatica.DoesNotExist:
             pass
+    
+    # Si se seleccionó CONTRATO, construir requisitos directamente del contrato base
+    if usar_contrato_base:
+        from gestion.views.utils import _construir_requisitos_poliza_desde_contrato_base
+        return _construir_requisitos_poliza_desde_contrato_base(contrato)
     
     # Obtener requisitos usando get_polizas_requeridas_contrato con la fecha de referencia correcta
     polizas_requeridas = get_polizas_requeridas_contrato(contrato, fecha_referencia, permitir_fuera_vigencia=True)

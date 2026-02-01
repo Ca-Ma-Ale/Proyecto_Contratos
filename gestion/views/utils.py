@@ -129,6 +129,113 @@ def _aplicar_polizas_vigentes_a_requisitos(requisitos, polizas_queryset, sobresc
     return requisitos
 
 
+def _construir_requisitos_poliza_desde_contrato_base(contrato):
+    """
+    Construye los requisitos de pólizas usando SOLO los valores del contrato base,
+    sin considerar ningún Otro Sí o Renovación Automática.
+    
+    Args:
+        contrato: Instancia del modelo Contrato
+    
+    Returns:
+        Diccionario con los requisitos de pólizas del contrato base
+    """
+    from gestion.utils import calcular_fecha_vencimiento
+    
+    requisitos = {
+        'rce': {
+            'exigida': contrato.rce_exigida or False,
+            'valor': float(contrato.rce_valor) if contrato.rce_valor else None,
+            'vigencia': contrato.rce_meses_vigencia,
+            'fecha_inicio': contrato.fecha_inicio,
+            'fecha_fin': calcular_fecha_vencimiento(contrato.fecha_inicio, contrato.rce_meses_vigencia) if (contrato.fecha_inicio and contrato.rce_meses_vigencia) else None,
+            'fuente': 'contrato',
+            'detalles': {
+                'plo': float(contrato.rce_plo) if contrato.rce_plo else 0,
+                'patronal': float(contrato.rce_patronal) if contrato.rce_patronal else 0,
+                'gastos_medicos': float(contrato.rce_gastos_medicos) if contrato.rce_gastos_medicos else 0,
+                'vehiculos': float(contrato.rce_vehiculos) if contrato.rce_vehiculos else 0,
+                'contratistas': float(contrato.rce_contratistas) if contrato.rce_contratistas else 0,
+                'perjuicios': float(contrato.rce_perjuicios) if contrato.rce_perjuicios else 0,
+                'dano_moral': float(contrato.rce_dano_moral) if contrato.rce_dano_moral else 0,
+                'lucro_cesante': float(contrato.rce_lucro_cesante) if contrato.rce_lucro_cesante else 0,
+                'danos_materiales': float(contrato.rce_danos_materiales) if contrato.rce_danos_materiales else 0,
+                'lesiones_personales': float(contrato.rce_lesiones_personales) if contrato.rce_lesiones_personales else 0,
+                'muerte_terceros': float(contrato.rce_muerte_terceros) if contrato.rce_muerte_terceros else 0,
+                'danos_bienes_terceros': float(contrato.rce_danos_bienes_terceros) if contrato.rce_danos_bienes_terceros else 0,
+                'responsabilidad_patronal': float(contrato.rce_responsabilidad_patronal) if contrato.rce_responsabilidad_patronal else 0,
+                'responsabilidad_cruzada': float(contrato.rce_responsabilidad_cruzada) if contrato.rce_responsabilidad_cruzada else 0,
+                'danos_contratistas': float(contrato.rce_danos_contratistas) if contrato.rce_danos_contratistas else 0,
+                'danos_ejecucion_contrato': float(contrato.rce_danos_ejecucion_contrato) if contrato.rce_danos_ejecucion_contrato else 0,
+                'danos_predios_vecinos': float(contrato.rce_danos_predios_vecinos) if contrato.rce_danos_predios_vecinos else 0,
+                'gastos_medicos_cobertura': float(contrato.rce_gastos_medicos_cobertura) if contrato.rce_gastos_medicos_cobertura else 0,
+                'gastos_defensa': float(contrato.rce_gastos_defensa) if contrato.rce_gastos_defensa else 0,
+                'perjuicios_patrimoniales': float(contrato.rce_perjuicios_patrimoniales) if contrato.rce_perjuicios_patrimoniales else 0,
+            }
+        },
+        'cumplimiento': {
+            'exigida': contrato.cumplimiento_exigida or False,
+            'valor': float(contrato.cumplimiento_valor) if contrato.cumplimiento_valor else None,
+            'vigencia': contrato.cumplimiento_meses_vigencia,
+            'fecha_inicio': contrato.fecha_inicio,
+            'fecha_fin': calcular_fecha_vencimiento(contrato.fecha_inicio, contrato.cumplimiento_meses_vigencia) if (contrato.fecha_inicio and contrato.cumplimiento_meses_vigencia) else None,
+            'fuente': 'contrato',
+            'detalles': {
+                'remuneraciones': float(contrato.cumplimiento_remuneraciones) if contrato.cumplimiento_remuneraciones else 0,
+                'servicios_publicos': float(contrato.cumplimiento_servicios_publicos) if contrato.cumplimiento_servicios_publicos else 0,
+                'iva': float(contrato.cumplimiento_iva) if contrato.cumplimiento_iva else 0,
+                'cuota_admon': float(contrato.cumplimiento_cuota_admon) if contrato.cumplimiento_cuota_admon else 0,
+                'cumplimiento_contrato': float(contrato.cumplimiento_cumplimiento_contrato) if contrato.cumplimiento_cumplimiento_contrato else 0,
+                'buen_manejo_anticipo': float(contrato.cumplimiento_buen_manejo_anticipo) if contrato.cumplimiento_buen_manejo_anticipo else 0,
+                'amortizacion_anticipo': float(contrato.cumplimiento_amortizacion_anticipo) if contrato.cumplimiento_amortizacion_anticipo else 0,
+                'salarios_prestaciones': float(contrato.cumplimiento_salarios_prestaciones) if contrato.cumplimiento_salarios_prestaciones else 0,
+                'aportes_seguridad_social': float(contrato.cumplimiento_aportes_seguridad_social) if contrato.cumplimiento_aportes_seguridad_social else 0,
+                'calidad_servicio': float(contrato.cumplimiento_calidad_servicio) if contrato.cumplimiento_calidad_servicio else 0,
+                'estabilidad_obra': float(contrato.cumplimiento_estabilidad_obra) if contrato.cumplimiento_estabilidad_obra else 0,
+                'calidad_bienes': float(contrato.cumplimiento_calidad_bienes) if contrato.cumplimiento_calidad_bienes else 0,
+                'multas': float(contrato.cumplimiento_multas) if contrato.cumplimiento_multas else 0,
+                'clausula_penal': float(contrato.cumplimiento_clausula_penal) if contrato.cumplimiento_clausula_penal else 0,
+                'sanciones_incumplimiento': float(contrato.cumplimiento_sanciones_incumplimiento) if contrato.cumplimiento_sanciones_incumplimiento else 0,
+            }
+        },
+        'arrendamiento': {
+            'exigida': contrato.arrendamiento_exigida or False,
+            'valor': float(contrato.arrendamiento_valor) if contrato.arrendamiento_valor else None,
+            'vigencia': contrato.arrendamiento_meses_vigencia,
+            'fecha_inicio': contrato.fecha_inicio,
+            'fecha_fin': calcular_fecha_vencimiento(contrato.fecha_inicio, contrato.arrendamiento_meses_vigencia) if (contrato.fecha_inicio and contrato.arrendamiento_meses_vigencia) else None,
+            'fuente': 'contrato',
+            'detalles': {
+                'remuneraciones': float(contrato.arrendamiento_remuneraciones) if contrato.arrendamiento_remuneraciones else 0,
+                'servicios_publicos': float(contrato.arrendamiento_servicios_publicos) if contrato.arrendamiento_servicios_publicos else 0,
+                'iva': float(contrato.arrendamiento_iva) if contrato.arrendamiento_iva else 0,
+                'cuota_admon': float(contrato.arrendamiento_cuota_admon) if contrato.arrendamiento_cuota_admon else 0,
+            }
+        },
+        'todo_riesgo': {
+            'exigida': contrato.todo_riesgo_exigida or False,
+            'valor': float(contrato.todo_riesgo_valor) if contrato.todo_riesgo_valor else None,
+            'vigencia': contrato.todo_riesgo_meses_vigencia,
+            'fecha_inicio': contrato.fecha_inicio,
+            'fecha_fin': calcular_fecha_vencimiento(contrato.fecha_inicio, contrato.todo_riesgo_meses_vigencia) if (contrato.fecha_inicio and contrato.todo_riesgo_meses_vigencia) else None,
+            'fuente': 'contrato',
+            'detalles': {}
+        },
+        'otra': {
+            'exigida': contrato.otra_exigida or False,
+            'nombre': contrato.otra_nombre,
+            'valor': float(contrato.otra_valor) if contrato.otra_valor else None,
+            'vigencia': contrato.otra_meses_vigencia,
+            'fecha_inicio': contrato.fecha_inicio,
+            'fecha_fin': calcular_fecha_vencimiento(contrato.fecha_inicio, contrato.otra_meses_vigencia) if (contrato.fecha_inicio and contrato.otra_meses_vigencia) else None,
+            'fuente': 'contrato',
+            'detalles': {}
+        }
+    }
+    
+    return requisitos
+
+
 def _construir_requisitos_poliza(contrato, vista_vigente, permitir_fuera_vigencia=False):
     """
     Construye los requisitos de pólizas considerando el último Otro Sí vigente que afecte pólizas.
