@@ -617,15 +617,6 @@ def obtener_polizas_criticas(
         .order_by('fecha_vencimiento')
     )
     
-    # Intentar agregar select_related para otrosi y renovacion_automatica si existen
-    try:
-        # Verificar si los campos existen en el modelo
-        if hasattr(Poliza, 'otrosi') and hasattr(Poliza, 'renovacion_automatica'):
-            polizas_candidatas = polizas_candidatas.select_related('otrosi', 'renovacion_automatica')
-    except Exception:
-        # Si hay error, continuar sin select_related para esos campos
-        pass
-    
     if tipo_contrato_cp:
         polizas_candidatas = polizas_candidatas.filter(contrato__tipo_contrato_cliente_proveedor=tipo_contrato_cp)
     
@@ -659,7 +650,12 @@ def obtener_polizas_criticas(
             # Si no tiene fecha final, se considera vigente (contrato indefinido)
             
             # Usar fecha de vencimiento efectiva (considerando colchón si aplica)
-            fecha_vencimiento_efectiva = poliza.obtener_fecha_vencimiento_efectiva(fecha_base)
+            # Manejar caso donde los campos de colchón aún no existen (migración pendiente)
+            try:
+                fecha_vencimiento_efectiva = poliza.obtener_fecha_vencimiento_efectiva(fecha_base)
+            except AttributeError:
+                # Si los campos de colchón no existen aún, usar fecha_vencimiento normal
+                fecha_vencimiento_efectiva = poliza.fecha_vencimiento
             
             # Verificar que la póliza realmente vence dentro de la ventana o ya venció
             # Esto asegura que solo mostramos pólizas que realmente necesitan atención
