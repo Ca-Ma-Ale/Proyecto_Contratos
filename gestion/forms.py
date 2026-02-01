@@ -1102,16 +1102,18 @@ class PolizaForm(BaseModelForm):
             poliza.renovacion_automatica = None
         
         # Calcular fecha_vencimiento_real si tiene colchón
-        if poliza.tiene_colchon and poliza.contrato:
-            from datetime import date
-            try:
-                from gestion.services.alertas import _obtener_fecha_final_contrato
-                fecha_final = _obtener_fecha_final_contrato(poliza.contrato, date.today())
-                if fecha_final:
-                    poliza.fecha_vencimiento_real = fecha_final
-            except Exception:
-                # Si hay error al calcular, no establecer fecha_vencimiento_real
-                pass
+        # Nota: contrato debe estar asignado antes de llamar a este método
+        if hasattr(poliza, 'tiene_colchon') and poliza.tiene_colchon:
+            if hasattr(poliza, 'contrato') and poliza.contrato:
+                from datetime import date
+                try:
+                    from gestion.services.alertas import _obtener_fecha_final_contrato
+                    fecha_final = _obtener_fecha_final_contrato(poliza.contrato, date.today())
+                    if fecha_final:
+                        poliza.fecha_vencimiento_real = fecha_final
+                except Exception:
+                    # Si hay error al calcular, no establecer fecha_vencimiento_real
+                    pass
         
         if commit:
             poliza.save()

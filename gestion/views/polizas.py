@@ -2,14 +2,84 @@ from datetime import date
 
 from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect, render
+from django.http import JsonResponse
 
 from gestion.decorators import admin_required, login_required_custom
 from gestion.forms import PolizaForm
-from gestion.models import Contrato, Poliza, SeguimientoPoliza, SeguimientoContrato
+from gestion.models import Contrato, Poliza, SeguimientoPoliza, SeguimientoContrato, OtroSi, RenovacionAutomatica
 from gestion.utils import calcular_fecha_vencimiento
-from gestion.utils_otrosi import get_vista_vigente_contrato, get_polizas_vigentes, es_fecha_fuera_vigencia_contrato
+from gestion.utils_otrosi import get_vista_vigente_contrato, get_polizas_vigentes, es_fecha_fuera_vigencia_contrato, get_polizas_requeridas_contrato
 from gestion.utils_auditoria import guardar_con_auditoria, registrar_eliminacion
 from .utils import _construir_requisitos_poliza, _aplicar_polizas_vigentes_a_requisitos
+
+
+def _obtener_requisitos_por_documento(contrato, documento_origen_id):
+    """
+    Obtiene los requisitos de pólizas según el documento origen seleccionado.
+    
+    Args:
+        contrato: Instancia del modelo Contrato
+        documento_origen_id: ID del documento origen ('CONTRATO', 'OTROSI_X', 'RENOVACION_X')
+    
+    Returns:
+        Diccionario con los requisitos de pólizas
+    """
+    fecha_referencia = date.today()
+    
+    # Determinar fecha de referencia según documento origen
+    if documento_origen_id.startswith('OTROSI_'):
+        otrosi_id = int(documento_origen_id.split('_')[1])
+        try:
+            otrosi = OtroSi.objects.get(id=otrosi_id, contrato=contrato)
+            if otrosi.effective_from:
+                fecha_referencia = otrosi.effective_from
+        except OtroSi.DoesNotExist:
+            pass
+    elif documento_origen_id.startswith('RENOVACION_'):
+        renovacion_id = int(documento_origen_id.split('_')[1])
+        try:
+            renovacion = RenovacionAutomatica.objects.get(id=renovacion_id, contrato=contrato)
+            if renovacion.effective_from:
+                fecha_referencia = renovacion.effective_from
+        except RenovacionAutomatica.DoesNotExist:
+            pass
+    
+    # Obtener requisitos usando get_polizas_requeridas_contrato con la fecha de referencia correcta
+    polizas_requeridas = get_polizas_requeridas_contrato(contrato, fecha_referencia, permitir_fuera_vigencia=True)
+    
+    # Construir estructura de requisitos
+    vista_vigente = get_vista_vigente_contrato(contrato, fecha_referencia)
+    requisitos = _construir_requisitos_poliza(contrato, vista_vigente, permitir_fuera_vigencia=True)
+    
+    return requisitos
+
+
+@login_required_custom
+def obtener_requisitos_documento(request, contrato_id):
+    """Vista AJAX para obtener requisitos según documento origen seleccionado"""
+    contrato = get_object_or_404(Contrato, id=contrato_id)
+    documento_origen_id = request.GET.get('documento_origen', 'CONTRATO')
+    
+    requisitos = _obtener_requisitos_por_documento(contrato, documento_origen_id)
+    
+    # Convertir a formato JSON-friendly
+    requisitos_json = {}
+    for clave, valor in requisitos.items():
+        if isinstance(valor, dict):
+            requisitos_json[clave] = {
+                'exigida': valor.get('exigida', False),
+                'valor': float(valor.get('valor', 0)) if valor.get('valor') else None,
+                'vigencia': valor.get('vigencia'),
+                'fecha_inicio': valor.get('fecha_inicio').isoformat() if valor.get('fecha_inicio') else None,
+                'fecha_fin': valor.get('fecha_fin').isoformat() if valor.get('fecha_fin') else None,
+                'detalles': valor.get('detalles', {}),
+                'nombre': valor.get('nombre') if clave == 'otra' else None
+            }
+        else:
+            requisitos_json[clave] = valor
+    
+    return JsonResponse(requisitos_json)
+
 
 @login_required_custom
 def gestionar_polizas(request, contrato_id):
@@ -60,7 +130,6 @@ def gestionar_polizas(request, contrato_id):
     # Buscar Otros Sí futuros que modifiquen pólizas (para mostrar información al usuario)
     otrosi_futuro_polizas = None
     if contrato_no_iniciado:
-        from gestion.models import OtroSi
         otrosi_futuro = OtroSi.objects.filter(
             contrato=contrato,
             estado='APROBADO',
@@ -125,7 +194,19 @@ def nueva_poliza(request, contrato_id):
         else:
             # El formulario ya maneja la asignación del documento origen y colchón en su método save()
             poliza = form.save(commit=False)
+            # Asignar contrato ANTES de cualquier operación que lo necesite
             poliza.contrato = contrato
+            
+            # Recalcular fecha_vencimiento_real si tiene colchón (ahora que contrato está asignado)
+            if hasattr(poliza, 'tiene_colchon') and poliza.tiene_colchon and poliza.contrato:
+                from datetime import date
+                try:
+                    from gestion.services.alertas import _obtener_fecha_final_contrato
+                    fecha_final = _obtener_fecha_final_contrato(poliza.contrato, date.today())
+                    if fecha_final:
+                        poliza.fecha_vencimiento_real = fecha_final
+                except Exception:
+                    pass
             
             # Manejar campos adicionales del formulario
             meses_cobertura = request.POST.get('meses_cobertura')
@@ -170,6 +251,10 @@ def nueva_poliza(request, contrato_id):
         
         # Establecer fecha de inicio por defecto
         form.initial['fecha_inicio_vigencia'] = fecha_inicio_default
+        
+        # Obtener requisitos iniciales según documento origen por defecto
+        documento_origen_default = form.fields['documento_origen'].initial or 'CONTRATO'
+        requisitos_contrato = _obtener_requisitos_por_documento(contrato, documento_origen_default)
     
     context = {
         'form': form,
@@ -209,6 +294,17 @@ def editar_poliza(request, poliza_id):
             # El formulario ya maneja la asignación del documento origen y colchón en su método save()
             poliza = form.save(commit=False)
             
+            # Recalcular fecha_vencimiento_real si tiene colchón
+            if hasattr(poliza, 'tiene_colchon') and poliza.tiene_colchon and poliza.contrato:
+                from datetime import date
+                try:
+                    from gestion.services.alertas import _obtener_fecha_final_contrato
+                    fecha_final = _obtener_fecha_final_contrato(poliza.contrato, date.today())
+                    if fecha_final:
+                        poliza.fecha_vencimiento_real = fecha_final
+                except Exception:
+                    pass
+            
             # Manejar campos adicionales del formulario
             meses_cobertura = request.POST.get('meses_cobertura')
             
@@ -234,19 +330,23 @@ def editar_poliza(request, poliza_id):
     else:
         form = PolizaForm(instance=poliza, contrato=contrato, es_edicion=True)
         
+        # Obtener requisitos según documento origen actual de la póliza
+        if poliza.otrosi:
+            documento_origen_id = f'OTROSI_{poliza.otrosi.id}'
+        elif poliza.renovacion_automatica:
+            documento_origen_id = f'RENOVACION_{poliza.renovacion_automatica.id}'
+        else:
+            documento_origen_id = 'CONTRATO'
+        
+        requisitos_contrato = _obtener_requisitos_por_documento(contrato, documento_origen_id)
+        
         # Usar los datos guardados directamente
         if poliza.fecha_inicio_vigencia:
             fecha_inicio_vigencia = poliza.fecha_inicio_vigencia.strftime('%Y-%m-%d')
-        else:
-            fecha_inicio_vigencia = None
-            
-        # Calcular meses de cobertura basado en las fechas guardadas
-        if poliza.fecha_inicio_vigencia and poliza.fecha_vencimiento:
-            from datetime import date
-            diff = poliza.fecha_vencimiento - poliza.fecha_inicio_vigencia
-            meses_cobertura = round(diff.days / 30)  # Aproximación de 30 días por mes
-        else:
-            meses_cobertura = None
+            if poliza.fecha_vencimiento and poliza.fecha_inicio_vigencia:
+                from dateutil.relativedelta import relativedelta
+                delta = relativedelta(poliza.fecha_vencimiento, poliza.fecha_inicio_vigencia)
+                meses_cobertura = delta.years * 12 + delta.months
     
     context = {
         'form': form,
@@ -259,125 +359,3 @@ def editar_poliza(request, poliza_id):
         'titulo': f'Editar Póliza - {poliza.numero_poliza}'
     }
     return render(request, 'gestion/polizas/form.html', context)
-
-
-
-
-@login_required_custom
-def validar_poliza(request, poliza_id):
-    """Vista para mostrar las inconsistencias de una póliza y permitir continuar"""
-    poliza = get_object_or_404(Poliza, id=poliza_id)
-    contrato = poliza.contrato
-    
-    # Obtener validación de la póliza
-    validacion = poliza.cumple_requisitos_contrato()
-    
-    if request.method == 'POST':
-        accion = request.POST.get('accion')
-        if accion == 'continuar':
-            # El usuario confirma continuar a pesar de las inconsistencias
-            messages.warning(request, f'Póliza {poliza.numero_poliza} guardada con inconsistencias. Se recomienda revisar los requisitos del contrato.')
-            return redirect('gestion:gestionar_polizas', contrato_id=contrato.id)
-        elif accion == 'corregir':
-            # El usuario quiere corregir la póliza
-            return redirect('gestion:editar_poliza', poliza_id=poliza.id)
-    
-    # Obtener requisitos del contrato usando la función que considera Otros Sí vigentes
-    vista_vigente = get_vista_vigente_contrato(contrato)
-    requisitos_contrato = _construir_requisitos_poliza(contrato, vista_vigente, permitir_fuera_vigencia=True)
-    
-    context = {
-        'poliza': poliza,
-        'contrato': contrato,
-        'validacion': validacion,
-        'requisitos_contrato': requisitos_contrato,
-        'titulo': f'Validar Póliza - {poliza.numero_poliza}'
-    }
-    return render(request, 'gestion/polizas/validar.html', context)
-
-
-
-
-@admin_required
-def eliminar_poliza(request, poliza_id):
-    """Vista para eliminar una póliza"""
-    poliza = get_object_or_404(Poliza, id=poliza_id)
-    contrato = poliza.contrato
-    
-    if request.method == 'POST':
-        accion = request.POST.get('accion')
-        if accion == 'confirmar':
-            registrar_eliminacion(poliza, request.user)
-            numero_poliza = poliza.numero_poliza
-            poliza.delete()
-            messages.success(request, f'✅ Póliza {numero_poliza} eliminada exitosamente!')
-            return redirect('gestion:gestionar_polizas', contrato_id=contrato.id)
-        elif accion == 'cancelar':
-            return redirect('gestion:gestionar_polizas', contrato_id=contrato.id)
-    
-    context = {
-        'poliza': poliza,
-        'contrato': contrato,
-        'titulo': f'Eliminar Póliza - {poliza.numero_poliza}'
-    }
-    return render(request, 'gestion/polizas/eliminar.html', context)
-
-
-@login_required_custom
-def agregar_seguimiento_poliza(request, contrato_id):
-    """Vista para agregar un seguimiento de póliza desde la vista de gestionar pólizas"""
-    contrato = get_object_or_404(Contrato, id=contrato_id)
-    
-    if request.method == 'POST':
-        detalle = request.POST.get('detalle', '').strip()
-        poliza_tipo = request.POST.get('poliza_tipo', '').strip()
-        poliza_id = request.POST.get('poliza_id', '').strip()
-        
-        if detalle:
-            poliza = None
-            if poliza_id:
-                try:
-                    poliza = Poliza.objects.get(id=poliza_id, contrato=contrato)
-                except Poliza.DoesNotExist:
-                    pass
-            
-            SeguimientoPoliza.objects.create(
-                contrato=contrato,
-                poliza=poliza,
-                poliza_tipo=poliza_tipo if poliza_tipo else None,
-                detalle=detalle,
-                registrado_por=request.user.get_username() if request.user.is_authenticated else None
-            )
-            messages.success(request, 'Seguimiento agregado correctamente.')
-        else:
-            messages.error(request, 'Debe ingresar contenido para registrar un seguimiento.')
-        
-        return redirect('gestion:gestionar_polizas', contrato_id=contrato.id)
-    
-    return redirect('gestion:gestionar_polizas', contrato_id=contrato.id)
-
-
-@login_required_custom
-def agregar_seguimiento_contrato(request, contrato_id):
-    """Vista para agregar un seguimiento de contrato desde la vista vigente"""
-    contrato = get_object_or_404(Contrato, id=contrato_id)
-    
-    if request.method == 'POST':
-        detalle = request.POST.get('detalle', '').strip()
-        if detalle:
-            SeguimientoContrato.objects.create(
-                contrato=contrato,
-                detalle=detalle,
-                registrado_por=request.user.get_username() if request.user.is_authenticated else None
-            )
-            messages.success(request, 'Seguimiento agregado correctamente.')
-        else:
-            messages.error(request, 'Debe ingresar contenido para registrar un seguimiento.')
-        
-        return redirect('gestion:vista_vigente_contrato', contrato_id=contrato.id)
-    
-    return redirect('gestion:vista_vigente_contrato', contrato_id=contrato.id)
-
-
-
-

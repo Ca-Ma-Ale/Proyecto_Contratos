@@ -72,6 +72,133 @@ document.addEventListener('DOMContentLoaded', function() {
     if (fechaVencimientoField) {
         fechaVencimientoField.addEventListener('change', actualizarFechasColchon);
     }
+    
+    // Actualizar requisitos dinámicamente cuando cambie el documento origen
+    const documentoOrigenField = document.getElementById('{{ form.documento_origen.id_for_label }}');
+    const contratoId = {{ contrato.id }};
+    
+    function actualizarRequisitos() {
+        if (!documentoOrigenField) return;
+        
+        const documentoOrigenId = documentoOrigenField.value;
+        if (!documentoOrigenId) return;
+        
+        // Mostrar indicador de carga
+        const requisitosCard = document.querySelector('.poliza-layout-sidebar .card-enhanced:last-child');
+        if (requisitosCard) {
+            requisitosCard.innerHTML = '<div class="card-body"><div class="text-center"><i class="fas fa-spinner fa-spin"></i> Cargando requisitos...</div></div>';
+        }
+        
+        // Hacer petición AJAX
+        fetch(`{% url 'gestion:obtener_requisitos_documento' contrato.id %}?documento_origen=${encodeURIComponent(documentoOrigenId)}`)
+            .then(response => response.json())
+            .then(data => {
+                // Actualizar el panel de requisitos con los nuevos datos
+                actualizarPanelRequisitos(data);
+            })
+            .catch(error => {
+                console.error('Error al cargar requisitos:', error);
+                if (requisitosCard) {
+                    requisitosCard.innerHTML = '<div class="card-body"><div class="alert alert-danger">Error al cargar requisitos</div></div>';
+                }
+            });
+    }
+    
+    function actualizarPanelRequisitos(requisitos) {
+        const sidebar = document.querySelector('.poliza-layout-sidebar');
+        if (!sidebar) return;
+        
+        // Buscar o crear el card de requisitos
+        let requisitosCard = sidebar.querySelector('.card-enhanced:last-child');
+        if (!requisitosCard || !requisitosCard.querySelector('.card-header')) {
+            // Crear nuevo card si no existe
+            requisitosCard = document.createElement('div');
+            requisitosCard.className = 'card card-enhanced';
+            sidebar.appendChild(requisitosCard);
+        }
+        
+        let html = `
+            <div class="card-header" style="background: linear-gradient(135deg, var(--avenida-orange) 0%, #e0a800 100%); color: white;">
+                <h6 class="mb-0">
+                    <i class="fas fa-clipboard-check"></i> Requisitos del Documento
+                </h6>
+            </div>
+            <div class="card-body">
+        `;
+        
+        // RCE
+        if (requisitos.rce && requisitos.rce.exigida) {
+            html += `
+                <div class="alert alert-rce mb-2">
+                    <h6><i class="fas fa-shield-alt"></i> RCE - Responsabilidad Civil</h6>
+                    ${requisitos.rce.valor ? `<p class="mb-1"><strong>Valor Requerido:</strong> $${parseFloat(requisitos.rce.valor).toLocaleString('es-CO')}</p>` : ''}
+                    ${requisitos.rce.vigencia ? `<p class="mb-1"><strong>Vigencia:</strong> ${requisitos.rce.vigencia} meses</p>` : ''}
+                    ${requisitos.rce.fecha_fin ? `<p class="mb-0"><strong>Vigente hasta:</strong> ${new Date(requisitos.rce.fecha_fin).toLocaleDateString('es-CO')}</p>` : ''}
+                </div>
+            `;
+        }
+        
+        // Cumplimiento
+        if (requisitos.cumplimiento && requisitos.cumplimiento.exigida) {
+            html += `
+                <div class="alert alert-cumplimiento mb-2">
+                    <h6><i class="fas fa-check-circle"></i> Cumplimiento</h6>
+                    ${requisitos.cumplimiento.valor ? `<p class="mb-1"><strong>Valor Requerido:</strong> $${parseFloat(requisitos.cumplimiento.valor).toLocaleString('es-CO')}</p>` : ''}
+                    ${requisitos.cumplimiento.vigencia ? `<p class="mb-1"><strong>Vigencia:</strong> ${requisitos.cumplimiento.vigencia} meses</p>` : ''}
+                    ${requisitos.cumplimiento.fecha_fin ? `<p class="mb-0"><strong>Vigente hasta:</strong> ${new Date(requisitos.cumplimiento.fecha_fin).toLocaleDateString('es-CO')}</p>` : ''}
+                </div>
+            `;
+        }
+        
+        // Arrendamiento
+        if (requisitos.arrendamiento && requisitos.arrendamiento.exigida) {
+            html += `
+                <div class="alert alert-arrendamiento mb-2">
+                    <h6><i class="fas fa-home"></i> Póliza de Arrendamiento</h6>
+                    ${requisitos.arrendamiento.valor ? `<p class="mb-1"><strong>Valor Requerido:</strong> $${parseFloat(requisitos.arrendamiento.valor).toLocaleString('es-CO')}</p>` : ''}
+                    ${requisitos.arrendamiento.vigencia ? `<p class="mb-1"><strong>Vigencia:</strong> ${requisitos.arrendamiento.vigencia} meses</p>` : ''}
+                    ${requisitos.arrendamiento.fecha_fin ? `<p class="mb-0"><strong>Vigente hasta:</strong> ${new Date(requisitos.arrendamiento.fecha_fin).toLocaleDateString('es-CO')}</p>` : ''}
+                </div>
+            `;
+        }
+        
+        // Todo Riesgo
+        if (requisitos.todo_riesgo && requisitos.todo_riesgo.exigida) {
+            html += `
+                <div class="alert alert-todo-riesgo mb-2">
+                    <h6><i class="fas fa-umbrella"></i> Arrendamiento (Todo Riesgo)</h6>
+                    ${requisitos.todo_riesgo.valor ? `<p class="mb-1"><strong>Valor Requerido:</strong> $${parseFloat(requisitos.todo_riesgo.valor).toLocaleString('es-CO')}</p>` : ''}
+                    ${requisitos.todo_riesgo.vigencia ? `<p class="mb-1"><strong>Vigencia:</strong> ${requisitos.todo_riesgo.vigencia} meses</p>` : ''}
+                    ${requisitos.todo_riesgo.fecha_fin ? `<p class="mb-0"><strong>Vigente hasta:</strong> ${new Date(requisitos.todo_riesgo.fecha_fin).toLocaleDateString('es-CO')}</p>` : ''}
+                </div>
+            `;
+        }
+        
+        // Otra
+        if (requisitos.otra && requisitos.otra.exigida) {
+            html += `
+                <div class="alert alert-otra mb-2">
+                    <h6><i class="fas fa-file-alt"></i> ${requisitos.otra.nombre || 'Otra'}</h6>
+                    ${requisitos.otra.valor ? `<p class="mb-1"><strong>Valor Requerido:</strong> $${parseFloat(requisitos.otra.valor).toLocaleString('es-CO')}</p>` : ''}
+                    ${requisitos.otra.vigencia ? `<p class="mb-1"><strong>Vigencia:</strong> ${requisitos.otra.vigencia} meses</p>` : ''}
+                    ${requisitos.otra.fecha_fin ? `<p class="mb-0"><strong>Vigente hasta:</strong> ${new Date(requisitos.otra.fecha_fin).toLocaleDateString('es-CO')}</p>` : ''}
+                </div>
+            `;
+        }
+        
+        if (!requisitos.rce?.exigida && !requisitos.cumplimiento?.exigida && 
+            !requisitos.arrendamiento?.exigida && !requisitos.todo_riesgo?.exigida && 
+            !requisitos.otra?.exigida) {
+            html += '<p class="text-muted mb-0">No hay requisitos de pólizas para este documento.</p>';
+        }
+        
+        html += '</div>';
+        requisitosCard.innerHTML = html;
+    }
+    
+    if (documentoOrigenField) {
+        documentoOrigenField.addEventListener('change', actualizarRequisitos);
+    }
 });
 </script>
 {% endblock %}

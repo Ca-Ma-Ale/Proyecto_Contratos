@@ -37,6 +37,7 @@ urlpatterns = [
     path('tipos-servicio/<int:tipo_id>/eliminar/', views.eliminar_tipo_servicio, name='eliminar_tipo_servicio'),
     path('contratos/<int:contrato_id>/polizas/', views.gestionar_polizas, name='gestionar_polizas'),
     path('contratos/<int:contrato_id>/polizas/nueva/', views.nueva_poliza, name='nueva_poliza'),
+    path('contratos/<int:contrato_id>/polizas/requisitos-documento/', views.obtener_requisitos_documento, name='obtener_requisitos_documento'),
     path('contratos/<int:contrato_id>/polizas/seguimiento/agregar/', views.agregar_seguimiento_poliza, name='agregar_seguimiento_poliza'),
     path('polizas/<int:poliza_id>/editar/', views.editar_poliza, name='editar_poliza'),
     path('polizas/<int:poliza_id>/eliminar/', views.eliminar_poliza, name='eliminar_poliza'),
