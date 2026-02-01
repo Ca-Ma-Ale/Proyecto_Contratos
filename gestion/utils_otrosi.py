@@ -545,20 +545,24 @@ def get_vista_vigente_contrato(contrato, fecha_referencia=None):
             # Para proveedores, actualizar "Valor mensual" (canon_minimo_garantizado)
             # Solo aplicar si no hay un Otro Sí que realmente haya modificado el campo después del cálculo
             # Si otrosi_canon_min existe pero no tiene valor válido (None o 0), tratarlo como si no existiera
-            otrosi_modifico_realmente = otrosi_canon_min and canon_minimo is not None
-            if otrosi_modifico_realmente:
+            otrosi_modifico_realmente = False
+            if otrosi_canon_min and canon_minimo is not None:
                 from decimal import Decimal
                 valor_otrosi_decimal = Decimal(str(canon_minimo)) if canon_minimo else None
-                otrosi_modifico_realmente = valor_otrosi_decimal is not None and valor_otrosi_decimal != Decimal('0')
+                if valor_otrosi_decimal is not None and valor_otrosi_decimal != Decimal('0'):
+                    otrosi_modifico_realmente = True
             
             if not otrosi_modifico_realmente:
+                # No hay Otro Sí que realmente modificó el campo, aplicar el cálculo
                 aplicar_calculo = True
-            elif hasattr(otrosi_canon_min, 'fecha_aprobacion') and otrosi_canon_min.fecha_aprobacion:
-                # Si hay Otro Sí que realmente modificó, solo aplicar si el cálculo es posterior o igual
-                fecha_otrosi = otrosi_canon_min.fecha_aprobacion.date() if hasattr(otrosi_canon_min.fecha_aprobacion, 'date') else otrosi_canon_min.fecha_aprobacion
-                aplicar_calculo = ultimo_calculo_aplicado.fecha_aplicacion >= fecha_otrosi
             else:
-                aplicar_calculo = True
+                # Hay Otro Sí que realmente modificó, verificar si el cálculo es posterior
+                if otrosi_canon_min and hasattr(otrosi_canon_min, 'fecha_aprobacion') and otrosi_canon_min.fecha_aprobacion:
+                    fecha_otrosi = otrosi_canon_min.fecha_aprobacion.date() if hasattr(otrosi_canon_min.fecha_aprobacion, 'date') else otrosi_canon_min.fecha_aprobacion
+                    aplicar_calculo = ultimo_calculo_aplicado.fecha_aplicacion >= fecha_otrosi
+                else:
+                    # Si no tiene fecha de aprobación, aplicar el cálculo
+                    aplicar_calculo = True
             
             if aplicar_calculo:
                 # Usar el valor del cálculo o el valor vigente actual (que puede ser del contrato base)
@@ -577,20 +581,24 @@ def get_vista_vigente_contrato(contrato, fecha_referencia=None):
             # Para arrendatarios, actualizar "Canon" (valor_canon)
             # Solo aplicar si no hay un Otro Sí que realmente haya modificado el campo después del cálculo
             # Si otrosi_canon existe pero no tiene valor válido (None o 0), tratarlo como si no existiera
-            otrosi_modifico_realmente = otrosi_canon and valor_canon is not None
-            if otrosi_modifico_realmente:
+            otrosi_modifico_realmente = False
+            if otrosi_canon and valor_canon is not None:
                 from decimal import Decimal
                 valor_otrosi_decimal = Decimal(str(valor_canon)) if valor_canon else None
-                otrosi_modifico_realmente = valor_otrosi_decimal is not None and valor_otrosi_decimal != Decimal('0')
+                if valor_otrosi_decimal is not None and valor_otrosi_decimal != Decimal('0'):
+                    otrosi_modifico_realmente = True
             
             if not otrosi_modifico_realmente:
+                # No hay Otro Sí que realmente modificó el campo, aplicar el cálculo
                 aplicar_calculo = True
-            elif hasattr(otrosi_canon, 'fecha_aprobacion') and otrosi_canon.fecha_aprobacion:
-                # Si hay Otro Sí que realmente modificó, solo aplicar si el cálculo es posterior o igual
-                fecha_otrosi = otrosi_canon.fecha_aprobacion.date() if hasattr(otrosi_canon.fecha_aprobacion, 'date') else otrosi_canon.fecha_aprobacion
-                aplicar_calculo = ultimo_calculo_aplicado.fecha_aplicacion >= fecha_otrosi
             else:
-                aplicar_calculo = True
+                # Hay Otro Sí que realmente modificó, verificar si el cálculo es posterior
+                if otrosi_canon and hasattr(otrosi_canon, 'fecha_aprobacion') and otrosi_canon.fecha_aprobacion:
+                    fecha_otrosi = otrosi_canon.fecha_aprobacion.date() if hasattr(otrosi_canon.fecha_aprobacion, 'date') else otrosi_canon.fecha_aprobacion
+                    aplicar_calculo = ultimo_calculo_aplicado.fecha_aplicacion >= fecha_otrosi
+                else:
+                    # Si no tiene fecha de aprobación, aplicar el cálculo
+                    aplicar_calculo = True
             
             if aplicar_calculo:
                 # Usar el valor del cálculo o el valor vigente actual (que puede ser del contrato base)
