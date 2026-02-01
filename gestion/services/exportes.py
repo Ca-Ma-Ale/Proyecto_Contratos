@@ -251,9 +251,10 @@ def generar_excel_corporativo(
     formateador.aplicar(hoja, ultima_fila_datos)
 
     hoja.append([])
+    ahora_local = timezone.localtime(timezone.now())
     hoja.append(
         [
-            f'Generado el {timezone.now().strftime("%Y-%m-%d %H:%M:%S")}',
+            f'Generado el {ahora_local.strftime("%Y-%m-%d %H:%M:%S")}',
         ]
     )
     fila_informativa = hoja.max_row
@@ -407,7 +408,8 @@ def generar_excel_informes_ventas(informes_queryset=None):
         
         registros.append(registro)
     
-    nombre_hoja = f'Informes Ventas {timezone.now().strftime("%Y%m%d")}'
+    ahora_local = timezone.localtime(timezone.now())
+    nombre_hoja = f'Informes Ventas {ahora_local.strftime("%Y%m%d")}'
     
     return generar_excel_corporativo(
         nombre_hoja=nombre_hoja,
@@ -686,8 +688,9 @@ def generar_pdf_calculo_facturacion(calculo, configuracion_empresa):
     
     # Pie de página
     story.append(Spacer(1, 0.3*inch))
+    ahora_local = timezone.localtime(timezone.now())
     footer = Paragraph(
-        f'Documento generado el {timezone.now().strftime("%d/%m/%Y %H:%M:%S")}',
+        f'Documento generado el {ahora_local.strftime("%d/%m/%Y %H:%M:%S")}',
         ParagraphStyle('Footer', parent=styles['Normal'], fontSize=8, textColor=colors.grey, alignment=TA_CENTER)
     )
     story.append(footer)

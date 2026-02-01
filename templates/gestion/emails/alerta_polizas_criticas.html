@@ -75,7 +75,7 @@
                 <thead>
                     <tr>
                         <th>Contrato</th>
-                        <th>Arrendatario</th>
+                        <th>Tercero</th>
                         <th>Tipo Póliza</th>
                         <th>Fecha Vencimiento</th>
                         <th>Estado</th>
@@ -85,7 +85,7 @@
                     {% for poliza in alertas %}
                         <tr>
                             <td>{{ poliza.contrato.num_contrato }}</td>
-                            <td>{{ poliza.contrato.arrendatario.razon_social }}</td>
+                            <td>{{ poliza.contrato.obtener_nombre_tercero }}</td>
                             <td>{{ poliza.get_tipo_display }}</td>
                             <td>
                                 {% if poliza.fecha_vencimiento %}

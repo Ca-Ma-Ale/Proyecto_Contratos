@@ -1,8 +1,8 @@
 import json
-from datetime import datetime
 
 from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 
 from gestion.decorators import admin_required, login_required_custom
 from gestion.models import Contrato
@@ -703,7 +703,7 @@ def aprobar_otrosi(request, otrosi_id):
             if otrosi.estado == 'EN_REVISION':
                 otrosi.estado = 'APROBADO'
                 otrosi.aprobado_por = request.user.username
-                otrosi.fecha_aprobacion = datetime.now()
+                otrosi.fecha_aprobacion = timezone.now()
                 otrosi.save()
                 
                 # Actualizar cálculos de IPC/Salario Mínimo si el Otro Sí modifica el canon

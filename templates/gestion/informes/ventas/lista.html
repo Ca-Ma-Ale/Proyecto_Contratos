@@ -108,7 +108,7 @@
                                 <thead class="table-dark">
                                     <tr>
                                         <th>Contrato</th>
-                                        <th>Arrendatario</th>
+                                        <th>Tercero</th>
                                         <th>Local</th>
                                         <th>Tipo de Contrato</th>
                                         <th>Modalidad Vigente</th>
@@ -122,8 +122,8 @@
                                         <td>
                                             <strong>{{ item.contrato.num_contrato }}</strong>
                                         </td>
-                                        <td>{{ item.contrato.arrendatario.razon_social }}</td>
-                                        <td>{{ item.contrato.local.nombre_comercial_stand }}</td>
+                                        <td>{{ item.contrato.obtener_nombre_tercero }}</td>
+                                        <td>{% if item.contrato.local %}{{ item.contrato.local.nombre_comercial_stand }}{% else %}-{% endif %}</td>
                                         <td>{{ item.contrato.tipo_contrato.nombre }}</td>
                                         <td>
                                             {% if item.valores.modalidad %}

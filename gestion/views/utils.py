@@ -280,7 +280,8 @@ def registrar_seguimientos_contrato_desde_formulario(form, contrato, usuario):
 
 
 def _respuesta_archivo_excel(contenido: bytes, nombre_base: str) -> HttpResponse:
-    marca_tiempo = timezone.now().strftime('%Y%m%d_%H%M%S')
+    ahora_local = timezone.localtime(timezone.now())
+    marca_tiempo = ahora_local.strftime('%Y%m%d_%H%M%S')
     nombre_archivo = f'{nombre_base}_{marca_tiempo}.xlsx'
     respuesta = HttpResponse(
         contenido,

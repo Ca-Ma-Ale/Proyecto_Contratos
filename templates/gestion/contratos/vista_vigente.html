@@ -378,6 +378,78 @@
                 </div>
             </div>
 
+            <!-- Alertas de IPC / Salario Mínimo -->
+            {% if alertas_ipc or alertas_salario_minimo %}
+            <div class="card mb-4">
+                <div class="card-header {% if alertas_ipc|length > 0 or alertas_salario_minimo|length > 0 %}bg-warning{% else %}bg-info{% endif %} text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-exclamation-triangle"></i> Alertas de Ajuste
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if alertas_ipc %}
+                        {% for alerta in alertas_ipc %}
+                        <div class="alert alert-{{ alerta.color_alerta }} alert-dismissible fade show" role="alert">
+                            <h6 class="alert-heading">
+                                <i class="fas fa-chart-line"></i> Ajuste por IPC Pendiente
+                            </h6>
+                            <p class="mb-1">
+                                <strong>Fecha de ajuste:</strong> {{ alerta.mes_ajuste }}<br>
+                                <strong>Meses restantes:</strong> {{ alerta.meses_restantes_abs }} meses
+                                {% if alerta.meses_restantes < 0 %}
+                                    <span class="badge bg-danger ms-2">Vencido</span>
+                                {% elif alerta.color_alerta == 'danger' %}
+                                    <span class="badge bg-danger ms-2">Urgente</span>
+                                {% elif alerta.color_alerta == 'warning' %}
+                                    <span class="badge bg-warning ms-2">Próximo</span>
+                                {% endif %}
+                            </p>
+                            <p class="mb-0">
+                                <strong>Condición IPC:</strong> {{ alerta.condicion_ipc }}<br>
+                                {% if alerta.otrosi_modificador %}
+                                <strong>Modificado por:</strong> {{ alerta.otrosi_modificador }}
+                                {% endif %}
+                            </p>
+                            <a href="{% url 'gestion:calcular_ipc' contrato.id %}" class="btn btn-sm btn-primary mt-2">
+                                <i class="fas fa-calculator"></i> Calcular Ajuste IPC
+                            </a>
+                        </div>
+                        {% endfor %}
+                    {% endif %}
+                    
+                    {% if alertas_salario_minimo %}
+                        {% for alerta in alertas_salario_minimo %}
+                        <div class="alert alert-{{ alerta.color_alerta }} alert-dismissible fade show" role="alert">
+                            <h6 class="alert-heading">
+                                <i class="fas fa-money-bill-wave"></i> Ajuste por Salario Mínimo Pendiente
+                            </h6>
+                            <p class="mb-1">
+                                <strong>Fecha de ajuste:</strong> {{ alerta.mes_ajuste }}<br>
+                                <strong>Meses restantes:</strong> {{ alerta.meses_restantes_abs }} meses
+                                {% if alerta.meses_restantes < 0 %}
+                                    <span class="badge bg-danger ms-2">Vencido</span>
+                                {% elif alerta.color_alerta == 'danger' %}
+                                    <span class="badge bg-danger ms-2">Urgente</span>
+                                {% elif alerta.color_alerta == 'warning' %}
+                                    <span class="badge bg-warning ms-2">Próximo</span>
+                                {% endif %}
+                            </p>
+                            <p class="mb-0">
+                                <strong>Condición:</strong> {{ alerta.condicion_salario_minimo }}<br>
+                                {% if alerta.otrosi_modificador %}
+                                <strong>Modificado por:</strong> {{ alerta.otrosi_modificador }}
+                                {% endif %}
+                            </p>
+                            <a href="{% url 'gestion:calcular_salario_minimo' contrato.id %}" class="btn btn-sm btn-primary mt-2">
+                                <i class="fas fa-calculator"></i> Calcular Ajuste Salario Mínimo
+                            </a>
+                        </div>
+                        {% endfor %}
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
             <!-- Condiciones de Pólizas Requeridas Vigentes -->
             {% if requisitos_polizas %}
             <div class="card mb-4">

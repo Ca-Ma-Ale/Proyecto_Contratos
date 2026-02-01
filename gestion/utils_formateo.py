@@ -55,7 +55,7 @@ def es_campo_excluido_nombre_propio(field_name, field):
         'email', 'url', 'password', 'username', 'nit', 'telefono', 'celular',
         'numero', 'num_', 'codigo', 'cod_', 'id', 'pk', 'url_archivo',
         'numero_contrato', 'numero_poliza', 'numero_otrosi', 'numero_renovacion',
-        'nit_empresa', 'nit_concedente'
+        'nit_empresa', 'nit_concedente', 'nombre_empresa', 'razon_social'
     ]
     
     field_name_lower = field_name.lower()

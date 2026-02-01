@@ -398,9 +398,12 @@ def get_vista_vigente_contrato(contrato, fecha_referencia=None):
     }
     
     # Obtener valores con efecto cadena para campos financieros
+    # Solo marcar como modificado si el otro sí realmente tiene valores en esos campos
     valor_canon, otrosi_canon = obtener_valor_campo('nuevo_valor_canon', 'valor_canon_fijo')
     vista['valor_canon'] = valor_canon
-    if otrosi_canon:
+    # Si otrosi_canon existe, significa que encontró un otro sí con valor válido en ese campo
+    # Por lo tanto, sí modificó ese campo
+    if otrosi_canon and valor_canon is not None:
         vista['campos_modificados']['valor_canon'] = {
             'original': contrato.valor_canon_fijo,
             'nuevo': valor_canon,
@@ -411,7 +414,8 @@ def get_vista_vigente_contrato(contrato, fecha_referencia=None):
     
     modalidad_pago, otrosi_modalidad = obtener_valor_campo('nueva_modalidad_pago', 'modalidad_pago')
     vista['modalidad_pago'] = modalidad_pago
-    if otrosi_modalidad:
+    # Si otrosi_modalidad existe, significa que encontró un otro sí con valor válido en ese campo
+    if otrosi_modalidad and modalidad_pago:
         vista['campos_modificados']['modalidad_pago'] = {
             'original': contrato.modalidad_pago,
             'nuevo': modalidad_pago,
@@ -422,7 +426,8 @@ def get_vista_vigente_contrato(contrato, fecha_referencia=None):
     
     canon_minimo, otrosi_canon_min = obtener_valor_campo('nuevo_canon_minimo_garantizado', 'canon_minimo_garantizado')
     vista['canon_minimo_garantizado'] = canon_minimo
-    if otrosi_canon_min:
+    # Si otrosi_canon_min existe, significa que encontró un otro sí con valor válido en ese campo
+    if otrosi_canon_min and canon_minimo is not None:
         vista['campos_modificados']['canon_minimo_garantizado'] = {
             'original': contrato.canon_minimo_garantizado,
             'nuevo': canon_minimo,
@@ -488,7 +493,8 @@ def get_vista_vigente_contrato(contrato, fecha_referencia=None):
     
     porcentaje_ventas, otrosi_ventas = obtener_valor_campo('nuevo_porcentaje_ventas', 'porcentaje_ventas')
     vista['porcentaje_ventas'] = porcentaje_ventas
-    if otrosi_ventas:
+    # Si otrosi_ventas existe, significa que encontró un otro sí con valor válido en ese campo
+    if otrosi_ventas and porcentaje_ventas is not None:
         vista['campos_modificados']['porcentaje_ventas'] = {
             'original': contrato.porcentaje_ventas,
             'nuevo': porcentaje_ventas,

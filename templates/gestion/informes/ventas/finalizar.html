@@ -16,7 +16,7 @@
                     <p>¿Desea finalizar el siguiente informe marcándolo como entregado?</p>
                     <ul class="list-unstyled">
                         <li><strong>Contrato:</strong> {{ informe.contrato.num_contrato }}</li>
-                        <li><strong>Arrendatario:</strong> {{ informe.contrato.arrendatario.razon_social }}</li>
+                        <li><strong>{% if informe.contrato.tipo_contrato_cliente_proveedor == 'PROVEEDOR' %}Proveedor{% else %}Arrendatario{% endif %}:</strong> {{ informe.contrato.obtener_nombre_tercero }}</li>
                         <li><strong>Mes/Año:</strong> {{ informe.get_mes_display }}/{{ informe.año }}</li>
                     </ul>
 

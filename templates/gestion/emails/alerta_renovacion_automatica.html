@@ -75,7 +75,7 @@
                 <thead>
                     <tr>
                         <th>Contrato</th>
-                        <th>Arrendatario</th>
+                        <th>Tercero</th>
                         <th>Días Restantes</th>
                         <th>Fecha Final</th>
                     </tr>
@@ -84,7 +84,7 @@
                     {% for alerta in alertas %}
                         <tr>
                             <td>{{ alerta.contrato.num_contrato }}</td>
-                            <td>{{ alerta.contrato.arrendatario.razon_social }}</td>
+                            <td>{{ alerta.contrato.obtener_nombre_tercero }}</td>
                             <td>{{ alerta.dias_restantes }} días</td>
                             <td>{{ alerta.fecha_final_actualizada|date:"d/m/Y" }}</td>
                         </tr>

@@ -128,7 +128,7 @@
                                 <thead class="table-dark">
                                     <tr>
                                         <th>Contrato</th>
-                                        <th>Arrendatario</th>
+                                        <th>Tercero</th>
                                         <th>Local</th>
                                         <th>Mes/Año</th>
                                         <th>Estado</th>
@@ -142,8 +142,8 @@
                                         <td>
                                             <strong>{{ informe.contrato.num_contrato }}</strong>
                                         </td>
-                                        <td>{{ informe.contrato.arrendatario.razon_social }}</td>
-                                        <td>{{ informe.contrato.local.nombre_comercial_stand }}</td>
+                                        <td>{{ informe.contrato.obtener_nombre_tercero }}</td>
+                                        <td>{% if informe.contrato.local %}{{ informe.contrato.local.nombre_comercial_stand }}{% else %}-{% endif %}</td>
                                         <td>
                                             <strong>{{ informe.get_mes_display }}/{{ informe.año }}</strong>
                                         </td>

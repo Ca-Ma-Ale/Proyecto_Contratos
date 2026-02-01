@@ -44,8 +44,8 @@
                                     <td>{{ contrato.num_contrato }}</td>
                                 </tr>
                                 <tr>
-                                    <td><strong>Arrendatario:</strong></td>
-                                    <td>{{ contrato.arrendatario.razon_social }}</td>
+                                    <td><strong>{% if contrato.tipo_contrato_cliente_proveedor == 'PROVEEDOR' %}Proveedor{% else %}Arrendatario{% endif %}:</strong></td>
+                                    <td>{{ contrato.obtener_nombre_tercero }}</td>
                                 </tr>
                                 <tr>
                                     <td><strong>Local:</strong></td>

@@ -75,7 +75,7 @@
                 <thead>
                     <tr>
                         <th>Contrato</th>
-                        <th>Arrendatario</th>
+                        <th>Tercero</th>
                         <th>Tipo Póliza</th>
                         <th>Estado</th>
                     </tr>
@@ -84,7 +84,7 @@
                     {% for alerta in alertas %}
                         <tr>
                             <td>{{ alerta.contrato.num_contrato }}</td>
-                            <td>{{ alerta.contrato.arrendatario.razon_social }}</td>
+                            <td>{{ alerta.contrato.obtener_nombre_tercero }}</td>
                             <td>{{ alerta.nombre_poliza }}</td>
                             <td>
                                 {% if alerta.tiene_poliza %}

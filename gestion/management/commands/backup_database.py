@@ -5,11 +5,11 @@ Incluye envío automático a ubicaciones remotas.
 """
 import os
 import shutil
-from datetime import datetime
 from pathlib import Path
 from django.core.management import call_command
 from django.core.management.base import BaseCommand
 from django.conf import settings
+from django.utils import timezone
 from io import StringIO
 from gestion.services.backup_remote import BackupRemoteService
 
@@ -64,9 +64,10 @@ class Command(BaseCommand):
         # Crear directorio si no existe
         backup_dir.mkdir(parents=True, exist_ok=True)
         
-        # Timestamp para nombres de archivo
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        date_str = datetime.now().strftime('%Y%m%d')
+        # Timestamp para nombres de archivo (usando zona horaria de Colombia)
+        ahora = timezone.localtime(timezone.now())
+        timestamp = ahora.strftime('%Y%m%d_%H%M%S')
+        date_str = ahora.strftime('%Y%m%d')
         
         self.stdout.write(f'Iniciando backup...')
         self.stdout.write(f'Directorio de backups: {backup_dir}')
@@ -169,15 +170,17 @@ class Command(BaseCommand):
 
     def _clean_old_backups(self, backup_dir, keep_days):
         """Elimina backups más antiguos que keep_days"""
-        from datetime import timedelta
+        from datetime import timedelta, datetime
         
-        cutoff_date = datetime.now() - timedelta(days=keep_days)
+        cutoff_date = timezone.localtime(timezone.now()) - timedelta(days=keep_days)
         deleted_count = 0
         
         for backup_file in backup_dir.glob('backup_*'):
             try:
-                file_time = datetime.fromtimestamp(backup_file.stat().st_mtime)
-                if file_time < cutoff_date:
+                file_time_naive = datetime.fromtimestamp(backup_file.stat().st_mtime)
+                file_time = timezone.make_aware(file_time_naive)
+                file_time_local = timezone.localtime(file_time)
+                if file_time_local < cutoff_date:
                     backup_file.unlink()
                     deleted_count += 1
             except Exception as e:

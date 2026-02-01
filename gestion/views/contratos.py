@@ -907,6 +907,18 @@ def vista_vigente_contrato(request, contrato_id):
     # Obtener el último cálculo IPC aplicado
     ultimo_calculo_ipc_aplicado = obtener_ultimo_calculo_ipc_aplicado(contrato)
     
+    # Obtener alertas de IPC y Salario Mínimo para este contrato
+    alertas_ipc = []
+    alertas_salario_minimo = []
+    if contrato.tipo_condicion_ipc == 'IPC':
+        from gestion.services.alertas import obtener_alertas_ipc
+        todas_alertas_ipc = obtener_alertas_ipc(fecha_referencia, contrato.tipo_contrato_cliente_proveedor)
+        alertas_ipc = [a for a in todas_alertas_ipc if a.contrato.id == contrato.id]
+    elif contrato.tipo_condicion_ipc == 'SALARIO_MINIMO':
+        from gestion.services.alertas import obtener_alertas_salario_minimo
+        todas_alertas_sm = obtener_alertas_salario_minimo(fecha_referencia, contrato.tipo_contrato_cliente_proveedor)
+        alertas_salario_minimo = [a for a in todas_alertas_sm if a.contrato.id == contrato.id]
+    
     context = {
         'contrato': contrato,
         'vista_vigente': vista_vigente,
@@ -917,6 +929,8 @@ def vista_vigente_contrato(request, contrato_id):
         'seguimientos_poliza_generales': seguimientos_poliza_generales,
         'requisitos_polizas': requisitos_polizas,
         'ultimo_calculo_ipc_aplicado': ultimo_calculo_ipc_aplicado,
+        'alertas_ipc': alertas_ipc,
+        'alertas_salario_minimo': alertas_salario_minimo,
         'titulo': f'Vista Vigente - Contrato {contrato.num_contrato}'
     }
     return render(request, 'gestion/contratos/vista_vigente.html', context)

@@ -104,7 +104,7 @@
                 <thead>
                     <tr>
                         <th>Contrato</th>
-                        <th>Arrendatario</th>
+                        <th>Tercero</th>
                         <th>Días Restantes</th>
                         <th>Fecha Ajuste</th>
                         <th>Prioridad</th>
@@ -114,7 +114,7 @@
                     {% for alerta in alertas %}
                         <tr>
                             <td>{{ alerta.contrato.num_contrato }}</td>
-                            <td>{{ alerta.contrato.arrendatario.razon_social }}</td>
+                            <td>{{ alerta.contrato.obtener_nombre_tercero }}</td>
                             <td>{{ alerta.meses_restantes }} días</td>
                             <td>{{ alerta.mes_ajuste }}</td>
                             <td>

@@ -35,7 +35,7 @@
                         <strong>Versión:</strong> v{{ renovacion.version }}<br>
                         <strong>Estado:</strong> {{ renovacion.get_estado_display }}<br>
                         <strong>Contrato:</strong> {{ contrato.num_contrato }}<br>
-                        <strong>Arrendatario:</strong> {{ contrato.arrendatario.razon_social }}<br>
+                        <strong>{% if contrato.tipo_contrato_cliente_proveedor == 'PROVEEDOR' %}Proveedor{% else %}Arrendatario{% endif %}:</strong> {{ contrato.obtener_nombre_tercero }}<br>
                         <strong>Fecha Renovación:</strong> {{ renovacion.fecha_renovacion|date:"d/m/Y" }}<br>
                         <strong>Vigencia Desde:</strong> {{ renovacion.effective_from|date:"d/m/Y" }}<br>
                         {% if renovacion.effective_to %}

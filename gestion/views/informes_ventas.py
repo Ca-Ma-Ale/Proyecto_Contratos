@@ -789,7 +789,8 @@ def exportar_informes_excel(request):
         # Generar Excel con los informes filtrados
         excel_content = generar_excel_informes_ventas(informes_queryset=informes)
         
-        fecha_actual = timezone.now().strftime('%Y%m%d_%H%M%S')
+        ahora_local = timezone.localtime(timezone.now())
+        fecha_actual = ahora_local.strftime('%Y%m%d_%H%M%S')
         filename = f'informes_ventas_{fecha_actual}.xlsx'
         
         response = HttpResponse(excel_content, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')

@@ -75,7 +75,7 @@
                 <thead>
                     <tr>
                         <th>Número</th>
-                        <th>Arrendatario</th>
+                        <th>Tercero</th>
                         <th>Local</th>
                         <th>Fecha Final</th>
                     </tr>
@@ -84,7 +84,7 @@
                     {% for contrato in alertas %}
                         <tr>
                             <td>{{ contrato.num_contrato }}</td>
-                            <td>{{ contrato.arrendatario.razon_social }}</td>
+                            <td>{{ contrato.obtener_nombre_tercero }}</td>
                             <td>{{ contrato.local.nombre_comercial_stand }}</td>
                             <td>
                                 {% if contrato.fecha_final_actualizada %}

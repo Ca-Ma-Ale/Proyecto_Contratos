@@ -110,8 +110,8 @@
                 </div>
                 <div class="card-body">
                     <p><strong>Número:</strong> {{ contrato.num_contrato }}</p>
-                    <p><strong>Arrendatario:</strong> {{ contrato.arrendatario.razon_social }}</p>
-                    <p><strong>Local:</strong> {{ contrato.local.nombre_comercial_stand }}</p>
+                    <p><strong>{% if contrato.tipo_contrato_cliente_proveedor == 'PROVEEDOR' %}Proveedor{% else %}Arrendatario{% endif %}:</strong> {{ contrato.obtener_nombre_tercero }}</p>
+                    <p><strong>Local:</strong> {% if contrato.local %}{{ contrato.local.nombre_comercial_stand }}{% else %}-{% endif %}</p>
                     <p><strong>Vigencia:</strong> {{ contrato.fecha_final_actualizada|date:"d/m/Y" }}</p>
                 </div>
             </div>
