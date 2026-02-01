@@ -11,11 +11,30 @@ def _obtener_numero_evento(evento):
     try:
         if not evento:
             return None
+        
+        # Intentar obtener numero_otrosi primero
         if hasattr(evento, 'numero_otrosi'):
-            return getattr(evento, 'numero_otrosi', None)
+            numero = getattr(evento, 'numero_otrosi', None)
+            if numero and numero.strip() and numero != 'OS-TEMP':
+                return numero
+        
+        # Intentar obtener numero_renovacion
         if hasattr(evento, 'numero_renovacion'):
-            return getattr(evento, 'numero_renovacion', None)
-        return str(evento)
+            numero = getattr(evento, 'numero_renovacion', None)
+            if numero and numero.strip() and numero != 'RA-TEMP':
+                return numero
+        
+        # Si no se encontró número válido, intentar obtener el ID como fallback
+        if hasattr(evento, 'id'):
+            evento_id = getattr(evento, 'id', None)
+            if evento_id:
+                # Determinar el tipo de evento
+                if hasattr(evento, 'numero_otrosi'):
+                    return f'OS-{evento_id}'
+                elif hasattr(evento, 'numero_renovacion'):
+                    return f'RA-{evento_id}'
+        
+        return None
     except Exception:
         return None
 
@@ -569,13 +588,15 @@ def get_vista_vigente_contrato(contrato, fecha_referencia=None):
                         es_diferente = valor_antes_otrosi != valor_canon
                 
                 if es_diferente:
-                    vista['campos_modificados']['valor_canon'] = {
-                        'original': valor_antes_otrosi,
-                        'nuevo': valor_canon,
-                        'otrosi': _obtener_numero_evento(otrosi_canon),
-                        'version': getattr(otrosi_canon, 'version', 1)
-                    }
-                    vista['tiene_modificaciones'] = True
+                    numero_evento = _obtener_numero_evento(otrosi_canon)
+                    if numero_evento:  # Solo agregar si se obtuvo un número válido
+                        vista['campos_modificados']['valor_canon'] = {
+                            'original': valor_antes_otrosi,
+                            'nuevo': valor_canon,
+                            'otrosi': numero_evento,
+                            'version': getattr(otrosi_canon, 'version', 1)
+                        }
+                        vista['tiene_modificaciones'] = True
         except Exception:
             # Si hay algún error, continuar sin marcar como modificado
             pass
@@ -594,13 +615,15 @@ def get_vista_vigente_contrato(contrato, fecha_referencia=None):
             modalidad_antes_otrosi = obtener_valor_vigente_antes_de_otrosi(otrosi_modalidad, 'modalidad_pago')
             # Comparar valores de modalidad
             if modalidad_antes_otrosi != modalidad_pago:
-                vista['campos_modificados']['modalidad_pago'] = {
-                    'original': modalidad_antes_otrosi,
-                    'nuevo': modalidad_pago,
-                    'otrosi': _obtener_numero_evento(otrosi_modalidad),
-                    'version': getattr(otrosi_modalidad, 'version', 1)
-                }
-                vista['tiene_modificaciones'] = True
+                numero_evento = _obtener_numero_evento(otrosi_modalidad)
+                if numero_evento:  # Solo agregar si se obtuvo un número válido
+                    vista['campos_modificados']['modalidad_pago'] = {
+                        'original': modalidad_antes_otrosi,
+                        'nuevo': modalidad_pago,
+                        'otrosi': numero_evento,
+                        'version': getattr(otrosi_modalidad, 'version', 1)
+                    }
+                    vista['tiene_modificaciones'] = True
         except Exception:
             # Si hay algún error, continuar sin marcar como modificado
             pass
@@ -639,13 +662,15 @@ def get_vista_vigente_contrato(contrato, fecha_referencia=None):
                         es_diferente = valor_antes_otrosi != canon_minimo
                 
                 if es_diferente:
-                    vista['campos_modificados']['canon_minimo_garantizado'] = {
-                        'original': valor_antes_otrosi,
-                        'nuevo': canon_minimo,
-                        'otrosi': _obtener_numero_evento(otrosi_canon_min),
-                        'version': getattr(otrosi_canon_min, 'version', 1)
-                    }
-                    vista['tiene_modificaciones'] = True
+                    numero_evento = _obtener_numero_evento(otrosi_canon_min)
+                    if numero_evento:  # Solo agregar si se obtuvo un número válido
+                        vista['campos_modificados']['canon_minimo_garantizado'] = {
+                            'original': valor_antes_otrosi,
+                            'nuevo': canon_minimo,
+                            'otrosi': numero_evento,
+                            'version': getattr(otrosi_canon_min, 'version', 1)
+                        }
+                        vista['tiene_modificaciones'] = True
         except Exception:
             # Si hay algún error, continuar sin marcar como modificado
             pass
@@ -879,13 +904,15 @@ def get_vista_vigente_contrato(contrato, fecha_referencia=None):
                         es_diferente = valor_antes_otrosi != porcentaje_ventas
                 
                 if es_diferente:
-                    vista['campos_modificados']['porcentaje_ventas'] = {
-                        'original': valor_antes_otrosi,
-                        'nuevo': porcentaje_ventas,
-                        'otrosi': _obtener_numero_evento(otrosi_ventas),
-                        'version': getattr(otrosi_ventas, 'version', 1)
-                    }
-                    vista['tiene_modificaciones'] = True
+                    numero_evento = _obtener_numero_evento(otrosi_ventas)
+                    if numero_evento:  # Solo agregar si se obtuvo un número válido
+                        vista['campos_modificados']['porcentaje_ventas'] = {
+                            'original': valor_antes_otrosi,
+                            'nuevo': porcentaje_ventas,
+                            'otrosi': numero_evento,
+                            'version': getattr(otrosi_ventas, 'version', 1)
+                        }
+                        vista['tiene_modificaciones'] = True
         except Exception:
             # Si hay algún error, continuar sin marcar como modificado
             pass
@@ -920,13 +947,16 @@ def get_vista_vigente_contrato(contrato, fecha_referencia=None):
     vista['fecha_final_actualizada'] = fecha_final
     if otrosi_fecha_final:
         try:
-            vista['campos_modificados']['fecha_final_actualizada'] = {
-                'original': contrato.fecha_final_actualizada or contrato.fecha_final_inicial,
-                'nuevo': fecha_final,
-                'otrosi': _obtener_numero_evento(otrosi_fecha_final),
-                'version': otrosi_fecha_final.version
-            }
-            vista['tiene_modificaciones'] = True
+            numero_evento = _obtener_numero_evento(otrosi_fecha_final)
+            version_evento = getattr(otrosi_fecha_final, 'version', 1)
+            if numero_evento:  # Solo agregar si se obtuvo un número válido
+                vista['campos_modificados']['fecha_final_actualizada'] = {
+                    'original': contrato.fecha_final_actualizada or contrato.fecha_final_inicial,
+                    'nuevo': fecha_final,
+                    'otrosi': numero_evento,
+                    'version': version_evento
+                }
+                vista['tiene_modificaciones'] = True
         except Exception:
             pass
     
@@ -939,13 +969,16 @@ def get_vista_vigente_contrato(contrato, fecha_referencia=None):
     vista['duracion_meses'] = duracion_meses
     if otrosi_duracion:
         try:
-            vista['campos_modificados']['duracion_meses'] = {
-                'original': contrato.duracion_inicial_meses,
-                'nuevo': duracion_meses,
-                'otrosi': _obtener_numero_evento(otrosi_duracion),
-                'version': getattr(otrosi_duracion, 'version', 1)
-            }
-            vista['tiene_modificaciones'] = True
+            numero_evento = _obtener_numero_evento(otrosi_duracion)
+            version_evento = getattr(otrosi_duracion, 'version', 1)
+            if numero_evento:  # Solo agregar si se obtuvo un número válido
+                vista['campos_modificados']['duracion_meses'] = {
+                    'original': contrato.duracion_inicial_meses,
+                    'nuevo': duracion_meses,
+                    'otrosi': numero_evento,
+                    'version': version_evento
+                }
+                vista['tiene_modificaciones'] = True
         except Exception:
             pass
     
@@ -959,13 +992,15 @@ def get_vista_vigente_contrato(contrato, fecha_referencia=None):
     vista['tipo_condicion_ipc'] = tipo_ipc
     if otrosi_tipo_ipc:
         try:
-            vista['campos_modificados']['tipo_condicion_ipc'] = {
-                'original': contrato.tipo_condicion_ipc,
-                'nuevo': tipo_ipc,
-                'otrosi': _obtener_numero_evento(otrosi_tipo_ipc),
-                'version': getattr(otrosi_tipo_ipc, 'version', 1)
-            }
-            vista['tiene_modificaciones'] = True
+            numero_evento = _obtener_numero_evento(otrosi_tipo_ipc)
+            if numero_evento:  # Solo agregar si se obtuvo un número válido
+                vista['campos_modificados']['tipo_condicion_ipc'] = {
+                    'original': contrato.tipo_condicion_ipc,
+                    'nuevo': tipo_ipc,
+                    'otrosi': numero_evento,
+                    'version': getattr(otrosi_tipo_ipc, 'version', 1)
+                }
+                vista['tiene_modificaciones'] = True
         except Exception:
             pass
     
@@ -978,13 +1013,15 @@ def get_vista_vigente_contrato(contrato, fecha_referencia=None):
     vista['puntos_adicionales_ipc'] = puntos_ipc
     if otrosi_puntos_ipc:
         try:
-            vista['campos_modificados']['puntos_adicionales_ipc'] = {
-                'original': contrato.puntos_adicionales_ipc,
-                'nuevo': puntos_ipc,
-                'otrosi': _obtener_numero_evento(otrosi_puntos_ipc),
-                'version': getattr(otrosi_puntos_ipc, 'version', 1)
-            }
-            vista['tiene_modificaciones'] = True
+            numero_evento = _obtener_numero_evento(otrosi_puntos_ipc)
+            if numero_evento:  # Solo agregar si se obtuvo un número válido
+                vista['campos_modificados']['puntos_adicionales_ipc'] = {
+                    'original': contrato.puntos_adicionales_ipc,
+                    'nuevo': puntos_ipc,
+                    'otrosi': numero_evento,
+                    'version': getattr(otrosi_puntos_ipc, 'version', 1)
+                }
+                vista['tiene_modificaciones'] = True
         except Exception:
             pass
     
@@ -997,13 +1034,15 @@ def get_vista_vigente_contrato(contrato, fecha_referencia=None):
     vista['periodicidad_ipc'] = periodicidad_ipc
     if otrosi_periodicidad:
         try:
-            vista['campos_modificados']['periodicidad_ipc'] = {
-                'original': contrato.periodicidad_ipc,
-                'nuevo': periodicidad_ipc,
-                'otrosi': _obtener_numero_evento(otrosi_periodicidad),
-                'version': getattr(otrosi_periodicidad, 'version', 1)
-            }
-            vista['tiene_modificaciones'] = True
+            numero_evento = _obtener_numero_evento(otrosi_periodicidad)
+            if numero_evento:  # Solo agregar si se obtuvo un número válido
+                vista['campos_modificados']['periodicidad_ipc'] = {
+                    'original': contrato.periodicidad_ipc,
+                    'nuevo': periodicidad_ipc,
+                    'otrosi': numero_evento,
+                    'version': getattr(otrosi_periodicidad, 'version', 1)
+                }
+                vista['tiene_modificaciones'] = True
         except Exception:
             pass
     
@@ -1016,13 +1055,15 @@ def get_vista_vigente_contrato(contrato, fecha_referencia=None):
     vista['fecha_aumento_ipc'] = fecha_aumento_ipc
     if otrosi_fecha_ipc:
         try:
-            vista['campos_modificados']['fecha_aumento_ipc'] = {
-                'original': contrato.fecha_aumento_ipc,
-                'nuevo': fecha_aumento_ipc,
-                'otrosi': _obtener_numero_evento(otrosi_fecha_ipc),
-                'version': getattr(otrosi_fecha_ipc, 'version', 1)
-            }
-            vista['tiene_modificaciones'] = True
+            numero_evento = _obtener_numero_evento(otrosi_fecha_ipc)
+            if numero_evento:  # Solo agregar si se obtuvo un número válido
+                vista['campos_modificados']['fecha_aumento_ipc'] = {
+                    'original': contrato.fecha_aumento_ipc,
+                    'nuevo': fecha_aumento_ipc,
+                    'otrosi': numero_evento,
+                    'version': getattr(otrosi_fecha_ipc, 'version', 1)
+                }
+                vista['tiene_modificaciones'] = True
         except Exception:
             pass
     

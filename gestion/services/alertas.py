@@ -26,13 +26,33 @@ def obtener_numero_evento(evento):
     """
     if evento is None:
         return None
-    # RenovacionAutomatica tiene numero_renovacion
-    if hasattr(evento, 'numero_renovacion'):
-        return evento.numero_renovacion
-    # OtroSi tiene numero_otrosi
-    elif hasattr(evento, 'numero_otrosi'):
-        return evento.numero_otrosi
-    return None
+    
+    try:
+        # Intentar obtener numero_otrosi primero
+        if hasattr(evento, 'numero_otrosi'):
+            numero = getattr(evento, 'numero_otrosi', None)
+            if numero and str(numero).strip() and str(numero) != 'OS-TEMP':
+                return str(numero).strip()
+        
+        # Intentar obtener numero_renovacion
+        if hasattr(evento, 'numero_renovacion'):
+            numero = getattr(evento, 'numero_renovacion', None)
+            if numero and str(numero).strip() and str(numero) != 'RA-TEMP':
+                return str(numero).strip()
+        
+        # Si no se encontró número válido, intentar obtener el ID como fallback
+        if hasattr(evento, 'id'):
+            evento_id = getattr(evento, 'id', None)
+            if evento_id:
+                # Determinar el tipo de evento
+                if hasattr(evento, 'numero_otrosi'):
+                    return f'OS-{evento_id}'
+                elif hasattr(evento, 'numero_renovacion'):
+                    return f'RA-{evento_id}'
+        
+        return None
+    except Exception:
+        return None
 
 
 @dataclass(frozen=True)
