@@ -67,19 +67,42 @@ def obtener_requisitos_documento(request, contrato_id):
     
     # Convertir a formato JSON-friendly
     requisitos_json = {}
-    for clave, valor in requisitos.items():
-        if isinstance(valor, dict):
-            requisitos_json[clave] = {
-                'exigida': valor.get('exigida', False),
-                'valor': float(valor.get('valor', 0)) if valor.get('valor') else None,
-                'vigencia': valor.get('vigencia'),
-                'fecha_inicio': valor.get('fecha_inicio').isoformat() if valor.get('fecha_inicio') and hasattr(valor.get('fecha_inicio'), 'isoformat') else None,
-                'fecha_fin': valor.get('fecha_fin').isoformat() if valor.get('fecha_fin') and hasattr(valor.get('fecha_fin'), 'isoformat') else None,
-                'detalles': valor.get('detalles', {}),
-                'nombre': valor.get('nombre') if clave == 'otra' else None
-            }
-        else:
-            requisitos_json[clave] = valor
+    try:
+        for clave, valor in requisitos.items():
+            if isinstance(valor, dict):
+                fecha_inicio_str = None
+                fecha_fin_str = None
+                
+                if valor.get('fecha_inicio'):
+                    fecha_obj = valor.get('fecha_inicio')
+                    if hasattr(fecha_obj, 'isoformat'):
+                        fecha_inicio_str = fecha_obj.isoformat()
+                    elif isinstance(fecha_obj, str):
+                        fecha_inicio_str = fecha_obj
+                
+                if valor.get('fecha_fin'):
+                    fecha_obj = valor.get('fecha_fin')
+                    if hasattr(fecha_obj, 'isoformat'):
+                        fecha_fin_str = fecha_obj.isoformat()
+                    elif isinstance(fecha_obj, str):
+                        fecha_fin_str = fecha_obj
+                
+                requisitos_json[clave] = {
+                    'exigida': valor.get('exigida', False),
+                    'valor': float(valor.get('valor', 0)) if valor.get('valor') else None,
+                    'vigencia': valor.get('vigencia'),
+                    'fecha_inicio': fecha_inicio_str,
+                    'fecha_fin': fecha_fin_str,
+                    'detalles': valor.get('detalles', {}),
+                    'nombre': valor.get('nombre') if clave == 'otra' else None
+                }
+            else:
+                requisitos_json[clave] = valor
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error al convertir requisitos a JSON: {str(e)}", exc_info=True)
+        return JsonResponse({'error': str(e)}, status=500)
     
     return JsonResponse(requisitos_json)
 

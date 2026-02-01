@@ -104,17 +104,22 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     }
     
-    function actualizarPanelRequisitos(requisitos) {
-        const sidebar = document.querySelector('.poliza-layout-sidebar');
-        if (!sidebar) return;
-        
-        // Buscar o crear el card de requisitos
-        let requisitosCard = sidebar.querySelector('.card-enhanced:last-child');
-        if (!requisitosCard || !requisitosCard.querySelector('.card-header')) {
-            // Crear nuevo card si no existe
-            requisitosCard = document.createElement('div');
-            requisitosCard.className = 'card card-enhanced';
-            sidebar.appendChild(requisitosCard);
+    function actualizarPanelRequisitos(requisitos, requisitosCard) {
+        if (!requisitosCard) {
+            const sidebar = document.querySelector('.poliza-layout-sidebar');
+            if (!sidebar) {
+                console.error('No se encontró el sidebar');
+                return;
+            }
+            // Buscar el card de requisitos
+            const cards = sidebar.querySelectorAll('.card-enhanced');
+            requisitosCard = cards[cards.length - 1];
+            if (!requisitosCard) {
+                // Crear nuevo card si no existe
+                requisitosCard = document.createElement('div');
+                requisitosCard.className = 'card card-enhanced';
+                sidebar.appendChild(requisitosCard);
+            }
         }
         
         let html = `
@@ -198,6 +203,13 @@ document.addEventListener('DOMContentLoaded', function() {
     
     if (documentoOrigenField) {
         documentoOrigenField.addEventListener('change', actualizarRequisitos);
+        // También actualizar al cargar la página si hay un valor inicial
+        if (documentoOrigenField.value) {
+            // Esperar un momento para que el DOM esté completamente cargado
+            setTimeout(() => {
+                actualizarRequisitos();
+            }, 500);
+        }
     }
 });
 </script>
