@@ -202,8 +202,8 @@ def obtener_alertas_ipc(
         if not tipo_condicion_ipc or tipo_condicion_ipc != 'IPC':
             continue
             
-        # Procesar si tiene periodicidad ANUAL
-        if periodicidad_ipc not in ['ANUAL']:
+        # Procesar si tiene periodicidad ANUAL o FECHA_ESPECIFICA
+        if periodicidad_ipc not in ['ANUAL', 'FECHA_ESPECIFICA']:
             continue
         
         # Calcular la próxima fecha de aumento usando la función utilitaria
