@@ -106,19 +106,33 @@ document.addEventListener('DOMContentLoaded', function() {
     
     function actualizarPanelRequisitos(requisitos, requisitosCard) {
         if (!requisitosCard) {
-            const sidebar = document.querySelector('.poliza-layout-sidebar');
-            if (!sidebar) {
-                console.error('No se encontró el sidebar');
-                return;
-            }
-            // Buscar el card de requisitos
-            const cards = sidebar.querySelectorAll('.card-enhanced');
-            requisitosCard = cards[cards.length - 1];
+            // Buscar por ID primero
+            requisitosCard = document.getElementById('card-requisitos-documento');
             if (!requisitosCard) {
-                // Crear nuevo card si no existe
-                requisitosCard = document.createElement('div');
-                requisitosCard.className = 'card card-enhanced';
-                sidebar.appendChild(requisitosCard);
+                const sidebar = document.querySelector('.poliza-layout-sidebar');
+                if (!sidebar) {
+                    console.error('No se encontró el sidebar');
+                    return;
+                }
+                // Buscar el card de requisitos
+                const cards = sidebar.querySelectorAll('.card-enhanced');
+                for (let i = cards.length - 1; i >= 0; i--) {
+                    const header = cards[i].querySelector('.card-header');
+                    if (header && header.textContent.includes('Requisitos')) {
+                        requisitosCard = cards[i];
+                        break;
+                    }
+                }
+                if (!requisitosCard && cards.length > 0) {
+                    requisitosCard = cards[cards.length - 1];
+                }
+                if (!requisitosCard) {
+                    // Crear nuevo card si no existe
+                    requisitosCard = document.createElement('div');
+                    requisitosCard.id = 'card-requisitos-documento';
+                    requisitosCard.className = 'card card-enhanced';
+                    sidebar.appendChild(requisitosCard);
+                }
             }
         }
         
@@ -1461,10 +1475,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
                             <!-- Requisitos del Contrato -->
                             {% if requisitos_contrato %}
-                            <div class="card card-enhanced">
+                            <div class="card card-enhanced" id="card-requisitos-documento">
                                 <div class="card-header" style="background: linear-gradient(135deg, var(--avenida-orange) 0%, #e0a800 100%); color: white;">
                                     <h6 class="mb-0">
-                                        <i class="fas fa-clipboard-check"></i> Requisitos del Contrato
+                                        <i class="fas fa-clipboard-check"></i> Requisitos del Documento
                                     </h6>
                                 </div>
                                 <div class="card-body" style="padding: 1rem;">
