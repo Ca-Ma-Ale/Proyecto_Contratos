@@ -127,6 +127,7 @@
                 </div>
                 <div class="card-body">
                     <table class="table table-sm">
+                        {% if contrato.tipo_contrato_cliente_proveedor == 'CLIENTE' %}
                         <tr {% if 'valor_canon' in vista_vigente.campos_modificados %}class="table-warning"{% endif %}>
                             <th>Valor Canon:</th>
                             <td>
@@ -150,6 +151,7 @@
                                 {% endif %}
                             </td>
                         </tr>
+                        {% endif %}
                         
                         <tr {% if 'modalidad_pago' in vista_vigente.campos_modificados %}class="table-warning"{% endif %}>
                             <th>Modalidad de Pago:</th>
