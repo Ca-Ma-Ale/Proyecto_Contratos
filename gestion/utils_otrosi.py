@@ -354,6 +354,39 @@ def get_vista_vigente_contrato(contrato, fecha_referencia=None):
             'mensaje_sin_vigencia': mensaje,
         }
     
+    def obtener_valor_vigente_antes_de_otrosi(otrosi_modificador, campo_contrato):
+        """
+        Obtiene el valor vigente del contrato ANTES de que se aplicara el Otro Sí.
+        Esto permite verificar si el Otro Sí realmente modificó el campo o solo mantuvo el valor existente.
+        
+        Args:
+            otrosi_modificador: Instancia del OtroSi a verificar
+            campo_contrato: Nombre del campo en Contrato (ej: 'valor_canon_fijo')
+        
+        Returns:
+            Valor vigente antes del Otro Sí o None
+        """
+        if not otrosi_modificador or not otrosi_modificador.effective_from:
+            return getattr(contrato, campo_contrato, None)
+        
+        # Obtener la fecha anterior al effective_from del Otro Sí
+        from datetime import timedelta
+        fecha_anterior = otrosi_modificador.effective_from - timedelta(days=1)
+        
+        # Obtener la vista vigente del contrato en esa fecha anterior
+        vista_anterior = get_vista_vigente_contrato(contrato, fecha_anterior)
+        
+        # Mapear el campo del contrato al campo en la vista vigente
+        mapeo_campos_vista = {
+            'valor_canon_fijo': 'valor_canon',
+            'modalidad_pago': 'modalidad_pago',
+            'canon_minimo_garantizado': 'canon_minimo_garantizado',
+            'porcentaje_ventas': 'porcentaje_ventas',
+        }
+        
+        campo_vista = mapeo_campos_vista.get(campo_contrato, campo_contrato)
+        return vista_anterior.get(campo_vista, getattr(contrato, campo_contrato, None))
+    
     # Función auxiliar para obtener valor de un campo con efecto cadena
     def obtener_valor_campo(campo_otrosi, campo_contrato, tipo='valor'):
         """
@@ -398,43 +431,84 @@ def get_vista_vigente_contrato(contrato, fecha_referencia=None):
     }
     
     # Obtener valores con efecto cadena para campos financieros
-    # Solo marcar como modificado si el otro sí realmente tiene valores en esos campos
+    # Solo marcar como modificado si el Otro Sí realmente tiene un valor en ese campo
+    # Y ese valor es diferente del valor vigente antes del Otro Sí
     valor_canon, otrosi_canon = obtener_valor_campo('nuevo_valor_canon', 'valor_canon_fijo')
     vista['valor_canon'] = valor_canon
-    # Si otrosi_canon existe, significa que encontró un otro sí con valor válido en ese campo
-    # Por lo tanto, sí modificó ese campo
+    # Verificar si el Otro Sí realmente modificó el campo:
+    # 1. Debe tener un valor no nulo/no vacío en el campo
+    # 2. Ese valor debe ser diferente del valor vigente ANTES del Otro Sí
     if otrosi_canon and valor_canon is not None:
-        vista['campos_modificados']['valor_canon'] = {
-            'original': contrato.valor_canon_fijo,
-            'nuevo': valor_canon,
-            'otrosi': _obtener_numero_evento(otrosi_canon),
-            'version': otrosi_canon.version
-        }
-        vista['tiene_modificaciones'] = True
+        # Verificar que el campo realmente tenga un valor válido (no None, no 0 para Decimal)
+        from decimal import Decimal
+        valor_otrosi_decimal = Decimal(str(valor_canon)) if valor_canon else None
+        if valor_otrosi_decimal is not None and valor_otrosi_decimal != Decimal('0'):
+            # Comparar valores considerando None y Decimal
+            es_diferente = False
+            if valor_antes_otrosi is None:
+                es_diferente = True  # Si no había valor antes y ahora sí hay, fue modificado
+            elif valor_antes_otrosi is not None:
+                # Convertir a Decimal para comparación precisa
+                canon_antes = Decimal(str(valor_antes_otrosi)) if valor_antes_otrosi else None
+                if canon_antes is not None and valor_otrosi_decimal is not None:
+                    es_diferente = canon_antes != valor_otrosi_decimal
+            
+            if es_diferente:
+                vista['campos_modificados']['valor_canon'] = {
+                    'original': valor_antes_otrosi,
+                    'nuevo': valor_canon,
+                    'otrosi': _obtener_numero_evento(otrosi_canon),
+                    'version': otrosi_canon.version
+                }
+                vista['tiene_modificaciones'] = True
     
     modalidad_pago, otrosi_modalidad = obtener_valor_campo('nueva_modalidad_pago', 'modalidad_pago')
     vista['modalidad_pago'] = modalidad_pago
-    # Si otrosi_modalidad existe, significa que encontró un otro sí con valor válido en ese campo
+    # Verificar si el Otro Sí realmente modificó el campo comparando con el valor vigente ANTES del Otro Sí
     if otrosi_modalidad and modalidad_pago:
-        vista['campos_modificados']['modalidad_pago'] = {
-            'original': contrato.modalidad_pago,
-            'nuevo': modalidad_pago,
-            'otrosi': _obtener_numero_evento(otrosi_modalidad),
-            'version': otrosi_modalidad.version
-        }
-        vista['tiene_modificaciones'] = True
+        # Obtener el valor que estaba vigente ANTES de este Otro Sí
+        modalidad_antes_otrosi = obtener_valor_vigente_antes_de_otrosi(otrosi_modalidad, 'modalidad_pago')
+        # Comparar valores de modalidad
+        if modalidad_antes_otrosi != modalidad_pago:
+            vista['campos_modificados']['modalidad_pago'] = {
+                'original': modalidad_antes_otrosi,
+                'nuevo': modalidad_pago,
+                'otrosi': _obtener_numero_evento(otrosi_modalidad),
+                'version': otrosi_modalidad.version
+            }
+            vista['tiene_modificaciones'] = True
     
     canon_minimo, otrosi_canon_min = obtener_valor_campo('nuevo_canon_minimo_garantizado', 'canon_minimo_garantizado')
     vista['canon_minimo_garantizado'] = canon_minimo
-    # Si otrosi_canon_min existe, significa que encontró un otro sí con valor válido en ese campo
+    # Verificar si el Otro Sí realmente modificó el campo:
+    # 1. Debe tener un valor no nulo/no vacío en el campo
+    # 2. Ese valor debe ser diferente del valor vigente ANTES del Otro Sí
     if otrosi_canon_min and canon_minimo is not None:
-        vista['campos_modificados']['canon_minimo_garantizado'] = {
-            'original': contrato.canon_minimo_garantizado,
-            'nuevo': canon_minimo,
-            'otrosi': _obtener_numero_evento(otrosi_canon_min),
-            'version': otrosi_canon_min.version
-        }
-        vista['tiene_modificaciones'] = True
+        # Verificar que el campo realmente tenga un valor válido (no None, no 0 para Decimal)
+        from decimal import Decimal
+        valor_otrosi_decimal = Decimal(str(canon_minimo)) if canon_minimo else None
+        if valor_otrosi_decimal is not None and valor_otrosi_decimal != Decimal('0'):
+            # Obtener el valor que estaba vigente ANTES de este Otro Sí
+            valor_antes_otrosi = obtener_valor_vigente_antes_de_otrosi(otrosi_canon_min, 'canon_minimo_garantizado')
+            
+            # Comparar valores considerando None y Decimal
+            es_diferente = False
+            if valor_antes_otrosi is None:
+                es_diferente = True  # Si no había valor antes y ahora sí hay, fue modificado
+            elif valor_antes_otrosi is not None:
+                # Convertir a Decimal para comparación precisa
+                canon_min_antes = Decimal(str(valor_antes_otrosi)) if valor_antes_otrosi else None
+                if canon_min_antes is not None and valor_otrosi_decimal is not None:
+                    es_diferente = canon_min_antes != valor_otrosi_decimal
+            
+            if es_diferente:
+                vista['campos_modificados']['canon_minimo_garantizado'] = {
+                    'original': valor_antes_otrosi,
+                    'nuevo': canon_minimo,
+                    'otrosi': _obtener_numero_evento(otrosi_canon_min),
+                    'version': otrosi_canon_min.version
+                }
+                vista['tiene_modificaciones'] = True
     
     # Considerar cálculos de IPC o Salario Mínimo aplicados hasta la fecha de referencia
     from gestion.utils_ipc import obtener_ultimo_calculo_aplicado_hasta_fecha
@@ -493,15 +567,35 @@ def get_vista_vigente_contrato(contrato, fecha_referencia=None):
     
     porcentaje_ventas, otrosi_ventas = obtener_valor_campo('nuevo_porcentaje_ventas', 'porcentaje_ventas')
     vista['porcentaje_ventas'] = porcentaje_ventas
-    # Si otrosi_ventas existe, significa que encontró un otro sí con valor válido en ese campo
+    # Verificar si el Otro Sí realmente modificó el campo:
+    # 1. Debe tener un valor no nulo/no vacío en el campo
+    # 2. Ese valor debe ser diferente del valor vigente ANTES del Otro Sí
     if otrosi_ventas and porcentaje_ventas is not None:
-        vista['campos_modificados']['porcentaje_ventas'] = {
-            'original': contrato.porcentaje_ventas,
-            'nuevo': porcentaje_ventas,
-            'otrosi': _obtener_numero_evento(otrosi_ventas),
-            'version': otrosi_ventas.version
-        }
-        vista['tiene_modificaciones'] = True
+        # Verificar que el campo realmente tenga un valor válido (no None, no 0 para Decimal)
+        from decimal import Decimal
+        valor_otrosi_decimal = Decimal(str(porcentaje_ventas)) if porcentaje_ventas else None
+        if valor_otrosi_decimal is not None and valor_otrosi_decimal != Decimal('0'):
+            # Obtener el valor que estaba vigente ANTES de este Otro Sí
+            valor_antes_otrosi = obtener_valor_vigente_antes_de_otrosi(otrosi_ventas, 'porcentaje_ventas')
+            
+            # Comparar valores considerando None y Decimal
+            es_diferente = False
+            if valor_antes_otrosi is None:
+                es_diferente = True  # Si no había valor antes y ahora sí hay, fue modificado
+            elif valor_antes_otrosi is not None:
+                # Convertir a Decimal para comparación precisa
+                porcentaje_antes = Decimal(str(valor_antes_otrosi)) if valor_antes_otrosi else None
+                if porcentaje_antes is not None and valor_otrosi_decimal is not None:
+                    es_diferente = porcentaje_antes != valor_otrosi_decimal
+            
+            if es_diferente:
+                vista['campos_modificados']['porcentaje_ventas'] = {
+                    'original': valor_antes_otrosi,
+                    'nuevo': porcentaje_ventas,
+                    'otrosi': _obtener_numero_evento(otrosi_ventas),
+                    'version': otrosi_ventas.version
+                }
+                vista['tiene_modificaciones'] = True
     
     # Plazo
     # Si hay un Otro Sí vigente con effective_to, usar ese valor como fecha final

@@ -358,7 +358,7 @@ def generar_excel_informes_ventas(informes_queryset=None):
             informe.dias_vencido() if informe.esta_vencido() else 0,
             informe.observaciones or 'N/A',
             informe.registrado_por or 'N/A',
-            informe.fecha_registro.strftime('%d/%m/%Y %H:%M') if informe.fecha_registro else 'N/A',
+                timezone.localtime(informe.fecha_registro).strftime('%d/%m/%Y %H:%M') if informe.fecha_registro else 'N/A',
             
             # Información del contrato
             informe.contrato.modalidad_pago or 'N/A',
@@ -384,7 +384,7 @@ def generar_excel_informes_ventas(informes_queryset=None):
                 formatear_moneda_excel(calculo.valor_a_facturar_variable) if calculo.valor_a_facturar_variable is not None else 'N/A',  # 10. Valor a Facturar Variable
                 calculo.otrosi_referencia.numero_otrosi if calculo.otrosi_referencia else 'N/A',  # 11. Otro Sí Referencia
                 calculo.calculado_por or 'N/A',  # 12. Calculado Por
-                calculo.fecha_calculo.strftime('%d/%m/%Y %H:%M') if calculo.fecha_calculo else 'N/A',  # 13. Fecha Cálculo
+                timezone.localtime(calculo.fecha_calculo).strftime('%d/%m/%Y %H:%M') if calculo.fecha_calculo else 'N/A',  # 13. Fecha Cálculo (zona horaria Colombia)
                 calculo.observaciones or 'N/A',  # 14. Observaciones Cálculo
             ])
         else:
@@ -557,13 +557,17 @@ def generar_pdf_calculo_facturacion(calculo, configuracion_empresa):
     story.append(Spacer(1, 0.2*inch))
     
     # Información del contrato
+    # Convertir fecha_calculo a zona horaria de Colombia
+    fecha_calculo_local = timezone.localtime(calculo.fecha_calculo) if calculo.fecha_calculo else None
+    fecha_calculo_str = fecha_calculo_local.strftime('%d/%m/%Y %H:%M') if fecha_calculo_local else 'N/A'
+    
     info_contrato = [
         ['Contrato:', calculo.contrato.num_contrato],
         ['Arrendatario:', calculo.contrato.arrendatario.razon_social],
         ['Local:', calculo.contrato.local.nombre_comercial_stand],
         ['Mes/Año:', f'{calculo.get_mes_display()}/{calculo.año}'],
         ['Modalidad:', calculo.get_modalidad_contrato_display()],
-        ['Fecha de Cálculo:', calculo.fecha_calculo.strftime('%d/%m/%Y %H:%M')],
+        ['Fecha de Cálculo:', fecha_calculo_str],
     ]
     
     info_table = Table(info_contrato, colWidths=[2*inch, 5*inch])

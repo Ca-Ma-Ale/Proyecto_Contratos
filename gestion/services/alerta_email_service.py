@@ -137,8 +137,8 @@ class AlertaEmailService:
             'nombre_alerta': nombre_alerta,
             'alertas': alertas,
             'cantidad': cantidad,
-            'fecha_referencia': fecha_referencia or timezone.now().date(),
-            'fecha_actual': timezone.now(),
+            'fecha_referencia': fecha_referencia or timezone.localtime(timezone.now()).date(),
+            'fecha_actual': timezone.localtime(timezone.now()),
         }
         
         if tipo_alerta == 'ALERTAS_SALARIO_MINIMO':

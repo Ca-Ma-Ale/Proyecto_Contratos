@@ -567,6 +567,71 @@ def detalle_contrato(request, contrato_id):
     if otrosi_modificador_fecha_final:
         otrosi_modificadores['nueva_fecha_final_actualizada'] = otrosi_modificador_fecha_final
     
+    def obtener_valor_vigente_antes_de_otrosi(otrosi_mod, campo_contrato):
+        """
+        Obtiene el valor vigente del contrato ANTES de que se aplicara el Otro Sí.
+        Esto permite verificar si el Otro Sí realmente modificó el campo o solo mantuvo el valor existente.
+        """
+        if not otrosi_mod or not otrosi_mod.effective_from:
+            return getattr(contrato, campo_contrato, None)
+        
+        # Obtener la fecha anterior al effective_from del Otro Sí
+        from datetime import timedelta
+        fecha_anterior = otrosi_mod.effective_from - timedelta(days=1)
+        
+        # Obtener la vista vigente del contrato en esa fecha anterior
+        vista_anterior = get_vista_vigente_contrato(contrato, fecha_anterior)
+        
+        # Mapear el campo del contrato al campo en la vista vigente
+        mapeo_campos_vista = {
+            'valor_canon_fijo': 'valor_canon',
+            'modalidad_pago': 'modalidad_pago',
+            'canon_minimo_garantizado': 'canon_minimo_garantizado',
+            'porcentaje_ventas': 'porcentaje_ventas',
+        }
+        
+        campo_vista = mapeo_campos_vista.get(campo_contrato, campo_contrato)
+        return vista_anterior.get(campo_vista, getattr(contrato, campo_contrato, None))
+    
+    def verificar_campo_modificado(campo_otrosi, campo_contrato, otrosi_mod):
+        """Verifica si un campo fue realmente modificado comparando con el valor vigente ANTES del Otro Sí"""
+        if not otrosi_mod:
+            return False
+        
+        valor_otrosi = getattr(otrosi_mod, campo_otrosi, None)
+        
+        # Si el Otro Sí no tiene valor, no modificó nada
+        if valor_otrosi is None:
+            return False
+        
+        # Para strings, verificar que no esté vacío
+        if isinstance(valor_otrosi, str):
+            if valor_otrosi.strip() == '':
+                return False
+        
+        # Obtener el valor que estaba vigente ANTES de este Otro Sí
+        valor_antes_otrosi = obtener_valor_vigente_antes_de_otrosi(otrosi_mod, campo_contrato)
+        
+        # Para Decimal y otros tipos numéricos, comparar valores
+        from decimal import Decimal
+        if isinstance(valor_otrosi, (Decimal, int, float)):
+            if valor_antes_otrosi is None:
+                return True  # Si no había valor antes pero el Otro Sí sí tiene, fue modificado
+            try:
+                valor_antes_decimal = Decimal(str(valor_antes_otrosi)) if valor_antes_otrosi else None
+                valor_otrosi_decimal = Decimal(str(valor_otrosi)) if valor_otrosi else None
+                if valor_antes_decimal is None and valor_otrosi_decimal is not None:
+                    return True
+                if valor_antes_decimal is not None and valor_otrosi_decimal is None:
+                    return False
+                if valor_antes_decimal is not None and valor_otrosi_decimal is not None:
+                    return valor_antes_decimal != valor_otrosi_decimal
+            except (ValueError, TypeError):
+                return valor_antes_otrosi != valor_otrosi
+        
+        # Para otros tipos (bool, date, str, etc.), comparar directamente
+        return valor_antes_otrosi != valor_otrosi
+    
     campos_para_badge = [
         'nueva_fecha_final_actualizada', 'nueva_modalidad_pago', 'nuevo_valor_canon', 'nuevo_canon_minimo_garantizado',
         'nuevo_porcentaje_ventas', 'nuevo_tipo_condicion_ipc', 'nuevos_puntos_adicionales_ipc',
@@ -604,12 +669,37 @@ def detalle_contrato(request, contrato_id):
         'nuevo_meses_vigencia_otra_1', 'nuevo_fecha_inicio_vigencia_otra_1', 'nuevo_fecha_fin_vigencia_otra_1'
     ]
     
+    # Mapeo de campos de Otro Sí a campos del contrato para verificación
+    mapeo_campos = {
+        'nueva_fecha_final_actualizada': 'fecha_final_actualizada',
+        'nueva_modalidad_pago': 'modalidad_pago',
+        'nuevo_valor_canon': 'valor_canon_fijo',
+        'nuevo_canon_minimo_garantizado': 'canon_minimo_garantizado',
+        'nuevo_porcentaje_ventas': 'porcentaje_ventas',
+        'nuevo_tipo_condicion_ipc': 'tipo_condicion_ipc',
+        'nuevos_puntos_adicionales_ipc': 'puntos_adicionales_ipc',
+        'nueva_periodicidad_ipc': 'periodicidad_ipc',
+        'nueva_fecha_aumento_ipc': 'fecha_aumento_ipc',
+    }
+    
     for campo in campos_para_badge:
         # No sobrescribir si ya existe (como para nueva_fecha_final_actualizada que ya se calculó arriba)
         if campo not in otrosi_modificadores:
             otrosi_mod = get_ultimo_otrosi_que_modifico_campo(contrato, campo)
             if otrosi_mod:
-                otrosi_modificadores[campo] = otrosi_mod
+                # Solo agregar si el campo fue realmente modificado (valor diferente del contrato base)
+                campo_contrato = mapeo_campos.get(campo)
+                if campo_contrato:
+                    if verificar_campo_modificado(campo, campo_contrato, otrosi_mod):
+                        otrosi_modificadores[campo] = otrosi_mod
+                else:
+                    # Para campos de pólizas y otros que no tienen mapeo directo, agregar si tiene valor
+                    valor_otrosi = getattr(otrosi_mod, campo, None)
+                    if valor_otrosi is not None:
+                        if isinstance(valor_otrosi, str) and valor_otrosi.strip() != '':
+                            otrosi_modificadores[campo] = otrosi_mod
+                        elif not isinstance(valor_otrosi, str):
+                            otrosi_modificadores[campo] = otrosi_mod
     
     # Obtener el último cálculo IPC aplicado
     ultimo_calculo_ipc_aplicado = obtener_ultimo_calculo_ipc_aplicado(contrato)
