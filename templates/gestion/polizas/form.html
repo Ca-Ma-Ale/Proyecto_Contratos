@@ -139,7 +139,7 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(data => {
                 console.log('Requisitos recibidos:', data);
                 // Actualizar el panel de requisitos con los nuevos datos
-                actualizarPanelRequisitos(data, requisitosCard);
+                actualizarPanelRequisitos(data.requisitos || data, requisitosCard, data.tipo_contrato || '{{ contrato.tipo_contrato_cliente_proveedor }}');
             })
             .catch(error => {
                 console.error('Error al cargar requisitos:', error);
@@ -147,7 +147,7 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     }
     
-    function actualizarPanelRequisitos(requisitos, requisitosCard) {
+    function actualizarPanelRequisitos(requisitos, requisitosCard, tipoContrato) {
         if (!requisitosCard) {
             // Buscar por ID primero
             requisitosCard = document.getElementById('card-requisitos-documento');
@@ -185,72 +185,158 @@ document.addEventListener('DOMContentLoaded', function() {
                     <i class="fas fa-clipboard-check"></i> Requisitos del Documento
                 </h6>
             </div>
-            <div class="card-body">
+            <div class="card-body" style="padding: 1rem;">
         `;
         
-        // RCE
-        if (requisitos.rce && requisitos.rce.exigida) {
+        // Función auxiliar para formatear moneda
+        function formatoMoneda(valor) {
+            if (!valor || valor === 0) return '0';
+            return parseFloat(valor).toLocaleString('es-CO', {minimumFractionDigits: 0, maximumFractionDigits: 0});
+        }
+        
+        // Función auxiliar para obtener valor de detalles
+        function obtenerDetalle(detalles, clave, defaultVal = 0) {
+            return detalles && detalles[clave] !== undefined ? detalles[clave] : defaultVal;
+        }
+        
+        // Cumplimiento - Mostrar siempre si existe, con todos los detalles según tipo
+        if (requisitos.cumplimiento) {
+            const cumpl = requisitos.cumplimiento;
+            const detalles = cumpl.detalles || {};
             html += `
-                <div class="alert alert-rce mb-2">
-                    <h6><i class="fas fa-shield-alt"></i> RCE - Responsabilidad Civil</h6>
-                    ${requisitos.rce.valor ? `<p class="mb-1"><strong>Valor Requerido:</strong> $${parseFloat(requisitos.rce.valor).toLocaleString('es-CO')}</p>` : ''}
-                    ${requisitos.rce.vigencia ? `<p class="mb-1"><strong>Vigencia:</strong> ${requisitos.rce.vigencia} meses</p>` : ''}
-                    ${requisitos.rce.fecha_fin ? `<p class="mb-0"><strong>Vigente hasta:</strong> ${new Date(requisitos.rce.fecha_fin).toLocaleDateString('es-CO')}</p>` : ''}
+                <div class="requirement-alert alert-cumplimiento mb-2">
+                    <h6 class="d-flex justify-content-between align-items-center">
+                        <span><i class="fas fa-check-circle"></i> Póliza de Cumplimiento</span>
+                        ${cumpl.fuente === 'otrosi' ? '<span class="badge bg-primary text-white"><i class="fas fa-sync-alt"></i> Actualizado por Otro Sí</span>' : ''}
+                    </h6>
+                    ${cumpl.exigida && cumpl.valor ? `<p><strong>Valor Requerido:</strong> $${formatoMoneda(cumpl.valor)}</p>` : ''}
+                    ${cumpl.vigencia ? `<p class="mb-1"><strong>Vigencia:</strong> ${cumpl.vigencia} meses</p>` : ''}
+                    ${cumpl.fecha_fin ? `<p class="mb-1"><strong>Vigente hasta:</strong> ${new Date(cumpl.fecha_fin).toLocaleDateString('es-CO')}</p>` : ''}
+            `;
+            
+            if (tipoContrato === 'CLIENTE') {
+                html += `
+                    <p class="mb-1"><strong>Remuneraciones Mensuales:</strong> $${formatoMoneda(obtenerDetalle(detalles, 'remuneraciones'))}</p>
+                    <p class="mb-1"><strong>Servicios Públicos:</strong> $${formatoMoneda(obtenerDetalle(detalles, 'servicios_publicos'))}</p>
+                    <p class="mb-1"><strong>IVA:</strong> $${formatoMoneda(obtenerDetalle(detalles, 'iva'))}</p>
+                    <p class="mb-1"><strong>Cuota de administración:</strong> $${formatoMoneda(obtenerDetalle(detalles, 'cuota_admon'))}</p>
+                `;
+            } else if (tipoContrato === 'PROVEEDOR') {
+                html += `
+                    <p class="mb-1"><strong>Cumplimiento del contrato:</strong> $${formatoMoneda(obtenerDetalle(detalles, 'cumplimiento_contrato'))}</p>
+                    <p class="mb-1"><strong>Buen manejo anticipo:</strong> $${formatoMoneda(obtenerDetalle(detalles, 'buen_manejo_anticipo'))}</p>
+                    <p class="mb-1"><strong>Amortización anticipo:</strong> $${formatoMoneda(obtenerDetalle(detalles, 'amortizacion_anticipo'))}</p>
+                    <p class="mb-1"><strong>Salarios y prestaciones:</strong> $${formatoMoneda(obtenerDetalle(detalles, 'salarios_prestaciones'))}</p>
+                    <p class="mb-1"><strong>Aportes seguridad social:</strong> $${formatoMoneda(obtenerDetalle(detalles, 'aportes_seguridad_social'))}</p>
+                    <p class="mb-1"><strong>Calidad del servicio:</strong> $${formatoMoneda(obtenerDetalle(detalles, 'calidad_servicio'))}</p>
+                    <p class="mb-1"><strong>Estabilidad de la obra:</strong> $${formatoMoneda(obtenerDetalle(detalles, 'estabilidad_obra'))}</p>
+                    <p class="mb-1"><strong>Calidad de bienes:</strong> $${formatoMoneda(obtenerDetalle(detalles, 'calidad_bienes'))}</p>
+                    <p class="mb-1"><strong>Multas:</strong> $${formatoMoneda(obtenerDetalle(detalles, 'multas'))}</p>
+                    <p class="mb-1"><strong>Cláusula penal:</strong> $${formatoMoneda(obtenerDetalle(detalles, 'clausula_penal'))}</p>
+                    <p class="mb-1"><strong>Sanciones incumplimiento:</strong> $${formatoMoneda(obtenerDetalle(detalles, 'sanciones_incumplimiento'))}</p>
+                `;
+            }
+            html += '</div>';
+        }
+        
+        // RCE - Mostrar siempre si existe, con todos los detalles según tipo
+        if (requisitos.rce) {
+            const rce = requisitos.rce;
+            const detalles = rce.detalles || {};
+            html += `
+                <div class="requirement-alert alert-rce mb-2">
+                    <h6 class="d-flex justify-content-between align-items-center">
+                        <span><i class="fas fa-shield-alt"></i> Póliza RCE</span>
+                        ${rce.fuente === 'otrosi' ? '<span class="badge bg-primary text-white"><i class="fas fa-sync-alt"></i> Actualizado por Otro Sí</span>' : ''}
+                    </h6>
+                    ${rce.exigida && rce.valor ? `<p><strong>Valor Requerido:</strong> $${formatoMoneda(rce.valor)}</p>` : ''}
+                    ${rce.vigencia ? `<p class="mb-1"><strong>Vigencia:</strong> ${rce.vigencia} meses</p>` : ''}
+                    ${rce.fecha_fin ? `<p class="mb-1"><strong>Vigente hasta:</strong> ${new Date(rce.fecha_fin).toLocaleDateString('es-CO')}</p>` : ''}
+            `;
+            
+            if (tipoContrato === 'CLIENTE') {
+                html += `
+                    <p class="mb-1"><strong>PLO (Propietario, Locatario y Ocupante):</strong> $${formatoMoneda(obtenerDetalle(detalles, 'plo'))}</p>
+                    <p class="mb-1"><strong>Patronal:</strong> $${formatoMoneda(obtenerDetalle(detalles, 'patronal'))}</p>
+                    <p class="mb-1"><strong>Gastos Médicos de Terceros:</strong> $${formatoMoneda(obtenerDetalle(detalles, 'gastos_medicos'))}</p>
+                    <p class="mb-1"><strong>Vehículos Propios y No Propios:</strong> $${formatoMoneda(obtenerDetalle(detalles, 'vehiculos'))}</p>
+                    <p class="mb-1"><strong>Contratistas y Subcontratistas:</strong> $${formatoMoneda(obtenerDetalle(detalles, 'contratistas'))}</p>
+                    <p class="mb-1"><strong>Perjuicios Extrapatrimoniales:</strong> $${formatoMoneda(obtenerDetalle(detalles, 'perjuicios'))}</p>
+                    <p class="mb-1"><strong>Daño Moral:</strong> $${formatoMoneda(obtenerDetalle(detalles, 'dano_moral'))}</p>
+                    <p class="mb-1"><strong>Lucro Cesante:</strong> $${formatoMoneda(obtenerDetalle(detalles, 'lucro_cesante'))}</p>
+                `;
+            } else if (tipoContrato === 'PROVEEDOR') {
+                html += `
+                    <p class="mb-1"><strong>Daños materiales a terceros:</strong> $${formatoMoneda(obtenerDetalle(detalles, 'danos_materiales'))}</p>
+                    <p class="mb-1"><strong>Lesiones personales a terceros:</strong> $${formatoMoneda(obtenerDetalle(detalles, 'lesiones_personales'))}</p>
+                    <p class="mb-1"><strong>Muerte de terceros:</strong> $${formatoMoneda(obtenerDetalle(detalles, 'muerte_terceros'))}</p>
+                    <p class="mb-1"><strong>Daños a bienes de terceros:</strong> $${formatoMoneda(obtenerDetalle(detalles, 'danos_bienes_terceros'))}</p>
+                    <p class="mb-1"><strong>Responsabilidad patronal:</strong> $${formatoMoneda(obtenerDetalle(detalles, 'responsabilidad_patronal'))}</p>
+                    <p class="mb-1"><strong>Responsabilidad cruzada:</strong> $${formatoMoneda(obtenerDetalle(detalles, 'responsabilidad_cruzada'))}</p>
+                    <p class="mb-1"><strong>Daños por contratistas:</strong> $${formatoMoneda(obtenerDetalle(detalles, 'danos_contratistas'))}</p>
+                    <p class="mb-1"><strong>Daños durante ejecución:</strong> $${formatoMoneda(obtenerDetalle(detalles, 'danos_ejecucion_contrato'))}</p>
+                    <p class="mb-1"><strong>Daños en predios vecinos:</strong> $${formatoMoneda(obtenerDetalle(detalles, 'danos_predios_vecinos'))}</p>
+                    <p class="mb-1"><strong>Gastos médicos:</strong> $${formatoMoneda(obtenerDetalle(detalles, 'gastos_medicos_cobertura'))}</p>
+                    <p class="mb-1"><strong>Gastos de defensa:</strong> $${formatoMoneda(obtenerDetalle(detalles, 'gastos_defensa'))}</p>
+                    <p class="mb-1"><strong>Perjuicios patrimoniales:</strong> $${formatoMoneda(obtenerDetalle(detalles, 'perjuicios_patrimoniales'))}</p>
+                `;
+            }
+            html += '</div>';
+        }
+        
+        // Arrendamiento - Mostrar siempre si existe
+        if (requisitos.arrendamiento) {
+            const arr = requisitos.arrendamiento;
+            const detalles = arr.detalles || {};
+            html += `
+                <div class="requirement-alert alert-arrendamiento mb-2">
+                    <h6 class="d-flex justify-content-between align-items-center">
+                        <span><i class="fas fa-home"></i> Póliza de Arrendamiento</span>
+                        ${arr.fuente === 'otrosi' ? '<span class="badge bg-primary text-white"><i class="fas fa-sync-alt"></i> Actualizado por Otro Sí</span>' : ''}
+                    </h6>
+                    ${arr.exigida && arr.valor ? `<p><strong>Valor Requerido:</strong> $${formatoMoneda(arr.valor)}</p>` : ''}
+                    ${arr.vigencia ? `<p class="mb-1"><strong>Vigencia:</strong> ${arr.vigencia} meses</p>` : ''}
+                    ${arr.fecha_fin ? `<p class="mb-1"><strong>Vigente hasta:</strong> ${new Date(arr.fecha_fin).toLocaleDateString('es-CO')}</p>` : ''}
+                    <p class="mb-1"><strong>Remuneraciones Mensuales:</strong> $${formatoMoneda(obtenerDetalle(detalles, 'remuneraciones'))}</p>
+                    <p class="mb-1"><strong>Servicios Públicos:</strong> $${formatoMoneda(obtenerDetalle(detalles, 'servicios_publicos'))}</p>
+                    <p class="mb-1"><strong>IVA:</strong> $${formatoMoneda(obtenerDetalle(detalles, 'iva'))}</p>
+                    <p class="mb-1"><strong>Cuota de administración:</strong> $${formatoMoneda(obtenerDetalle(detalles, 'cuota_admon'))}</p>
                 </div>
             `;
         }
         
-        // Cumplimiento
-        if (requisitos.cumplimiento && requisitos.cumplimiento.exigida) {
+        // Todo Riesgo - Mostrar siempre si existe
+        if (requisitos.todo_riesgo) {
+            const tr = requisitos.todo_riesgo;
             html += `
-                <div class="alert alert-cumplimiento mb-2">
-                    <h6><i class="fas fa-check-circle"></i> Cumplimiento</h6>
-                    ${requisitos.cumplimiento.valor ? `<p class="mb-1"><strong>Valor Requerido:</strong> $${parseFloat(requisitos.cumplimiento.valor).toLocaleString('es-CO')}</p>` : ''}
-                    ${requisitos.cumplimiento.vigencia ? `<p class="mb-1"><strong>Vigencia:</strong> ${requisitos.cumplimiento.vigencia} meses</p>` : ''}
-                    ${requisitos.cumplimiento.fecha_fin ? `<p class="mb-0"><strong>Vigente hasta:</strong> ${new Date(requisitos.cumplimiento.fecha_fin).toLocaleDateString('es-CO')}</p>` : ''}
+                <div class="requirement-alert alert-todo-riesgo mb-2">
+                    <h6 class="d-flex justify-content-between align-items-center">
+                        <span><i class="fas fa-umbrella"></i> Arrendamiento (Todo Riesgo)</span>
+                        ${tr.fuente === 'otrosi' ? '<span class="badge bg-primary text-white"><i class="fas fa-sync-alt"></i> Actualizado por Otro Sí</span>' : ''}
+                    </h6>
+                    ${tr.exigida && tr.valor ? `<p><strong>Valor Requerido:</strong> $${formatoMoneda(tr.valor)}</p>` : ''}
+                    ${tr.vigencia ? `<p class="mb-1"><strong>Vigencia:</strong> ${tr.vigencia} meses</p>` : ''}
+                    ${tr.fecha_fin ? `<p class="mb-0"><strong>Vigente hasta:</strong> ${new Date(tr.fecha_fin).toLocaleDateString('es-CO')}</p>` : ''}
                 </div>
             `;
         }
         
-        // Arrendamiento
-        if (requisitos.arrendamiento && requisitos.arrendamiento.exigida) {
+        // Otra - Mostrar siempre si existe
+        if (requisitos.otra) {
+            const otra = requisitos.otra;
             html += `
-                <div class="alert alert-arrendamiento mb-2">
-                    <h6><i class="fas fa-home"></i> Póliza de Arrendamiento</h6>
-                    ${requisitos.arrendamiento.valor ? `<p class="mb-1"><strong>Valor Requerido:</strong> $${parseFloat(requisitos.arrendamiento.valor).toLocaleString('es-CO')}</p>` : ''}
-                    ${requisitos.arrendamiento.vigencia ? `<p class="mb-1"><strong>Vigencia:</strong> ${requisitos.arrendamiento.vigencia} meses</p>` : ''}
-                    ${requisitos.arrendamiento.fecha_fin ? `<p class="mb-0"><strong>Vigente hasta:</strong> ${new Date(requisitos.arrendamiento.fecha_fin).toLocaleDateString('es-CO')}</p>` : ''}
+                <div class="requirement-alert alert-otra mb-2">
+                    <h6><i class="fas fa-file-alt"></i> ${otra.nombre || 'Otra'}</h6>
+                    ${otra.exigida && otra.valor ? `<p><strong>Valor Requerido:</strong> $${formatoMoneda(otra.valor)}</p>` : ''}
+                    ${otra.vigencia ? `<p class="mb-1"><strong>Vigencia:</strong> ${otra.vigencia} meses</p>` : ''}
+                    ${otra.fecha_fin ? `<p class="mb-0"><strong>Vigente hasta:</strong> ${new Date(otra.fecha_fin).toLocaleDateString('es-CO')}</p>` : ''}
                 </div>
             `;
         }
         
-        // Todo Riesgo
-        if (requisitos.todo_riesgo && requisitos.todo_riesgo.exigida) {
-            html += `
-                <div class="alert alert-todo-riesgo mb-2">
-                    <h6><i class="fas fa-umbrella"></i> Arrendamiento (Todo Riesgo)</h6>
-                    ${requisitos.todo_riesgo.valor ? `<p class="mb-1"><strong>Valor Requerido:</strong> $${parseFloat(requisitos.todo_riesgo.valor).toLocaleString('es-CO')}</p>` : ''}
-                    ${requisitos.todo_riesgo.vigencia ? `<p class="mb-1"><strong>Vigencia:</strong> ${requisitos.todo_riesgo.vigencia} meses</p>` : ''}
-                    ${requisitos.todo_riesgo.fecha_fin ? `<p class="mb-0"><strong>Vigente hasta:</strong> ${new Date(requisitos.todo_riesgo.fecha_fin).toLocaleDateString('es-CO')}</p>` : ''}
-                </div>
-            `;
-        }
-        
-        // Otra
-        if (requisitos.otra && requisitos.otra.exigida) {
-            html += `
-                <div class="alert alert-otra mb-2">
-                    <h6><i class="fas fa-file-alt"></i> ${requisitos.otra.nombre || 'Otra'}</h6>
-                    ${requisitos.otra.valor ? `<p class="mb-1"><strong>Valor Requerido:</strong> $${parseFloat(requisitos.otra.valor).toLocaleString('es-CO')}</p>` : ''}
-                    ${requisitos.otra.vigencia ? `<p class="mb-1"><strong>Vigencia:</strong> ${requisitos.otra.vigencia} meses</p>` : ''}
-                    ${requisitos.otra.fecha_fin ? `<p class="mb-0"><strong>Vigente hasta:</strong> ${new Date(requisitos.otra.fecha_fin).toLocaleDateString('es-CO')}</p>` : ''}
-                </div>
-            `;
-        }
-        
-        if (!requisitos.rce?.exigida && !requisitos.cumplimiento?.exigida && 
-            !requisitos.arrendamiento?.exigida && !requisitos.todo_riesgo?.exigida && 
-            !requisitos.otra?.exigida) {
+        if (!requisitos.rce && !requisitos.cumplimiento && 
+            !requisitos.arrendamiento && !requisitos.todo_riesgo && 
+            !requisitos.otra) {
             html += '<p class="text-muted mb-0">No hay requisitos de pólizas para este documento.</p>';
         }
         

@@ -66,7 +66,10 @@ def obtener_requisitos_documento(request, contrato_id):
     requisitos = _obtener_requisitos_por_documento(contrato, documento_origen_id)
     
     # Convertir a formato JSON-friendly
-    requisitos_json = {}
+    requisitos_json = {
+        'tipo_contrato': contrato.tipo_contrato_cliente_proveedor,
+        'requisitos': {}
+    }
     try:
         for clave, valor in requisitos.items():
             if isinstance(valor, dict):
@@ -87,17 +90,32 @@ def obtener_requisitos_documento(request, contrato_id):
                     elif isinstance(fecha_obj, str):
                         fecha_fin_str = fecha_obj
                 
-                requisitos_json[clave] = {
+                # Convertir detalles a formato JSON-friendly (manejar Decimal y otros tipos)
+                detalles_json = {}
+                if valor.get('detalles'):
+                    detalles = valor.get('detalles', {})
+                    for detalle_key, detalle_value in detalles.items():
+                        if detalle_value is not None:
+                            try:
+                                # Intentar convertir a float si es numérico
+                                detalles_json[detalle_key] = float(detalle_value)
+                            except (ValueError, TypeError):
+                                detalles_json[detalle_key] = detalle_value
+                        else:
+                            detalles_json[detalle_key] = 0
+                
+                requisitos_json['requisitos'][clave] = {
                     'exigida': valor.get('exigida', False),
                     'valor': float(valor.get('valor', 0)) if valor.get('valor') else None,
                     'vigencia': valor.get('vigencia'),
                     'fecha_inicio': fecha_inicio_str,
                     'fecha_fin': fecha_fin_str,
-                    'detalles': valor.get('detalles', {}),
+                    'fuente': valor.get('fuente', 'contrato'),
+                    'detalles': detalles_json,
                     'nombre': valor.get('nombre') if clave == 'otra' else None
                 }
             else:
-                requisitos_json[clave] = valor
+                requisitos_json['requisitos'][clave] = valor
     except Exception as e:
         import logging
         logger = logging.getLogger(__name__)
