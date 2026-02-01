@@ -6,7 +6,6 @@ from django.utils import timezone
 from gestion.models import ConfiguracionEmpresa, SeguimientoContrato, SeguimientoPoliza
 from gestion.forms import DEFAULT_EMPRESA_CONFIG
 from gestion.utils import calcular_meses_vigencia
-from gestion.utils_otrosi import get_ultimo_otrosi_que_modifico_campo
 
 
 def _aplicar_polizas_vigentes_a_requisitos(requisitos, polizas_queryset, sobrescribir=False):
