@@ -185,6 +185,7 @@ __all__ = [
     'eliminar_poliza',
     'agregar_seguimiento_poliza',
     'agregar_seguimiento_contrato',
+    'obtener_requisitos_documento',
     'lista_otrosi',
     'nuevo_otrosi',
     'editar_otrosi',
