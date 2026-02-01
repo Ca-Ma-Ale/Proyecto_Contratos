@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, timedelta
 
 from django.http import HttpResponse
 from django.utils import timezone
@@ -254,6 +254,266 @@ def _construir_requisitos_poliza_desde_contrato_base(contrato):
                 if (contrato.fecha_inicio and getattr(contrato, 'meses_vigencia_otra_1', None)) else None
             ),
             'fuente': 'contrato',
+            'detalles': {}
+        }
+    }
+    
+    return requisitos
+
+
+def _construir_requisitos_poliza_desde_otrosi(contrato, otrosi):
+    """
+    Construye los requisitos de pólizas usando los valores del Otro Sí específico.
+    Si un campo no está definido en el Otro Sí, usa el efecto cadena hasta antes del Otro Sí.
+    
+    Args:
+        contrato: Instancia del modelo Contrato
+        otrosi: Instancia del modelo OtroSi
+    
+    Returns:
+        Diccionario con los requisitos de pólizas del Otro Sí
+    """
+    from gestion.utils import calcular_fecha_vencimiento
+    from gestion.utils_otrosi import get_polizas_requeridas_contrato
+    
+    # Obtener valores base usando efecto cadena hasta antes del Otro Sí
+    fecha_antes_otrosi = otrosi.effective_from - timedelta(days=1) if otrosi.effective_from else date.today()
+    valores_base = get_polizas_requeridas_contrato(contrato, fecha_antes_otrosi, permitir_fuera_vigencia=True)
+    
+    # Función auxiliar para obtener valor del Otro Sí o del base
+    def get_valor_otrosi_o_base(campo_otrosi, clave_poliza=None, campo_base=None):
+        valor_otrosi = getattr(otrosi, campo_otrosi, None)
+        if valor_otrosi is not None:
+            return valor_otrosi
+        # Si no está definido en el Otro Sí, usar valor base
+        if clave_poliza and clave_poliza in valores_base:
+            return valores_base[clave_poliza].get(campo_base) if campo_base else None
+        return None
+    
+    # Función auxiliar para obtener valor o None
+    def get_valor(campo):
+        valor = getattr(otrosi, campo, None)
+        return float(valor) if valor else None
+    
+    # Función auxiliar para obtener valor o 0
+    def get_valor_default(campo, default=0):
+        valor = getattr(otrosi, campo, None)
+        return float(valor) if valor else default
+    
+    requisitos = {
+        'rce': {
+            'exigida': getattr(otrosi, 'nuevo_exige_poliza_rce', None) if getattr(otrosi, 'nuevo_exige_poliza_rce', None) is not None else (valores_base.get('RCE - Responsabilidad Civil', {}).get('valor_requerido') is not None),
+            'valor': get_valor('nuevo_valor_asegurado_rce') or (float(valores_base.get('RCE - Responsabilidad Civil', {}).get('valor_requerido', 0)) if valores_base.get('RCE - Responsabilidad Civil', {}).get('valor_requerido') else None),
+            'vigencia': getattr(otrosi, 'nuevo_meses_vigencia_rce', None) or valores_base.get('RCE - Responsabilidad Civil', {}).get('meses_vigencia'),
+            'fecha_inicio': getattr(otrosi, 'nuevo_fecha_inicio_vigencia_rce', None) or valores_base.get('RCE - Responsabilidad Civil', {}).get('fecha_inicio_requerida'),
+            'fecha_fin': getattr(otrosi, 'nuevo_fecha_fin_vigencia_rce', None) or valores_base.get('RCE - Responsabilidad Civil', {}).get('fecha_fin_requerida'),
+            'fuente': 'otrosi',
+            'detalles': {
+                'plo': get_valor_default('nuevo_valor_propietario_locatario_ocupante_rce') or (valores_base.get('RCE - Responsabilidad Civil', {}).get('detalles', {}).get('plo', 0) or 0),
+                'patronal': get_valor_default('nuevo_valor_patronal_rce') or (valores_base.get('RCE - Responsabilidad Civil', {}).get('detalles', {}).get('patronal', 0) or 0),
+                'gastos_medicos': get_valor_default('nuevo_valor_gastos_medicos_rce') or (valores_base.get('RCE - Responsabilidad Civil', {}).get('detalles', {}).get('gastos_medicos', 0) or 0),
+                'vehiculos': get_valor_default('nuevo_valor_vehiculos_rce') or (valores_base.get('RCE - Responsabilidad Civil', {}).get('detalles', {}).get('vehiculos', 0) or 0),
+                'contratistas': get_valor_default('nuevo_valor_contratistas_rce') or (valores_base.get('RCE - Responsabilidad Civil', {}).get('detalles', {}).get('contratistas', 0) or 0),
+                'perjuicios': get_valor_default('nuevo_valor_perjuicios_extrapatrimoniales_rce') or (valores_base.get('RCE - Responsabilidad Civil', {}).get('detalles', {}).get('perjuicios', 0) or 0),
+                'dano_moral': get_valor_default('nuevo_valor_dano_moral_rce') or (valores_base.get('RCE - Responsabilidad Civil', {}).get('detalles', {}).get('dano_moral', 0) or 0),
+                'lucro_cesante': get_valor_default('nuevo_valor_lucro_cesante_rce') or (valores_base.get('RCE - Responsabilidad Civil', {}).get('detalles', {}).get('lucro_cesante', 0) or 0),
+                'danos_materiales': get_valor_default('nuevo_rce_cobertura_danos_materiales') or (valores_base.get('RCE - Responsabilidad Civil', {}).get('detalles', {}).get('danos_materiales', 0) or 0),
+                'lesiones_personales': get_valor_default('nuevo_rce_cobertura_lesiones_personales') or (valores_base.get('RCE - Responsabilidad Civil', {}).get('detalles', {}).get('lesiones_personales', 0) or 0),
+                'muerte_terceros': get_valor_default('nuevo_rce_cobertura_muerte_terceros') or (valores_base.get('RCE - Responsabilidad Civil', {}).get('detalles', {}).get('muerte_terceros', 0) or 0),
+                'danos_bienes_terceros': get_valor_default('nuevo_rce_cobertura_danos_bienes_terceros') or (valores_base.get('RCE - Responsabilidad Civil', {}).get('detalles', {}).get('danos_bienes_terceros', 0) or 0),
+                'responsabilidad_patronal': get_valor_default('nuevo_rce_cobertura_responsabilidad_patronal') or (valores_base.get('RCE - Responsabilidad Civil', {}).get('detalles', {}).get('responsabilidad_patronal', 0) or 0),
+                'responsabilidad_cruzada': get_valor_default('nuevo_rce_cobertura_responsabilidad_cruzada') or (valores_base.get('RCE - Responsabilidad Civil', {}).get('detalles', {}).get('responsabilidad_cruzada', 0) or 0),
+                'danos_contratistas': get_valor_default('nuevo_rce_cobertura_danos_contratistas') or (valores_base.get('RCE - Responsabilidad Civil', {}).get('detalles', {}).get('danos_contratistas', 0) or 0),
+                'danos_ejecucion_contrato': get_valor_default('nuevo_rce_cobertura_danos_ejecucion_contrato') or (valores_base.get('RCE - Responsabilidad Civil', {}).get('detalles', {}).get('danos_ejecucion_contrato', 0) or 0),
+                'danos_predios_vecinos': get_valor_default('nuevo_rce_cobertura_danos_predios_vecinos') or (valores_base.get('RCE - Responsabilidad Civil', {}).get('detalles', {}).get('danos_predios_vecinos', 0) or 0),
+                'gastos_medicos_cobertura': get_valor_default('nuevo_rce_cobertura_gastos_medicos') or (valores_base.get('RCE - Responsabilidad Civil', {}).get('detalles', {}).get('gastos_medicos_cobertura', 0) or 0),
+                'gastos_defensa': get_valor_default('nuevo_rce_cobertura_gastos_defensa') or (valores_base.get('RCE - Responsabilidad Civil', {}).get('detalles', {}).get('gastos_defensa', 0) or 0),
+                'perjuicios_patrimoniales': get_valor_default('nuevo_rce_cobertura_perjuicios_patrimoniales') or (valores_base.get('RCE - Responsabilidad Civil', {}).get('detalles', {}).get('perjuicios_patrimoniales', 0) or 0),
+            }
+        },
+        'cumplimiento': {
+            'exigida': getattr(otrosi, 'nuevo_exige_poliza_cumplimiento', None) if getattr(otrosi, 'nuevo_exige_poliza_cumplimiento', None) is not None else (valores_base.get('Cumplimiento', {}).get('valor_requerido') is not None),
+            'valor': get_valor('nuevo_valor_asegurado_cumplimiento') or (float(valores_base.get('Cumplimiento', {}).get('valor_requerido', 0)) if valores_base.get('Cumplimiento', {}).get('valor_requerido') else None),
+            'vigencia': getattr(otrosi, 'nuevo_meses_vigencia_cumplimiento', None) or valores_base.get('Cumplimiento', {}).get('meses_vigencia'),
+            'fecha_inicio': getattr(otrosi, 'nuevo_fecha_inicio_vigencia_cumplimiento', None) or valores_base.get('Cumplimiento', {}).get('fecha_inicio_requerida'),
+            'fecha_fin': getattr(otrosi, 'nuevo_fecha_fin_vigencia_cumplimiento', None) or valores_base.get('Cumplimiento', {}).get('fecha_fin_requerida'),
+            'fuente': 'otrosi',
+            'detalles': {
+                'remuneraciones': get_valor_default('nuevo_valor_remuneraciones_cumplimiento') or (valores_base.get('Cumplimiento', {}).get('detalles', {}).get('remuneraciones', 0) or 0),
+                'servicios_publicos': get_valor_default('nuevo_valor_servicios_publicos_cumplimiento') or (valores_base.get('Cumplimiento', {}).get('detalles', {}).get('servicios_publicos', 0) or 0),
+                'iva': get_valor_default('nuevo_valor_iva_cumplimiento') or (valores_base.get('Cumplimiento', {}).get('detalles', {}).get('iva', 0) or 0),
+                'cuota_admon': get_valor_default('nuevo_valor_otros_cumplimiento') or (valores_base.get('Cumplimiento', {}).get('detalles', {}).get('cuota_admon', 0) or 0),
+                'cumplimiento_contrato': get_valor_default('nuevo_cumplimiento_amparo_cumplimiento_contrato') or (valores_base.get('Cumplimiento', {}).get('detalles', {}).get('cumplimiento_contrato', 0) or 0),
+                'buen_manejo_anticipo': get_valor_default('nuevo_cumplimiento_amparo_buen_manejo_anticipo') or (valores_base.get('Cumplimiento', {}).get('detalles', {}).get('buen_manejo_anticipo', 0) or 0),
+                'amortizacion_anticipo': get_valor_default('nuevo_cumplimiento_amparo_amortizacion_anticipo') or (valores_base.get('Cumplimiento', {}).get('detalles', {}).get('amortizacion_anticipo', 0) or 0),
+                'salarios_prestaciones': get_valor_default('nuevo_cumplimiento_amparo_salarios_prestaciones') or (valores_base.get('Cumplimiento', {}).get('detalles', {}).get('salarios_prestaciones', 0) or 0),
+                'aportes_seguridad_social': get_valor_default('nuevo_cumplimiento_amparo_aportes_seguridad_social') or (valores_base.get('Cumplimiento', {}).get('detalles', {}).get('aportes_seguridad_social', 0) or 0),
+                'calidad_servicio': get_valor_default('nuevo_cumplimiento_amparo_calidad_servicio') or (valores_base.get('Cumplimiento', {}).get('detalles', {}).get('calidad_servicio', 0) or 0),
+                'estabilidad_obra': get_valor_default('nuevo_cumplimiento_amparo_estabilidad_obra') or (valores_base.get('Cumplimiento', {}).get('detalles', {}).get('estabilidad_obra', 0) or 0),
+                'calidad_bienes': get_valor_default('nuevo_cumplimiento_amparo_calidad_bienes') or (valores_base.get('Cumplimiento', {}).get('detalles', {}).get('calidad_bienes', 0) or 0),
+                'multas': get_valor_default('nuevo_cumplimiento_amparo_multas') or (valores_base.get('Cumplimiento', {}).get('detalles', {}).get('multas', 0) or 0),
+                'clausula_penal': get_valor_default('nuevo_cumplimiento_amparo_clausula_penal') or (valores_base.get('Cumplimiento', {}).get('detalles', {}).get('clausula_penal', 0) or 0),
+                'sanciones_incumplimiento': get_valor_default('nuevo_cumplimiento_amparo_sanciones_incumplimiento') or (valores_base.get('Cumplimiento', {}).get('detalles', {}).get('sanciones_incumplimiento', 0) or 0),
+            }
+        },
+        'arrendamiento': {
+            'exigida': getattr(otrosi, 'nuevo_exige_poliza_arrendamiento', None) if getattr(otrosi, 'nuevo_exige_poliza_arrendamiento', None) is not None else (valores_base.get('Poliza de Arrendamiento', {}).get('valor_requerido') is not None),
+            'valor': get_valor('nuevo_valor_asegurado_arrendamiento') or (float(valores_base.get('Poliza de Arrendamiento', {}).get('valor_requerido', 0)) if valores_base.get('Poliza de Arrendamiento', {}).get('valor_requerido') else None),
+            'vigencia': getattr(otrosi, 'nuevo_meses_vigencia_arrendamiento', None) or valores_base.get('Poliza de Arrendamiento', {}).get('meses_vigencia'),
+            'fecha_inicio': getattr(otrosi, 'nuevo_fecha_inicio_vigencia_arrendamiento', None) or valores_base.get('Poliza de Arrendamiento', {}).get('fecha_inicio_requerida'),
+            'fecha_fin': getattr(otrosi, 'nuevo_fecha_fin_vigencia_arrendamiento', None) or valores_base.get('Poliza de Arrendamiento', {}).get('fecha_fin_requerida'),
+            'fuente': 'otrosi',
+            'detalles': {
+                'remuneraciones': get_valor_default('nuevo_valor_remuneraciones_arrendamiento') or (valores_base.get('Poliza de Arrendamiento', {}).get('detalles', {}).get('remuneraciones', 0) or 0),
+                'servicios_publicos': get_valor_default('nuevo_valor_servicios_publicos_arrendamiento') or (valores_base.get('Poliza de Arrendamiento', {}).get('detalles', {}).get('servicios_publicos', 0) or 0),
+                'iva': get_valor_default('nuevo_valor_iva_arrendamiento') or (valores_base.get('Poliza de Arrendamiento', {}).get('detalles', {}).get('iva', 0) or 0),
+                'cuota_admon': get_valor_default('nuevo_valor_otros_arrendamiento') or (valores_base.get('Poliza de Arrendamiento', {}).get('detalles', {}).get('cuota_admon', 0) or 0),
+            }
+        },
+        'todo_riesgo': {
+            'exigida': getattr(otrosi, 'nuevo_exige_poliza_todo_riesgo', None) if getattr(otrosi, 'nuevo_exige_poliza_todo_riesgo', None) is not None else (valores_base.get('Arrendamiento', {}).get('valor_requerido') is not None),
+            'valor': get_valor('nuevo_valor_asegurado_todo_riesgo') or (float(valores_base.get('Arrendamiento', {}).get('valor_requerido', 0)) if valores_base.get('Arrendamiento', {}).get('valor_requerido') else None),
+            'vigencia': getattr(otrosi, 'nuevo_meses_vigencia_todo_riesgo', None) or valores_base.get('Arrendamiento', {}).get('meses_vigencia'),
+            'fecha_inicio': getattr(otrosi, 'nuevo_fecha_inicio_vigencia_todo_riesgo', None) or valores_base.get('Arrendamiento', {}).get('fecha_inicio_requerida'),
+            'fecha_fin': getattr(otrosi, 'nuevo_fecha_fin_vigencia_todo_riesgo', None) or valores_base.get('Arrendamiento', {}).get('fecha_fin_requerida'),
+            'fuente': 'otrosi',
+            'detalles': {}
+        },
+        'otra': {
+            'exigida': getattr(otrosi, 'nuevo_exige_poliza_otra_1', None) if getattr(otrosi, 'nuevo_exige_poliza_otra_1', None) is not None else (valores_base.get('Otra', {}).get('valor_requerido') is not None),
+            'nombre': getattr(otrosi, 'nuevo_nombre_poliza_otra_1', None) or valores_base.get('Otra', {}).get('nombre'),
+            'valor': get_valor('nuevo_valor_asegurado_otra_1') or (float(valores_base.get('Otra', {}).get('valor_requerido', 0)) if valores_base.get('Otra', {}).get('valor_requerido') else None),
+            'vigencia': getattr(otrosi, 'nuevo_meses_vigencia_otra_1', None) or valores_base.get('Otra', {}).get('meses_vigencia'),
+            'fecha_inicio': getattr(otrosi, 'nuevo_fecha_inicio_vigencia_otra_1', None) or valores_base.get('Otra', {}).get('fecha_inicio_requerida'),
+            'fecha_fin': getattr(otrosi, 'nuevo_fecha_fin_vigencia_otra_1', None) or valores_base.get('Otra', {}).get('fecha_fin_requerida'),
+            'fuente': 'otrosi',
+            'detalles': {}
+        }
+    }
+    
+    return requisitos
+
+
+def _construir_requisitos_poliza_desde_renovacion(contrato, renovacion):
+    """
+    Construye los requisitos de pólizas usando los valores de la Renovación Automática específica.
+    Similar a _construir_requisitos_poliza_desde_otrosi pero para RenovacionAutomatica.
+    
+    Args:
+        contrato: Instancia del modelo Contrato
+        renovacion: Instancia del modelo RenovacionAutomatica
+    
+    Returns:
+        Diccionario con los requisitos de pólizas de la Renovación
+    """
+    # La estructura de RenovacionAutomatica es similar a OtroSi
+    # Reutilizar la lógica pero adaptada para RenovacionAutomatica
+    from datetime import timedelta
+    from gestion.utils_otrosi import get_polizas_requeridas_contrato
+    
+    # Obtener valores base usando efecto cadena hasta antes de la Renovación
+    fecha_antes_renovacion = renovacion.effective_from - timedelta(days=1) if renovacion.effective_from else date.today()
+    valores_base = get_polizas_requeridas_contrato(contrato, fecha_antes_renovacion, permitir_fuera_vigencia=True)
+    
+    # Función auxiliar para obtener valor o None
+    def get_valor(campo):
+        valor = getattr(renovacion, campo, None)
+        return float(valor) if valor else None
+    
+    # Función auxiliar para obtener valor o 0
+    def get_valor_default(campo, default=0):
+        valor = getattr(renovacion, campo, None)
+        return float(valor) if valor else default
+    
+    # La estructura es idéntica a OtroSi, así que reutilizamos la misma lógica
+    # pero adaptada para RenovacionAutomatica (tiene los mismos campos nuevo_*)
+    requisitos = {
+        'rce': {
+            'exigida': getattr(renovacion, 'nuevo_exige_poliza_rce', None) if getattr(renovacion, 'nuevo_exige_poliza_rce', None) is not None else (valores_base.get('RCE - Responsabilidad Civil', {}).get('valor_requerido') is not None),
+            'valor': get_valor('nuevo_valor_asegurado_rce') or (float(valores_base.get('RCE - Responsabilidad Civil', {}).get('valor_requerido', 0)) if valores_base.get('RCE - Responsabilidad Civil', {}).get('valor_requerido') else None),
+            'vigencia': getattr(renovacion, 'nuevo_meses_vigencia_rce', None) or valores_base.get('RCE - Responsabilidad Civil', {}).get('meses_vigencia'),
+            'fecha_inicio': getattr(renovacion, 'nuevo_fecha_inicio_vigencia_rce', None) or valores_base.get('RCE - Responsabilidad Civil', {}).get('fecha_inicio_requerida'),
+            'fecha_fin': getattr(renovacion, 'nuevo_fecha_fin_vigencia_rce', None) or valores_base.get('RCE - Responsabilidad Civil', {}).get('fecha_fin_requerida'),
+            'fuente': 'renovacion',
+            'detalles': {
+                'plo': get_valor_default('nuevo_valor_propietario_locatario_ocupante_rce') or (valores_base.get('RCE - Responsabilidad Civil', {}).get('detalles', {}).get('plo', 0) or 0),
+                'patronal': get_valor_default('nuevo_valor_patronal_rce') or (valores_base.get('RCE - Responsabilidad Civil', {}).get('detalles', {}).get('patronal', 0) or 0),
+                'gastos_medicos': get_valor_default('nuevo_valor_gastos_medicos_rce') or (valores_base.get('RCE - Responsabilidad Civil', {}).get('detalles', {}).get('gastos_medicos', 0) or 0),
+                'vehiculos': get_valor_default('nuevo_valor_vehiculos_rce') or (valores_base.get('RCE - Responsabilidad Civil', {}).get('detalles', {}).get('vehiculos', 0) or 0),
+                'contratistas': get_valor_default('nuevo_valor_contratistas_rce') or (valores_base.get('RCE - Responsabilidad Civil', {}).get('detalles', {}).get('contratistas', 0) or 0),
+                'perjuicios': get_valor_default('nuevo_valor_perjuicios_extrapatrimoniales_rce') or (valores_base.get('RCE - Responsabilidad Civil', {}).get('detalles', {}).get('perjuicios', 0) or 0),
+                'dano_moral': get_valor_default('nuevo_valor_dano_moral_rce') or (valores_base.get('RCE - Responsabilidad Civil', {}).get('detalles', {}).get('dano_moral', 0) or 0),
+                'lucro_cesante': get_valor_default('nuevo_valor_lucro_cesante_rce') or (valores_base.get('RCE - Responsabilidad Civil', {}).get('detalles', {}).get('lucro_cesante', 0) or 0),
+                'danos_materiales': get_valor_default('nuevo_rce_cobertura_danos_materiales') or (valores_base.get('RCE - Responsabilidad Civil', {}).get('detalles', {}).get('danos_materiales', 0) or 0),
+                'lesiones_personales': get_valor_default('nuevo_rce_cobertura_lesiones_personales') or (valores_base.get('RCE - Responsabilidad Civil', {}).get('detalles', {}).get('lesiones_personales', 0) or 0),
+                'muerte_terceros': get_valor_default('nuevo_rce_cobertura_muerte_terceros') or (valores_base.get('RCE - Responsabilidad Civil', {}).get('detalles', {}).get('muerte_terceros', 0) or 0),
+                'danos_bienes_terceros': get_valor_default('nuevo_rce_cobertura_danos_bienes_terceros') or (valores_base.get('RCE - Responsabilidad Civil', {}).get('detalles', {}).get('danos_bienes_terceros', 0) or 0),
+                'responsabilidad_patronal': get_valor_default('nuevo_rce_cobertura_responsabilidad_patronal') or (valores_base.get('RCE - Responsabilidad Civil', {}).get('detalles', {}).get('responsabilidad_patronal', 0) or 0),
+                'responsabilidad_cruzada': get_valor_default('nuevo_rce_cobertura_responsabilidad_cruzada') or (valores_base.get('RCE - Responsabilidad Civil', {}).get('detalles', {}).get('responsabilidad_cruzada', 0) or 0),
+                'danos_contratistas': get_valor_default('nuevo_rce_cobertura_danos_contratistas') or (valores_base.get('RCE - Responsabilidad Civil', {}).get('detalles', {}).get('danos_contratistas', 0) or 0),
+                'danos_ejecucion_contrato': get_valor_default('nuevo_rce_cobertura_danos_ejecucion_contrato') or (valores_base.get('RCE - Responsabilidad Civil', {}).get('detalles', {}).get('danos_ejecucion_contrato', 0) or 0),
+                'danos_predios_vecinos': get_valor_default('nuevo_rce_cobertura_danos_predios_vecinos') or (valores_base.get('RCE - Responsabilidad Civil', {}).get('detalles', {}).get('danos_predios_vecinos', 0) or 0),
+                'gastos_medicos_cobertura': get_valor_default('nuevo_rce_cobertura_gastos_medicos') or (valores_base.get('RCE - Responsabilidad Civil', {}).get('detalles', {}).get('gastos_medicos_cobertura', 0) or 0),
+                'gastos_defensa': get_valor_default('nuevo_rce_cobertura_gastos_defensa') or (valores_base.get('RCE - Responsabilidad Civil', {}).get('detalles', {}).get('gastos_defensa', 0) or 0),
+                'perjuicios_patrimoniales': get_valor_default('nuevo_rce_cobertura_perjuicios_patrimoniales') or (valores_base.get('RCE - Responsabilidad Civil', {}).get('detalles', {}).get('perjuicios_patrimoniales', 0) or 0),
+            }
+        },
+        'cumplimiento': {
+            'exigida': getattr(renovacion, 'nuevo_exige_poliza_cumplimiento', None) if getattr(renovacion, 'nuevo_exige_poliza_cumplimiento', None) is not None else (valores_base.get('Cumplimiento', {}).get('valor_requerido') is not None),
+            'valor': get_valor('nuevo_valor_asegurado_cumplimiento') or (float(valores_base.get('Cumplimiento', {}).get('valor_requerido', 0)) if valores_base.get('Cumplimiento', {}).get('valor_requerido') else None),
+            'vigencia': getattr(renovacion, 'nuevo_meses_vigencia_cumplimiento', None) or valores_base.get('Cumplimiento', {}).get('meses_vigencia'),
+            'fecha_inicio': getattr(renovacion, 'nuevo_fecha_inicio_vigencia_cumplimiento', None) or valores_base.get('Cumplimiento', {}).get('fecha_inicio_requerida'),
+            'fecha_fin': getattr(renovacion, 'nuevo_fecha_fin_vigencia_cumplimiento', None) or valores_base.get('Cumplimiento', {}).get('fecha_fin_requerida'),
+            'fuente': 'renovacion',
+            'detalles': {
+                'remuneraciones': get_valor_default('nuevo_valor_remuneraciones_cumplimiento') or (valores_base.get('Cumplimiento', {}).get('detalles', {}).get('remuneraciones', 0) or 0),
+                'servicios_publicos': get_valor_default('nuevo_valor_servicios_publicos_cumplimiento') or (valores_base.get('Cumplimiento', {}).get('detalles', {}).get('servicios_publicos', 0) or 0),
+                'iva': get_valor_default('nuevo_valor_iva_cumplimiento') or (valores_base.get('Cumplimiento', {}).get('detalles', {}).get('iva', 0) or 0),
+                'cuota_admon': get_valor_default('nuevo_valor_otros_cumplimiento') or (valores_base.get('Cumplimiento', {}).get('detalles', {}).get('cuota_admon', 0) or 0),
+                'cumplimiento_contrato': get_valor_default('nuevo_cumplimiento_amparo_cumplimiento_contrato') or (valores_base.get('Cumplimiento', {}).get('detalles', {}).get('cumplimiento_contrato', 0) or 0),
+                'buen_manejo_anticipo': get_valor_default('nuevo_cumplimiento_amparo_buen_manejo_anticipo') or (valores_base.get('Cumplimiento', {}).get('detalles', {}).get('buen_manejo_anticipo', 0) or 0),
+                'amortizacion_anticipo': get_valor_default('nuevo_cumplimiento_amparo_amortizacion_anticipo') or (valores_base.get('Cumplimiento', {}).get('detalles', {}).get('amortizacion_anticipo', 0) or 0),
+                'salarios_prestaciones': get_valor_default('nuevo_cumplimiento_amparo_salarios_prestaciones') or (valores_base.get('Cumplimiento', {}).get('detalles', {}).get('salarios_prestaciones', 0) or 0),
+                'aportes_seguridad_social': get_valor_default('nuevo_cumplimiento_amparo_aportes_seguridad_social') or (valores_base.get('Cumplimiento', {}).get('detalles', {}).get('aportes_seguridad_social', 0) or 0),
+                'calidad_servicio': get_valor_default('nuevo_cumplimiento_amparo_calidad_servicio') or (valores_base.get('Cumplimiento', {}).get('detalles', {}).get('calidad_servicio', 0) or 0),
+                'estabilidad_obra': get_valor_default('nuevo_cumplimiento_amparo_estabilidad_obra') or (valores_base.get('Cumplimiento', {}).get('detalles', {}).get('estabilidad_obra', 0) or 0),
+                'calidad_bienes': get_valor_default('nuevo_cumplimiento_amparo_calidad_bienes') or (valores_base.get('Cumplimiento', {}).get('detalles', {}).get('calidad_bienes', 0) or 0),
+                'multas': get_valor_default('nuevo_cumplimiento_amparo_multas') or (valores_base.get('Cumplimiento', {}).get('detalles', {}).get('multas', 0) or 0),
+                'clausula_penal': get_valor_default('nuevo_cumplimiento_amparo_clausula_penal') or (valores_base.get('Cumplimiento', {}).get('detalles', {}).get('clausula_penal', 0) or 0),
+                'sanciones_incumplimiento': get_valor_default('nuevo_cumplimiento_amparo_sanciones_incumplimiento') or (valores_base.get('Cumplimiento', {}).get('detalles', {}).get('sanciones_incumplimiento', 0) or 0),
+            }
+        },
+        'arrendamiento': {
+            'exigida': getattr(renovacion, 'nuevo_exige_poliza_arrendamiento', None) if getattr(renovacion, 'nuevo_exige_poliza_arrendamiento', None) is not None else (valores_base.get('Poliza de Arrendamiento', {}).get('valor_requerido') is not None),
+            'valor': get_valor('nuevo_valor_asegurado_arrendamiento') or (float(valores_base.get('Poliza de Arrendamiento', {}).get('valor_requerido', 0)) if valores_base.get('Poliza de Arrendamiento', {}).get('valor_requerido') else None),
+            'vigencia': getattr(renovacion, 'nuevo_meses_vigencia_arrendamiento', None) or valores_base.get('Poliza de Arrendamiento', {}).get('meses_vigencia'),
+            'fecha_inicio': getattr(renovacion, 'nuevo_fecha_inicio_vigencia_arrendamiento', None) or valores_base.get('Poliza de Arrendamiento', {}).get('fecha_inicio_requerida'),
+            'fecha_fin': getattr(renovacion, 'nuevo_fecha_fin_vigencia_arrendamiento', None) or valores_base.get('Poliza de Arrendamiento', {}).get('fecha_fin_requerida'),
+            'fuente': 'renovacion',
+            'detalles': {
+                'remuneraciones': get_valor_default('nuevo_valor_remuneraciones_arrendamiento') or (valores_base.get('Poliza de Arrendamiento', {}).get('detalles', {}).get('remuneraciones', 0) or 0),
+                'servicios_publicos': get_valor_default('nuevo_valor_servicios_publicos_arrendamiento') or (valores_base.get('Poliza de Arrendamiento', {}).get('detalles', {}).get('servicios_publicos', 0) or 0),
+                'iva': get_valor_default('nuevo_valor_iva_arrendamiento') or (valores_base.get('Poliza de Arrendamiento', {}).get('detalles', {}).get('iva', 0) or 0),
+                'cuota_admon': get_valor_default('nuevo_valor_otros_arrendamiento') or (valores_base.get('Poliza de Arrendamiento', {}).get('detalles', {}).get('cuota_admon', 0) or 0),
+            }
+        },
+        'todo_riesgo': {
+            'exigida': getattr(renovacion, 'nuevo_exige_poliza_todo_riesgo', None) if getattr(renovacion, 'nuevo_exige_poliza_todo_riesgo', None) is not None else (valores_base.get('Arrendamiento', {}).get('valor_requerido') is not None),
+            'valor': get_valor('nuevo_valor_asegurado_todo_riesgo') or (float(valores_base.get('Arrendamiento', {}).get('valor_requerido', 0)) if valores_base.get('Arrendamiento', {}).get('valor_requerido') else None),
+            'vigencia': getattr(renovacion, 'nuevo_meses_vigencia_todo_riesgo', None) or valores_base.get('Arrendamiento', {}).get('meses_vigencia'),
+            'fecha_inicio': getattr(renovacion, 'nuevo_fecha_inicio_vigencia_todo_riesgo', None) or valores_base.get('Arrendamiento', {}).get('fecha_inicio_requerida'),
+            'fecha_fin': getattr(renovacion, 'nuevo_fecha_fin_vigencia_todo_riesgo', None) or valores_base.get('Arrendamiento', {}).get('fecha_fin_requerida'),
+            'fuente': 'renovacion',
+            'detalles': {}
+        },
+        'otra': {
+            'exigida': getattr(renovacion, 'nuevo_exige_poliza_otra_1', None) if getattr(renovacion, 'nuevo_exige_poliza_otra_1', None) is not None else (valores_base.get('Otra', {}).get('valor_requerido') is not None),
+            'nombre': getattr(renovacion, 'nuevo_nombre_poliza_otra_1', None) or valores_base.get('Otra', {}).get('nombre'),
+            'valor': get_valor('nuevo_valor_asegurado_otra_1') or (float(valores_base.get('Otra', {}).get('valor_requerido', 0)) if valores_base.get('Otra', {}).get('valor_requerido') else None),
+            'vigencia': getattr(renovacion, 'nuevo_meses_vigencia_otra_1', None) or valores_base.get('Otra', {}).get('meses_vigencia'),
+            'fecha_inicio': getattr(renovacion, 'nuevo_fecha_inicio_vigencia_otra_1', None) or valores_base.get('Otra', {}).get('fecha_inicio_requerida'),
+            'fecha_fin': getattr(renovacion, 'nuevo_fecha_fin_vigencia_otra_1', None) or valores_base.get('Otra', {}).get('fecha_fin_requerida'),
+            'fuente': 'renovacion',
             'detalles': {}
         }
     }

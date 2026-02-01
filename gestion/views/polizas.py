@@ -27,51 +27,37 @@ def _obtener_requisitos_por_documento(contrato, documento_origen_id):
     fecha_referencia = date.today()
     usar_contrato_base = False
     
-    # Determinar fecha de referencia según documento origen
+    # Determinar qué documento se seleccionó y obtener sus valores directamente
     if documento_origen_id == 'CONTRATO':
-        # Para contrato base, usar fecha anterior al inicio del contrato
-        # para asegurar que no se consideren Otros Sí
-        if contrato.fecha_inicio:
-            # Usar un día antes del inicio del contrato para obtener valores del contrato base
-            from datetime import timedelta
-            fecha_referencia = contrato.fecha_inicio - timedelta(days=1)
-        else:
-            # Si no hay fecha de inicio, usar una fecha muy antigua
-            fecha_referencia = date(1900, 1, 1)
-        usar_contrato_base = True
+        # Para contrato base, construir requisitos directamente del contrato base
+        from gestion.views.utils import _construir_requisitos_poliza_desde_contrato_base
+        return _construir_requisitos_poliza_desde_contrato_base(contrato)
     elif documento_origen_id.startswith('OTROSI_'):
+        # Para Otro Sí específico, obtener valores directamente del Otro Sí
         otrosi_id = int(documento_origen_id.split('_')[1])
         try:
             otrosi = OtroSi.objects.get(id=otrosi_id, contrato=contrato)
-            if otrosi.effective_from:
-                fecha_referencia = otrosi.effective_from
+            from gestion.views.utils import _construir_requisitos_poliza_desde_otrosi
+            return _construir_requisitos_poliza_desde_otrosi(contrato, otrosi)
         except OtroSi.DoesNotExist:
-            pass
+            # Si no existe el Otro Sí, usar contrato base como fallback
+            from gestion.views.utils import _construir_requisitos_poliza_desde_contrato_base
+            return _construir_requisitos_poliza_desde_contrato_base(contrato)
     elif documento_origen_id.startswith('RENOVACION_'):
+        # Para Renovación específica, obtener valores directamente de la Renovación
         renovacion_id = int(documento_origen_id.split('_')[1])
         try:
             renovacion = RenovacionAutomatica.objects.get(id=renovacion_id, contrato=contrato)
-            if renovacion.effective_from:
-                fecha_referencia = renovacion.effective_from
+            from gestion.views.utils import _construir_requisitos_poliza_desde_renovacion
+            return _construir_requisitos_poliza_desde_renovacion(contrato, renovacion)
         except RenovacionAutomatica.DoesNotExist:
-            pass
+            # Si no existe la Renovación, usar contrato base como fallback
+            from gestion.views.utils import _construir_requisitos_poliza_desde_contrato_base
+            return _construir_requisitos_poliza_desde_contrato_base(contrato)
     
-    # Si se seleccionó CONTRATO, construir requisitos directamente del contrato base
-    if usar_contrato_base:
-        from gestion.views.utils import _construir_requisitos_poliza_desde_contrato_base
-        return _construir_requisitos_poliza_desde_contrato_base(contrato)
-    
-    # Obtener requisitos usando get_polizas_requeridas_contrato con la fecha de referencia correcta
-    polizas_requeridas = get_polizas_requeridas_contrato(contrato, fecha_referencia, permitir_fuera_vigencia=True)
-    
-    # Construir estructura de requisitos
-    vista_vigente = get_vista_vigente_contrato(contrato, fecha_referencia)
-    # Asegurar que fecha_referencia esté en el diccionario vista_vigente
-    if 'fecha_referencia' not in vista_vigente:
-        vista_vigente['fecha_referencia'] = fecha_referencia
-    requisitos = _construir_requisitos_poliza(contrato, vista_vigente, permitir_fuera_vigencia=True)
-    
-    return requisitos
+    # Fallback: usar contrato base si no se reconoce el documento
+    from gestion.views.utils import _construir_requisitos_poliza_desde_contrato_base
+    return _construir_requisitos_poliza_desde_contrato_base(contrato)
 
 
 @login_required_custom
