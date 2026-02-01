@@ -1000,14 +1000,22 @@ def vista_vigente_contrato(request, contrato_id):
     # Obtener alertas de IPC y Salario Mínimo para este contrato
     alertas_ipc = []
     alertas_salario_minimo = []
-    if contrato.tipo_condicion_ipc == 'IPC':
-        from gestion.services.alertas import obtener_alertas_ipc
-        todas_alertas_ipc = obtener_alertas_ipc(fecha_referencia, contrato.tipo_contrato_cliente_proveedor)
-        alertas_ipc = [a for a in todas_alertas_ipc if a.contrato.id == contrato.id]
-    elif contrato.tipo_condicion_ipc == 'SALARIO_MINIMO':
-        from gestion.services.alertas import obtener_alertas_salario_minimo
-        todas_alertas_sm = obtener_alertas_salario_minimo(fecha_referencia, contrato.tipo_contrato_cliente_proveedor)
-        alertas_salario_minimo = [a for a in todas_alertas_sm if a.contrato.id == contrato.id]
+    try:
+        if contrato.tipo_condicion_ipc == 'IPC':
+            from gestion.services.alertas import obtener_alertas_ipc
+            todas_alertas_ipc = obtener_alertas_ipc(fecha_referencia, contrato.tipo_contrato_cliente_proveedor)
+            alertas_ipc = [a for a in todas_alertas_ipc if a.contrato.id == contrato.id]
+        elif contrato.tipo_condicion_ipc == 'SALARIO_MINIMO':
+            from gestion.services.alertas import obtener_alertas_salario_minimo
+            todas_alertas_sm = obtener_alertas_salario_minimo(fecha_referencia, contrato.tipo_contrato_cliente_proveedor)
+            alertas_salario_minimo = [a for a in todas_alertas_sm if a.contrato.id == contrato.id]
+    except Exception as e:
+        # Si hay error al obtener alertas, continuar sin alertas para evitar que falle la vista
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f'Error al obtener alertas IPC/SM para contrato {contrato.id}: {str(e)}', exc_info=True)
+        alertas_ipc = []
+        alertas_salario_minimo = []
     
     context = {
         'contrato': contrato,

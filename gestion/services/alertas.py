@@ -265,50 +265,56 @@ def obtener_alertas_ipc(
         # Si no hay modificador de IPC pero hay una renovación reciente que podría estar causando la alerta,
         # buscar renovaciones (OtroSi RENEWAL o RenovacionAutomatica) que no modificaron IPC
         if not otrosi_modificador_numero:
-            from gestion.models import OtroSi, RenovacionAutomatica
-            
-            # Buscar último cálculo para comparar con renovaciones
-            ultimo_calculo_ipc = CalculoIPC.objects.filter(
-                contrato=contrato
-            ).order_by('-fecha_aplicacion', '-fecha_calculo').first()
-            
-            fecha_ultimo_calculo = ultimo_calculo_ipc.fecha_aplicacion if ultimo_calculo_ipc else None
-            
-            # Buscar renovaciones OtroSi tipo RENEWAL que no modificaron IPC
-            renovacion_otrosi = OtroSi.objects.filter(
-                contrato=contrato,
-                estado='APROBADO',
-                tipo='RENEWAL',
-                effective_from__lte=fecha_base
-            ).exclude(
-                nuevo_tipo_condicion_ipc__isnull=False
-            ).exclude(
-                nueva_periodicidad_ipc__isnull=False
-            ).exclude(
-                nueva_fecha_aumento_ipc__isnull=False
-            ).order_by('-effective_from', '-version').first()
-            
-            # Buscar Renovaciones Automáticas
-            renovacion_automatica = RenovacionAutomatica.objects.filter(
-                contrato=contrato,
-                estado='APROBADO',
-                effective_from__lte=fecha_base
-            ).order_by('-effective_from', '-version').first()
-            
-            # Determinar cuál renovación es más reciente y si es posterior al último cálculo
-            renovacion_relevante = None
-            if renovacion_otrosi and renovacion_automatica:
-                renovacion_relevante = renovacion_otrosi if renovacion_otrosi.effective_from >= renovacion_automatica.effective_from else renovacion_automatica
-            elif renovacion_otrosi:
-                renovacion_relevante = renovacion_otrosi
-            elif renovacion_automatica:
-                renovacion_relevante = renovacion_automatica
-            
-            # Si hay renovación relevante y (no hay último cálculo o la renovación es posterior al último cálculo),
-            # usar la renovación como modificador
-            if renovacion_relevante:
-                if not fecha_ultimo_calculo or renovacion_relevante.effective_from > fecha_ultimo_calculo:
-                    otrosi_modificador_numero = obtener_numero_evento(renovacion_relevante)
+            try:
+                from gestion.models import OtroSi, RenovacionAutomatica
+                
+                # Buscar último cálculo para comparar con renovaciones
+                ultimo_calculo_ipc = CalculoIPC.objects.filter(
+                    contrato=contrato
+                ).order_by('-fecha_aplicacion', '-fecha_calculo').first()
+                
+                fecha_ultimo_calculo = ultimo_calculo_ipc.fecha_aplicacion if ultimo_calculo_ipc else None
+                
+                # Buscar renovaciones OtroSi tipo RENEWAL que no modificaron IPC
+                renovacion_otrosi = OtroSi.objects.filter(
+                    contrato=contrato,
+                    estado='APROBADO',
+                    tipo='RENEWAL',
+                    effective_from__lte=fecha_base
+                ).exclude(
+                    nuevo_tipo_condicion_ipc__isnull=False
+                ).exclude(
+                    nueva_periodicidad_ipc__isnull=False
+                ).exclude(
+                    nueva_fecha_aumento_ipc__isnull=False
+                ).order_by('-effective_from', '-version').first()
+                
+                # Buscar Renovaciones Automáticas
+                renovacion_automatica = RenovacionAutomatica.objects.filter(
+                    contrato=contrato,
+                    estado='APROBADO',
+                    effective_from__lte=fecha_base
+                ).order_by('-effective_from', '-version').first()
+                
+                # Determinar cuál renovación es más reciente y si es posterior al último cálculo
+                renovacion_relevante = None
+                if renovacion_otrosi and renovacion_automatica:
+                    if (hasattr(renovacion_otrosi, 'effective_from') and renovacion_otrosi.effective_from and
+                        hasattr(renovacion_automatica, 'effective_from') and renovacion_automatica.effective_from):
+                        renovacion_relevante = renovacion_otrosi if renovacion_otrosi.effective_from >= renovacion_automatica.effective_from else renovacion_automatica
+                elif renovacion_otrosi and hasattr(renovacion_otrosi, 'effective_from') and renovacion_otrosi.effective_from:
+                    renovacion_relevante = renovacion_otrosi
+                elif renovacion_automatica and hasattr(renovacion_automatica, 'effective_from') and renovacion_automatica.effective_from:
+                    renovacion_relevante = renovacion_automatica
+                
+                # Si hay renovación relevante y (no hay último cálculo o la renovación es posterior al último cálculo),
+                # usar la renovación como modificador
+                if renovacion_relevante and hasattr(renovacion_relevante, 'effective_from') and renovacion_relevante.effective_from:
+                    if not fecha_ultimo_calculo or renovacion_relevante.effective_from > fecha_ultimo_calculo:
+                        otrosi_modificador_numero = obtener_numero_evento(renovacion_relevante)
+            except Exception:
+                # Si hay algún error al buscar renovaciones, continuar sin modificador
+                pass
 
         alertas.append(
             AlertaIPC(
@@ -461,50 +467,56 @@ def obtener_alertas_salario_minimo(
         # Si no hay modificador pero hay una renovación reciente que podría estar causando la alerta,
         # buscar renovaciones (OtroSi RENEWAL o RenovacionAutomatica) que no modificaron condiciones
         if not otrosi_modificador_numero:
-            from gestion.models import OtroSi, RenovacionAutomatica
-            
-            # Buscar último cálculo para comparar con renovaciones
-            ultimo_calculo_sm = CalculoSalarioMinimo.objects.filter(
-                contrato=contrato
-            ).order_by('-fecha_aplicacion', '-fecha_calculo').first()
-            
-            fecha_ultimo_calculo = ultimo_calculo_sm.fecha_aplicacion if ultimo_calculo_sm else None
-            
-            # Buscar renovaciones OtroSi tipo RENEWAL que no modificaron condiciones
-            renovacion_otrosi = OtroSi.objects.filter(
-                contrato=contrato,
-                estado='APROBADO',
-                tipo='RENEWAL',
-                effective_from__lte=fecha_base
-            ).exclude(
-                nuevo_tipo_condicion_ipc__isnull=False
-            ).exclude(
-                nueva_periodicidad_ipc__isnull=False
-            ).exclude(
-                nueva_fecha_aumento_ipc__isnull=False
-            ).order_by('-effective_from', '-version').first()
-            
-            # Buscar Renovaciones Automáticas
-            renovacion_automatica = RenovacionAutomatica.objects.filter(
-                contrato=contrato,
-                estado='APROBADO',
-                effective_from__lte=fecha_base
-            ).order_by('-effective_from', '-version').first()
-            
-            # Determinar cuál renovación es más reciente y si es posterior al último cálculo
-            renovacion_relevante = None
-            if renovacion_otrosi and renovacion_automatica:
-                renovacion_relevante = renovacion_otrosi if renovacion_otrosi.effective_from >= renovacion_automatica.effective_from else renovacion_automatica
-            elif renovacion_otrosi:
-                renovacion_relevante = renovacion_otrosi
-            elif renovacion_automatica:
-                renovacion_relevante = renovacion_automatica
-            
-            # Si hay renovación relevante y (no hay último cálculo o la renovación es posterior al último cálculo),
-            # usar la renovación como modificador
-            if renovacion_relevante:
-                if not fecha_ultimo_calculo or renovacion_relevante.effective_from > fecha_ultimo_calculo:
-                    otrosi_modificador_numero = obtener_numero_evento(renovacion_relevante)
+            try:
+                from gestion.models import OtroSi, RenovacionAutomatica
+                
+                # Buscar último cálculo para comparar con renovaciones
+                ultimo_calculo_sm = CalculoSalarioMinimo.objects.filter(
+                    contrato=contrato
+                ).order_by('-fecha_aplicacion', '-fecha_calculo').first()
+                
+                fecha_ultimo_calculo = ultimo_calculo_sm.fecha_aplicacion if ultimo_calculo_sm else None
+                
+                # Buscar renovaciones OtroSi tipo RENEWAL que no modificaron condiciones
+                renovacion_otrosi = OtroSi.objects.filter(
+                    contrato=contrato,
+                    estado='APROBADO',
+                    tipo='RENEWAL',
+                    effective_from__lte=fecha_base
+                ).exclude(
+                    nuevo_tipo_condicion_ipc__isnull=False
+                ).exclude(
+                    nueva_periodicidad_ipc__isnull=False
+                ).exclude(
+                    nueva_fecha_aumento_ipc__isnull=False
+                ).order_by('-effective_from', '-version').first()
+                
+                # Buscar Renovaciones Automáticas
+                renovacion_automatica = RenovacionAutomatica.objects.filter(
+                    contrato=contrato,
+                    estado='APROBADO',
+                    effective_from__lte=fecha_base
+                ).order_by('-effective_from', '-version').first()
+                
+                # Determinar cuál renovación es más reciente y si es posterior al último cálculo
+                renovacion_relevante = None
+                if renovacion_otrosi and renovacion_automatica:
+                    if (hasattr(renovacion_otrosi, 'effective_from') and renovacion_otrosi.effective_from and
+                        hasattr(renovacion_automatica, 'effective_from') and renovacion_automatica.effective_from):
+                        renovacion_relevante = renovacion_otrosi if renovacion_otrosi.effective_from >= renovacion_automatica.effective_from else renovacion_automatica
+                elif renovacion_otrosi and hasattr(renovacion_otrosi, 'effective_from') and renovacion_otrosi.effective_from:
+                    renovacion_relevante = renovacion_otrosi
+                elif renovacion_automatica and hasattr(renovacion_automatica, 'effective_from') and renovacion_automatica.effective_from:
+                    renovacion_relevante = renovacion_automatica
+                
+                # Si hay renovación relevante y (no hay último cálculo o la renovación es posterior al último cálculo),
+                # usar la renovación como modificador
+                if renovacion_relevante and hasattr(renovacion_relevante, 'effective_from') and renovacion_relevante.effective_from:
+                    if not fecha_ultimo_calculo or renovacion_relevante.effective_from > fecha_ultimo_calculo:
+                        otrosi_modificador_numero = obtener_numero_evento(renovacion_relevante)
+            except Exception:
+                # Si hay algún error al buscar renovaciones, continuar sin modificador
+                pass
 
         alertas.append(
             AlertaSalarioMinimo(

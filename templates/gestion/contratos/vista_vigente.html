@@ -418,7 +418,7 @@
                                 <strong>Modificado por:</strong> {{ alerta.otrosi_modificador }}
                                 {% endif %}
                             </p>
-                            <a href="{% url 'gestion:calcular_ipc' contrato.id %}" class="btn btn-sm btn-primary mt-2">
+                            <a href="{% url 'gestion:calcular_ipc' %}?contrato={{ contrato.id }}" class="btn btn-sm btn-primary mt-2">
                                 <i class="fas fa-calculator"></i> Calcular Ajuste IPC
                             </a>
                         </div>
@@ -448,7 +448,7 @@
                                 <strong>Modificado por:</strong> {{ alerta.otrosi_modificador }}
                                 {% endif %}
                             </p>
-                            <a href="{% url 'gestion:calcular_salario_minimo' contrato.id %}" class="btn btn-sm btn-primary mt-2">
+                            <a href="{% url 'gestion:calcular_salario_minimo' %}?contrato={{ contrato.id }}" class="btn btn-sm btn-primary mt-2">
                                 <i class="fas fa-calculator"></i> Calcular Ajuste Salario Mínimo
                             </a>
                         </div>
