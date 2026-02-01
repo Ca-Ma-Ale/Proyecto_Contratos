@@ -36,19 +36,29 @@ def es_fecha_fuera_vigencia_contrato(contrato, fecha_referencia):
     Determina si una fecha está fuera de la vigencia del contrato.
     Retorna True si la fecha es anterior al inicio o posterior a la fecha final del contrato.
     """
-    if not fecha_referencia:
+    try:
+        if not fecha_referencia:
+            return False
+        
+        fecha_inicio = getattr(contrato, 'fecha_inicial_contrato', None)
+        if fecha_inicio and fecha_referencia < fecha_inicio:
+            return True
+        
+        try:
+            from gestion.views.utils import _obtener_fecha_final_contrato
+            fecha_final = _obtener_fecha_final_contrato(contrato, fecha_referencia)
+            if fecha_final and fecha_referencia > fecha_final:
+                return True
+        except Exception:
+            # Si hay error al obtener fecha final, usar fecha_final_inicial como fallback
+            fecha_final = getattr(contrato, 'fecha_final_inicial', None)
+            if fecha_final and fecha_referencia > fecha_final:
+                return True
+        
         return False
-    
-    fecha_inicio = getattr(contrato, 'fecha_inicial_contrato', None)
-    if fecha_inicio and fecha_referencia < fecha_inicio:
-        return True
-    
-    from gestion.views.utils import _obtener_fecha_final_contrato
-    fecha_final = _obtener_fecha_final_contrato(contrato, fecha_referencia)
-    if fecha_final and fecha_referencia > fecha_final:
-        return True
-    
-    return False
+    except Exception:
+        # Si hay cualquier error, retornar False para evitar bloquear la aplicación
+        return False
 
 
 def tiene_otrosi_posteriores(otrosi):
@@ -843,7 +853,6 @@ def get_vista_vigente_contrato(contrato, fecha_referencia=None):
     if otrosi_ventas and porcentaje_ventas is not None:
         try:
             # Verificar que el campo realmente tenga un valor válido (no None, no 0 para Decimal)
-            from decimal import Decimal
             valor_otrosi_decimal = Decimal(str(porcentaje_ventas)) if porcentaje_ventas else None
             if valor_otrosi_decimal is not None and valor_otrosi_decimal != Decimal('0'):
                 # Obtener el valor que estaba vigente ANTES de este Otro Sí
