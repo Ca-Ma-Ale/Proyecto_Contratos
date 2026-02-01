@@ -49,6 +49,9 @@ def _obtener_requisitos_por_documento(contrato, documento_origen_id):
     
     # Construir estructura de requisitos
     vista_vigente = get_vista_vigente_contrato(contrato, fecha_referencia)
+    # Asegurar que fecha_referencia esté en el diccionario vista_vigente
+    if 'fecha_referencia' not in vista_vigente:
+        vista_vigente['fecha_referencia'] = fecha_referencia
     requisitos = _construir_requisitos_poliza(contrato, vista_vigente, permitir_fuera_vigencia=True)
     
     return requisitos
@@ -70,8 +73,8 @@ def obtener_requisitos_documento(request, contrato_id):
                 'exigida': valor.get('exigida', False),
                 'valor': float(valor.get('valor', 0)) if valor.get('valor') else None,
                 'vigencia': valor.get('vigencia'),
-                'fecha_inicio': valor.get('fecha_inicio').isoformat() if valor.get('fecha_inicio') else None,
-                'fecha_fin': valor.get('fecha_fin').isoformat() if valor.get('fecha_fin') else None,
+                'fecha_inicio': valor.get('fecha_inicio').isoformat() if valor.get('fecha_inicio') and hasattr(valor.get('fecha_inicio'), 'isoformat') else None,
+                'fecha_fin': valor.get('fecha_fin').isoformat() if valor.get('fecha_fin') and hasattr(valor.get('fecha_fin'), 'isoformat') else None,
                 'detalles': valor.get('detalles', {}),
                 'nombre': valor.get('nombre') if clave == 'otra' else None
             }
@@ -359,3 +362,116 @@ def editar_poliza(request, poliza_id):
         'titulo': f'Editar Póliza - {poliza.numero_poliza}'
     }
     return render(request, 'gestion/polizas/form.html', context)
+
+
+@login_required_custom
+def validar_poliza(request, poliza_id):
+    """Vista para validar una póliza y mostrar inconsistencias"""
+    poliza = get_object_or_404(Poliza, id=poliza_id)
+    contrato = poliza.contrato
+    
+    vista_vigente = get_vista_vigente_contrato(contrato)
+    requisitos_contrato = _construir_requisitos_poliza(contrato, vista_vigente, permitir_fuera_vigencia=True)
+    
+    validacion = poliza.cumple_requisitos_contrato()
+    
+    context = {
+        'poliza': poliza,
+        'contrato': contrato,
+        'validacion': validacion,
+        'requisitos_contrato': requisitos_contrato,
+        'titulo': f'Validar Póliza - {poliza.numero_poliza}'
+    }
+    return render(request, 'gestion/polizas/validar.html', context)
+
+
+@admin_required
+@login_required_custom
+def eliminar_poliza(request, poliza_id):
+    """Vista para eliminar una póliza"""
+    poliza = get_object_or_404(Poliza, id=poliza_id)
+    contrato = poliza.contrato
+    
+    if request.method == 'POST':
+        accion = request.POST.get('accion')
+        if accion == 'confirmar':
+            numero = poliza.numero_poliza
+            registrar_eliminacion(poliza, request.user)
+            poliza.delete()
+            messages.success(request, f'Póliza {numero} eliminada exitosamente.')
+            return redirect('gestion:gestionar_polizas', contrato_id=contrato.id)
+        elif accion == 'cancelar':
+            return redirect('gestion:gestionar_polizas', contrato_id=contrato.id)
+    
+    context = {
+        'poliza': poliza,
+        'contrato': contrato,
+        'titulo': f'Eliminar Póliza - {poliza.numero_poliza}'
+    }
+    return render(request, 'gestion/polizas/eliminar.html', context)
+
+
+@login_required_custom
+def agregar_seguimiento_poliza(request, contrato_id):
+    """Vista para agregar un seguimiento de póliza"""
+    contrato = get_object_or_404(Contrato, id=contrato_id)
+    
+    if request.method == 'POST':
+        poliza_id = request.POST.get('poliza_id')
+        poliza_tipo = request.POST.get('poliza_tipo')
+        detalle = request.POST.get('detalle', '')
+        fecha_registro = request.POST.get('fecha_registro')
+        
+        if not fecha_registro:
+            fecha_registro = date.today()
+        else:
+            from datetime import datetime
+            fecha_registro = datetime.strptime(fecha_registro, '%Y-%m-%d').date()
+        
+        poliza = None
+        if poliza_id:
+            try:
+                poliza = Poliza.objects.get(id=poliza_id, contrato=contrato)
+            except Poliza.DoesNotExist:
+                pass
+        
+        seguimiento = SeguimientoPoliza.objects.create(
+            contrato=contrato,
+            poliza=poliza,
+            poliza_tipo=poliza_tipo if not poliza else None,
+            detalle=detalle,
+            fecha_registro=fecha_registro
+        )
+        
+        guardar_con_auditoria(seguimiento, request.user, es_nuevo=True)
+        seguimiento.save()
+        
+        messages.success(request, 'Seguimiento de póliza agregado exitosamente.')
+        return redirect('gestion:gestionar_polizas', contrato_id=contrato.id)
+    
+    return redirect('gestion:gestionar_polizas', contrato_id=contrato.id)
+
+
+@login_required_custom
+def agregar_seguimiento_contrato(request, contrato_id):
+    """Vista para agregar un seguimiento de contrato"""
+    from gestion.models import SeguimientoContrato
+    
+    contrato = get_object_or_404(Contrato, id=contrato_id)
+    
+    if request.method == 'POST':
+        detalle = request.POST.get('detalle_seguimiento', '').strip()
+        if detalle:
+            seguimiento = SeguimientoContrato.objects.create(
+                contrato=contrato,
+                detalle=detalle,
+                registrado_por=request.user.get_username() if request.user.is_authenticated else None
+            )
+            guardar_con_auditoria(seguimiento, request.user, es_nuevo=True)
+            seguimiento.save()
+            messages.success(request, 'Seguimiento de contrato agregado exitosamente.')
+        else:
+            messages.warning(request, 'Debe ingresar contenido para registrar un seguimiento.')
+        return redirect('gestion:detalle_contrato', contrato_id=contrato.id)
+    
+    return redirect('gestion:detalle_contrato', contrato_id=contrato.id)

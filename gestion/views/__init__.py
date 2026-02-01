@@ -58,6 +58,7 @@ from gestion.views.polizas import (
     eliminar_poliza,
     agregar_seguimiento_poliza,
     agregar_seguimiento_contrato,
+    obtener_requisitos_documento,
 )
 from gestion.views.otrosi import (
     lista_otrosi,
