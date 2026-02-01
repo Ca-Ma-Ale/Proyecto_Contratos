@@ -382,19 +382,37 @@ def get_vista_vigente_contrato(contrato, fecha_referencia=None):
         from datetime import timedelta
         fecha_anterior = otrosi_modificador.effective_from - timedelta(days=1)
         
-        # Obtener la vista vigente del contrato en esa fecha anterior
-        vista_anterior = get_vista_vigente_contrato(contrato, fecha_anterior)
-        
-        # Mapear el campo del contrato al campo en la vista vigente
-        mapeo_campos_vista = {
-            'valor_canon_fijo': 'valor_canon',
-            'modalidad_pago': 'modalidad_pago',
-            'canon_minimo_garantizado': 'canon_minimo_garantizado',
-            'porcentaje_ventas': 'porcentaje_ventas',
+        # Mapear el campo del contrato al campo en OtroSi
+        mapeo_campos_otrosi = {
+            'valor_canon_fijo': 'nuevo_valor_canon',
+            'modalidad_pago': 'nueva_modalidad_pago',
+            'canon_minimo_garantizado': 'nuevo_canon_minimo_garantizado',
+            'porcentaje_ventas': 'nuevo_porcentaje_ventas',
         }
         
-        campo_vista = mapeo_campos_vista.get(campo_contrato, campo_contrato)
-        return vista_anterior.get(campo_vista, getattr(contrato, campo_contrato, None))
+        campo_otrosi = mapeo_campos_otrosi.get(campo_contrato)
+        
+        # Buscar el último Otro Sí que modificó este campo antes de la fecha del Otro Sí actual
+        if campo_otrosi:
+            otrosi_anterior = get_ultimo_otrosi_que_modifico_campo_hasta_fecha(
+                contrato, campo_otrosi, fecha_anterior
+            )
+            if otrosi_anterior:
+                valor_anterior = getattr(otrosi_anterior, campo_otrosi, None)
+                if valor_anterior is not None:
+                    # Para strings, verificar que no esté vacío
+                    if isinstance(valor_anterior, str) and valor_anterior.strip() != '':
+                        return valor_anterior
+                    # Para Decimal y otros tipos numéricos, verificar que no sea 0
+                    elif not isinstance(valor_anterior, str):
+                        from decimal import Decimal
+                        if isinstance(valor_anterior, Decimal) and valor_anterior == Decimal('0'):
+                            # Si es 0, usar el valor del contrato base
+                            return getattr(contrato, campo_contrato, None)
+                        return valor_anterior
+        
+        # Si no hay Otro Sí anterior que lo modificó, usar valor del contrato base
+        return getattr(contrato, campo_contrato, None)
     
     # Función auxiliar para obtener valor de un campo con efecto cadena
     def obtener_valor_campo(campo_otrosi, campo_contrato, tipo='valor'):
