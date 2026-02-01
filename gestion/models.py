@@ -896,8 +896,10 @@ class Poliza(PolizaMixin, AuditoriaMixin):
     
     def obtener_fecha_vencimiento_efectiva(self, fecha_referencia=None):
         """Retorna la fecha de vencimiento efectiva para alertas y cálculos"""
-        if self.tiene_colchon and self.fecha_vencimiento_real:
-            return self.fecha_vencimiento_real
+        # Verificar si los campos de colchón existen (compatibilidad con migraciones pendientes)
+        if hasattr(self, 'tiene_colchon') and hasattr(self, 'fecha_vencimiento_real'):
+            if self.tiene_colchon and self.fecha_vencimiento_real:
+                return self.fecha_vencimiento_real
         return self.fecha_vencimiento
     
     def necesita_renovacion_por_contrato(self, fecha_final_contrato_nueva):
