@@ -607,38 +607,24 @@ def obtener_polizas_criticas(
     # Obtener todas las pólizas que cumplen los criterios de fecha
     # Incluir pólizas vencidas o que vencen dentro de la ventana
     # Nota: El filtro inicial usa fecha_vencimiento, pero luego verificamos fecha_vencimiento_real si tiene colchón
-    # Verificar si la migración se ha aplicado antes de usar select_related con nuevos campos
-    try:
-        # Intentar verificar si existe el campo renovacion_automatica
-        from django.db import connection
-        table_name = Poliza._meta.db_table
-        columns = [col.name for col in connection.introspection.get_table_description(connection.cursor(), table_name)]
-        tiene_renovacion_field = 'renovacion_automatica_id' in columns
-    except Exception:
-        # Si hay error al verificar, asumir que no existe (modo seguro)
-        tiene_renovacion_field = False
+    polizas_candidatas = (
+        Poliza.objects.filter(
+            fecha_vencimiento__isnull=False,
+            fecha_vencimiento__lte=fecha_limite
+        )
+        .select_related('contrato', 'contrato__arrendatario', 'contrato__proveedor')
+        .prefetch_related('contrato__otrosi', 'contrato__renovaciones_automaticas')
+        .order_by('fecha_vencimiento')
+    )
     
-    if tiene_renovacion_field:
-        polizas_candidatas = (
-            Poliza.objects.filter(
-                fecha_vencimiento__isnull=False,
-                fecha_vencimiento__lte=fecha_limite
-            )
-            .select_related('contrato', 'contrato__arrendatario', 'contrato__proveedor', 'otrosi', 'renovacion_automatica')
-            .prefetch_related('contrato__otrosi', 'contrato__renovaciones_automaticas')
-            .order_by('fecha_vencimiento')
-        )
-    else:
-        # Modo compatible: no usar select_related con campos que pueden no existir
-        polizas_candidatas = (
-            Poliza.objects.filter(
-                fecha_vencimiento__isnull=False,
-                fecha_vencimiento__lte=fecha_limite
-            )
-            .select_related('contrato', 'contrato__arrendatario', 'contrato__proveedor')
-            .prefetch_related('contrato__otrosi', 'contrato__renovaciones_automaticas')
-            .order_by('fecha_vencimiento')
-        )
+    # Intentar agregar select_related para otrosi y renovacion_automatica si existen
+    try:
+        # Verificar si los campos existen en el modelo
+        if hasattr(Poliza, 'otrosi') and hasattr(Poliza, 'renovacion_automatica'):
+            polizas_candidatas = polizas_candidatas.select_related('otrosi', 'renovacion_automatica')
+    except Exception:
+        # Si hay error, continuar sin select_related para esos campos
+        pass
     
     if tipo_contrato_cp:
         polizas_candidatas = polizas_candidatas.filter(contrato__tipo_contrato_cliente_proveedor=tipo_contrato_cp)
@@ -673,12 +659,7 @@ def obtener_polizas_criticas(
             # Si no tiene fecha final, se considera vigente (contrato indefinido)
             
             # Usar fecha de vencimiento efectiva (considerando colchón si aplica)
-            # Verificar si el método existe (por si la migración no se ha aplicado)
-            try:
-                fecha_vencimiento_efectiva = poliza.obtener_fecha_vencimiento_efectiva(fecha_base)
-            except AttributeError:
-                # Si el método no existe, usar fecha_vencimiento normal
-                fecha_vencimiento_efectiva = poliza.fecha_vencimiento
+            fecha_vencimiento_efectiva = poliza.obtener_fecha_vencimiento_efectiva(fecha_base)
             
             # Verificar que la póliza realmente vence dentro de la ventana o ya venció
             # Esto asegura que solo mostramos pólizas que realmente necesitan atención
