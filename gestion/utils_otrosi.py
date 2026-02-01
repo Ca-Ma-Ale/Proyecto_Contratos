@@ -1,7 +1,7 @@
 """
 Utilidades para gestión de Otrosí y vistas vigentes de contratos
 """
-from datetime import date
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 from django.db.models import Q
 
@@ -390,7 +390,6 @@ def get_vista_vigente_contrato(contrato, fecha_referencia=None):
                 return getattr(contrato, campo_contrato, None)
             
             # Obtener la fecha anterior al effective_from del Otro Sí
-            from datetime import timedelta, datetime
             effective_from_value = otrosi_modificador.effective_from
             
             # Convertir a date si es datetime
@@ -672,7 +671,6 @@ def get_vista_vigente_contrato(contrato, fecha_referencia=None):
                             fecha_otrosi = fecha_otrosi.date()
                         elif not isinstance(fecha_otrosi, date):
                             # Si no es date ni datetime, intentar convertir
-                            from datetime import datetime
                             if isinstance(fecha_otrosi, datetime):
                                 fecha_otrosi = fecha_otrosi.date()
                             else:
@@ -764,7 +762,6 @@ def get_vista_vigente_contrato(contrato, fecha_referencia=None):
                             fecha_otrosi = fecha_otrosi.date()
                         elif not isinstance(fecha_otrosi, date):
                             # Si no es date ni datetime, intentar convertir
-                            from datetime import datetime
                             if isinstance(fecha_otrosi, datetime):
                                 fecha_otrosi = fecha_otrosi.date()
                             else:
