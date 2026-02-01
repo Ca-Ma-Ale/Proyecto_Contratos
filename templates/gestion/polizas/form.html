@@ -78,29 +78,72 @@ document.addEventListener('DOMContentLoaded', function() {
     const contratoId = {{ contrato.id }};
     
     function actualizarRequisitos() {
-        if (!documentoOrigenField) return;
-        
-        const documentoOrigenId = documentoOrigenField.value;
-        if (!documentoOrigenId) return;
-        
-        // Mostrar indicador de carga
-        const requisitosCard = document.querySelector('.poliza-layout-sidebar .card-enhanced:last-child');
-        if (requisitosCard) {
-            requisitosCard.innerHTML = '<div class="card-body"><div class="text-center"><i class="fas fa-spinner fa-spin"></i> Cargando requisitos...</div></div>';
+        if (!documentoOrigenField) {
+            console.error('Campo documento_origen no encontrado');
+            return;
         }
         
+        const documentoOrigenId = documentoOrigenField.value;
+        if (!documentoOrigenId) {
+            console.log('No hay documento origen seleccionado');
+            return;
+        }
+        
+        // Buscar el card de requisitos por ID específico
+        let requisitosCard = document.getElementById('card-requisitos-documento');
+        
+        if (!requisitosCard) {
+            // Si no existe, buscar en el sidebar
+            const sidebar = document.querySelector('.poliza-layout-sidebar');
+            if (!sidebar) {
+                console.error('No se encontró el sidebar');
+                return;
+            }
+            // Buscar el último card que tenga "Requisitos" en el header
+            const cards = sidebar.querySelectorAll('.card-enhanced');
+            for (let i = cards.length - 1; i >= 0; i--) {
+                const header = cards[i].querySelector('.card-header');
+                if (header && header.textContent.includes('Requisitos')) {
+                    requisitosCard = cards[i];
+                    requisitosCard.id = 'card-requisitos-documento';
+                    break;
+                }
+            }
+            // Si aún no se encuentra, usar el último card
+            if (!requisitosCard && cards.length > 0) {
+                requisitosCard = cards[cards.length - 1];
+                requisitosCard.id = 'card-requisitos-documento';
+            }
+        }
+        
+        if (!requisitosCard) {
+            console.error('No se encontró el card de requisitos');
+            return;
+        }
+        
+        // Mostrar indicador de carga
+        requisitosCard.innerHTML = '<div class="card-header" style="background: linear-gradient(135deg, var(--avenida-orange) 0%, #e0a800 100%); color: white;"><h6 class="mb-0"><i class="fas fa-clipboard-check"></i> Requisitos del Documento</h6></div><div class="card-body"><div class="text-center"><i class="fas fa-spinner fa-spin"></i> Cargando requisitos...</div></div>';
+        
         // Hacer petición AJAX
-        fetch(`{% url 'gestion:obtener_requisitos_documento' contrato.id %}?documento_origen=${encodeURIComponent(documentoOrigenId)}`)
-            .then(response => response.json())
+        const url = `{% url 'gestion:obtener_requisitos_documento' contrato.id %}?documento_origen=${encodeURIComponent(documentoOrigenId)}`;
+        console.log('Solicitando requisitos desde:', url);
+        
+        fetch(url)
+            .then(response => {
+                console.log('Respuesta recibida, status:', response.status);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
             .then(data => {
+                console.log('Requisitos recibidos:', data);
                 // Actualizar el panel de requisitos con los nuevos datos
-                actualizarPanelRequisitos(data);
+                actualizarPanelRequisitos(data, requisitosCard);
             })
             .catch(error => {
                 console.error('Error al cargar requisitos:', error);
-                if (requisitosCard) {
-                    requisitosCard.innerHTML = '<div class="card-body"><div class="alert alert-danger">Error al cargar requisitos</div></div>';
-                }
+                requisitosCard.innerHTML = '<div class="card-header" style="background: linear-gradient(135deg, var(--avenida-orange) 0%, #e0a800 100%); color: white;"><h6 class="mb-0"><i class="fas fa-clipboard-check"></i> Requisitos del Documento</h6></div><div class="card-body"><div class="alert alert-danger">Error al cargar requisitos. Por favor recargue la página.</div></div>';
             });
     }
     
@@ -217,13 +260,6 @@ document.addEventListener('DOMContentLoaded', function() {
     
     if (documentoOrigenField) {
         documentoOrigenField.addEventListener('change', actualizarRequisitos);
-        // También actualizar al cargar la página si hay un valor inicial
-        if (documentoOrigenField.value) {
-            // Esperar un momento para que el DOM esté completamente cargado
-            setTimeout(() => {
-                actualizarRequisitos();
-            }, 500);
-        }
     }
 });
 </script>
