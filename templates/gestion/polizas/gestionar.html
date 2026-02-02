@@ -455,7 +455,7 @@
                                         <td>${{ poliza.valor_asegurado|formato_moneda }}</td>
                                         <td>
                                             {% if poliza.tiene_colchon and poliza.fecha_vencimiento_real %}
-                                                {# Si tiene colchón, mostrar fecha real como principal #}
+                                                {# Si tiene colchón, mostrar fecha_vencimiento_real (fecha_vencimiento - colchon) como principal #}
                                                 <strong>{{ poliza.fecha_vencimiento_real|date:"d/m/Y" }}</strong>
                                                 <br><small class="text-muted">
                                                     <i class="fas fa-calendar-alt"></i> Con colchón hasta: {{ poliza.fecha_vencimiento|date:"d/m/Y" }}
