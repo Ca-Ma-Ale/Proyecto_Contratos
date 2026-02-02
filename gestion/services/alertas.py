@@ -854,9 +854,16 @@ def obtener_alertas_polizas_requeridas_no_aportadas(
         for tipo_poliza, requisitos in polizas_requeridas.items():
             otrosi_modificador = requisitos.get('otrosi_modificador')
             # Comparar usando str() para asegurar comparación correcta (pueden ser diferentes tipos)
-            if otrosi_modificador is not None and str(otrosi_modificador) == str(identificador_documento_vigente):
-                requisitos_del_documento_vigente[tipo_poliza] = requisitos
+            # Si hay documento vigente y el otrosi_modificador coincide, el requisito viene del documento vigente
+            if documento_vigente and otrosi_modificador is not None:
+                otrosi_modificador_str = str(otrosi_modificador)
+                identificador_str = str(identificador_documento_vigente) if identificador_documento_vigente else None
+                if otrosi_modificador_str == identificador_str:
+                    requisitos_del_documento_vigente[tipo_poliza] = requisitos
+                else:
+                    requisitos_del_contrato_base[tipo_poliza] = requisitos
             else:
+                # Si no hay documento vigente o el requisito no tiene modificador, viene del contrato base
                 requisitos_del_contrato_base[tipo_poliza] = requisitos
         
         # Verificar cada tipo de póliza requerida
