@@ -843,9 +843,9 @@ def obtener_alertas_polizas_requeridas_no_aportadas(
         identificador_documento_vigente = None
         if documento_vigente:
             if hasattr(documento_vigente, 'numero_otrosi'):
-                identificador_documento_vigente = documento_vigente.numero_otrosi
+                identificador_documento_vigente = str(documento_vigente.numero_otrosi)
             elif hasattr(documento_vigente, 'numero_renovacion'):
-                identificador_documento_vigente = documento_vigente.numero_renovacion
+                identificador_documento_vigente = str(documento_vigente.numero_renovacion)
         
         # Separar requisitos del documento vigente vs contrato base
         requisitos_del_documento_vigente = {}
@@ -865,10 +865,12 @@ def obtener_alertas_polizas_requeridas_no_aportadas(
             # Obtener pólizas del documento vigente
             if documento_vigente:
                 if hasattr(documento_vigente, 'numero_otrosi'):
+                    # Filtrar pólizas que pertenecen a este Otro Sí específico
                     polizas_contrato = contrato.polizas.filter(
                         otrosi=documento_vigente
                     )
                 elif hasattr(documento_vigente, 'numero_renovacion'):
+                    # Filtrar pólizas que pertenecen a esta Renovación específica
                     polizas_contrato = contrato.polizas.filter(
                         renovacion_automatica=documento_vigente
                     )
@@ -887,16 +889,24 @@ def obtener_alertas_polizas_requeridas_no_aportadas(
                 polizas_tipo = polizas_contrato.filter(tipo=tipo_poliza)
                 poliza_vigente = None
                 
+                # Verificar cada póliza del tipo requerido para encontrar una vigente
                 for poliza_candidata in polizas_tipo:
-                    fecha_vencimiento_efectiva = poliza_candidata.obtener_fecha_vencimiento_efectiva(fecha_base)
-                    if fecha_vencimiento_efectiva >= fecha_base:
-                        if fecha_fin_requerida:
-                            if fecha_vencimiento_efectiva >= fecha_fin_requerida:
+                    try:
+                        fecha_vencimiento_efectiva = poliza_candidata.obtener_fecha_vencimiento_efectiva(fecha_base)
+                        # Verificar que la póliza esté vigente (no vencida)
+                        if fecha_vencimiento_efectiva >= fecha_base:
+                            # Verificar que cubra hasta la fecha requerida si existe
+                            if fecha_fin_requerida:
+                                if fecha_vencimiento_efectiva >= fecha_fin_requerida:
+                                    poliza_vigente = poliza_candidata
+                                    break
+                            else:
+                                # Si no hay fecha fin requerida, cualquier póliza vigente es válida
                                 poliza_vigente = poliza_candidata
                                 break
-                        else:
-                            poliza_vigente = poliza_candidata
-                            break
+                    except Exception:
+                        # Si hay error al obtener fecha efectiva, continuar con la siguiente póliza
+                        continue
                 
                 # Si el documento vigente NO tiene su póliza vigente, generar alerta
                 if not poliza_vigente:
