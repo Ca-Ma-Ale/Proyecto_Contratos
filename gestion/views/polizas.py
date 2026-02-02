@@ -244,40 +244,37 @@ def nueva_poliza(request, contrato_id):
             # Asignar contrato ANTES de cualquier operación que lo necesite
             poliza.contrato = contrato
             
-            # Recalcular fecha_vencimiento_real si tiene colchón (ahora que contrato está asignado)
-            # Usar la fecha final del documento origen específico
-            if hasattr(poliza, 'tiene_colchon') and poliza.tiene_colchon and poliza.contrato:
-                from datetime import date, timedelta
-                try:
-                    fecha_final = None
-                    
-                    if poliza.otrosi:
-                        # Prioridad: nueva_fecha_final_actualizada > effective_to > fecha final inicial del contrato
-                        if poliza.otrosi.nueva_fecha_final_actualizada:
-                            fecha_final = poliza.otrosi.nueva_fecha_final_actualizada
-                        elif poliza.otrosi.effective_to:
-                            fecha_final = poliza.otrosi.effective_to
-                        else:
-                            # Si el Otro Sí no modifica la fecha final, usar la fecha final inicial del contrato
-                            fecha_final = poliza.contrato.fecha_final_inicial
-                    elif poliza.renovacion_automatica:
-                        if poliza.renovacion_automatica.nueva_fecha_final_actualizada:
-                            fecha_final = poliza.renovacion_automatica.nueva_fecha_final_actualizada
-                        elif poliza.renovacion_automatica.effective_to:
-                            fecha_final = poliza.renovacion_automatica.effective_to
-                        else:
-                            fecha_antes_renovacion = poliza.renovacion_automatica.effective_from - timedelta(days=1) if poliza.renovacion_automatica.effective_from else date.today()
-                            from gestion.services.alertas import _obtener_fecha_final_contrato
-                            fecha_final = _obtener_fecha_final_contrato(poliza.contrato, fecha_antes_renovacion)
-                    else:
-                        # Si pertenece al contrato base, usar la fecha final inicial del contrato
-                        # NO usar fecha final vigente que puede haber sido modificada por Otros Sí o Renovaciones posteriores
-                        fecha_final = poliza.contrato.fecha_final_inicial
-                    
-                    if fecha_final:
-                        poliza.fecha_vencimiento_real = fecha_final
-                except Exception:
-                    pass
+            # Recalcular fecha_vencimiento_real si tiene colchón
+            # La fecha real se calcula restando los meses de colchón de la fecha de vencimiento registrada
+            if hasattr(poliza, 'tiene_colchon') and poliza.tiene_colchon:
+                meses_colchon = getattr(poliza, 'meses_colchon', 0) or 0
+                if meses_colchon > 0 and poliza.fecha_vencimiento:
+                    try:
+                        from dateutil.relativedelta import relativedelta
+                        poliza.fecha_vencimiento_real = poliza.fecha_vencimiento - relativedelta(months=meses_colchon)
+                    except ImportError:
+                        # Si dateutil no está disponible, calcular manualmente
+                        try:
+                            from datetime import date
+                            from calendar import monthrange
+                            año = poliza.fecha_vencimiento.year
+                            mes = poliza.fecha_vencimiento.month
+                            dia = poliza.fecha_vencimiento.day
+                            
+                            mes -= meses_colchon
+                            while mes <= 0:
+                                mes += 12
+                                año -= 1
+                            
+                            max_dia = monthrange(año, mes)[1]
+                            if dia > max_dia:
+                                dia = max_dia
+                            
+                            poliza.fecha_vencimiento_real = date(año, mes, dia)
+                        except Exception:
+                            pass
+                    except Exception:
+                        pass
             
             # Manejar campos adicionales del formulario
             meses_cobertura = request.POST.get('meses_cobertura')
@@ -366,39 +363,36 @@ def editar_poliza(request, poliza_id):
             poliza = form.save(commit=False)
             
             # Recalcular fecha_vencimiento_real si tiene colchón
-            # Usar la fecha final del documento origen específico
-            if hasattr(poliza, 'tiene_colchon') and poliza.tiene_colchon and poliza.contrato:
-                from datetime import date, timedelta
-                try:
-                    fecha_final = None
-                    
-                    if poliza.otrosi:
-                        # Prioridad: nueva_fecha_final_actualizada > effective_to > fecha final inicial del contrato
-                        if poliza.otrosi.nueva_fecha_final_actualizada:
-                            fecha_final = poliza.otrosi.nueva_fecha_final_actualizada
-                        elif poliza.otrosi.effective_to:
-                            fecha_final = poliza.otrosi.effective_to
-                        else:
-                            # Si el Otro Sí no modifica la fecha final, usar la fecha final inicial del contrato
-                            fecha_final = poliza.contrato.fecha_final_inicial
-                    elif poliza.renovacion_automatica:
-                        if poliza.renovacion_automatica.nueva_fecha_final_actualizada:
-                            fecha_final = poliza.renovacion_automatica.nueva_fecha_final_actualizada
-                        elif poliza.renovacion_automatica.effective_to:
-                            fecha_final = poliza.renovacion_automatica.effective_to
-                        else:
-                            fecha_antes_renovacion = poliza.renovacion_automatica.effective_from - timedelta(days=1) if poliza.renovacion_automatica.effective_from else date.today()
-                            from gestion.services.alertas import _obtener_fecha_final_contrato
-                            fecha_final = _obtener_fecha_final_contrato(poliza.contrato, fecha_antes_renovacion)
-                    else:
-                        # Si pertenece al contrato base, usar la fecha final inicial del contrato
-                        # NO usar fecha final vigente que puede haber sido modificada por Otros Sí o Renovaciones posteriores
-                        fecha_final = poliza.contrato.fecha_final_inicial
-                    
-                    if fecha_final:
-                        poliza.fecha_vencimiento_real = fecha_final
-                except Exception:
-                    pass
+            # La fecha real se calcula restando los meses de colchón de la fecha de vencimiento registrada
+            if hasattr(poliza, 'tiene_colchon') and poliza.tiene_colchon:
+                meses_colchon = getattr(poliza, 'meses_colchon', 0) or 0
+                if meses_colchon > 0 and poliza.fecha_vencimiento:
+                    try:
+                        from dateutil.relativedelta import relativedelta
+                        poliza.fecha_vencimiento_real = poliza.fecha_vencimiento - relativedelta(months=meses_colchon)
+                    except ImportError:
+                        # Si dateutil no está disponible, calcular manualmente
+                        try:
+                            from datetime import date
+                            from calendar import monthrange
+                            año = poliza.fecha_vencimiento.year
+                            mes = poliza.fecha_vencimiento.month
+                            dia = poliza.fecha_vencimiento.day
+                            
+                            mes -= meses_colchon
+                            while mes <= 0:
+                                mes += 12
+                                año -= 1
+                            
+                            max_dia = monthrange(año, mes)[1]
+                            if dia > max_dia:
+                                dia = max_dia
+                            
+                            poliza.fecha_vencimiento_real = date(año, mes, dia)
+                        except Exception:
+                            pass
+                    except Exception:
+                        pass
             
             # Manejar campos adicionales del formulario
             meses_cobertura = request.POST.get('meses_cobertura')
