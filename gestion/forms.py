@@ -1141,14 +1141,14 @@ class PolizaForm(BaseModelForm):
                     
                     # Si pertenece a un Otro Sí específico, usar su fecha final
                     if poliza.otrosi:
-                        if poliza.otrosi.effective_to:
-                            fecha_final = poliza.otrosi.effective_to
-                        elif poliza.otrosi.nueva_fecha_final_actualizada:
+                        # Prioridad: nueva_fecha_final_actualizada > effective_to > fecha final inicial del contrato
+                        if poliza.otrosi.nueva_fecha_final_actualizada:
                             fecha_final = poliza.otrosi.nueva_fecha_final_actualizada
+                        elif poliza.otrosi.effective_to:
+                            fecha_final = poliza.otrosi.effective_to
                         else:
-                            fecha_antes_otrosi = poliza.otrosi.effective_from - timedelta(days=1) if poliza.otrosi.effective_from else date.today()
-                            from gestion.services.alertas import _obtener_fecha_final_contrato
-                            fecha_final = _obtener_fecha_final_contrato(poliza.contrato, fecha_antes_otrosi)
+                            # Si el Otro Sí no modifica la fecha final, usar la fecha final inicial del contrato
+                            fecha_final = poliza.contrato.fecha_final_inicial
                     
                     # Si pertenece a una Renovación Automática específica, usar su fecha final
                     elif poliza.renovacion_automatica:

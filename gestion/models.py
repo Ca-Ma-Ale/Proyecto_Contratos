@@ -876,16 +876,17 @@ class Poliza(PolizaMixin, AuditoriaMixin):
                 
                 # Si pertenece a un Otro Sí específico, usar su fecha final
                 if self.otrosi:
-                    # Prioridad: effective_to > nueva_fecha_final_actualizada > fecha final del contrato antes del Otro Sí
-                    if self.otrosi.effective_to:
-                        fecha_final = self.otrosi.effective_to
-                    elif self.otrosi.nueva_fecha_final_actualizada:
+                    # Prioridad: nueva_fecha_final_actualizada > effective_to > fecha final inicial del contrato
+                    # Si el Otro Sí modifica la fecha final del contrato, usar esa fecha
+                    if self.otrosi.nueva_fecha_final_actualizada:
                         fecha_final = self.otrosi.nueva_fecha_final_actualizada
+                    # Si tiene effective_to pero no nueva_fecha_final_actualizada, usar effective_to
+                    elif self.otrosi.effective_to:
+                        fecha_final = self.otrosi.effective_to
                     else:
-                        # Si no tiene fecha específica, usar la fecha final vigente antes del Otro Sí
-                        fecha_antes_otrosi = self.otrosi.effective_from - timedelta(days=1) if self.otrosi.effective_from else date.today()
-                        from gestion.services.alertas import _obtener_fecha_final_contrato
-                        fecha_final = _obtener_fecha_final_contrato(self.contrato, fecha_antes_otrosi)
+                        # Si el Otro Sí no modifica la fecha final, usar la fecha final inicial del contrato
+                        # NO usar fecha final vigente que puede haber sido modificada por otros Otros Sí
+                        fecha_final = self.contrato.fecha_final_inicial
                 
                 # Si pertenece a una Renovación Automática específica, usar su fecha final
                 elif self.renovacion_automatica:
