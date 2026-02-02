@@ -871,14 +871,16 @@ class Poliza(PolizaMixin, AuditoriaMixin):
         # Calcular fecha_vencimiento_real si tiene colchón
         # La fecha real se calcula restando los meses de colchón de la fecha de vencimiento registrada
         # fecha_vencimiento_real = fecha_vencimiento - meses_colchon
+        # SIEMPRE recalcular si tiene colchón y fecha_vencimiento, incluso si fecha_vencimiento_real ya tiene valor
         if self.tiene_colchon and self.meses_colchon and self.fecha_vencimiento:
-            try:
-                meses_colchon = self.meses_colchon or 0
-                if meses_colchon > 0:
+            meses_colchon = self.meses_colchon or 0
+            if meses_colchon > 0:
+                try:
                     # Restar meses de colchón de la fecha de vencimiento registrada
                     try:
                         from dateutil.relativedelta import relativedelta
-                        self.fecha_vencimiento_real = self.fecha_vencimiento - relativedelta(months=meses_colchon)
+                        nueva_fecha_real = self.fecha_vencimiento - relativedelta(months=meses_colchon)
+                        self.fecha_vencimiento_real = nueva_fecha_real
                     except ImportError:
                         # Si dateutil no está disponible, calcular manualmente
                         año = self.fecha_vencimiento.year
@@ -898,9 +900,19 @@ class Poliza(PolizaMixin, AuditoriaMixin):
                             dia = max_dia
                         
                         self.fecha_vencimiento_real = date(año, mes, dia)
-            except Exception:
-                # Si hay error al calcular, no establecer fecha_vencimiento_real
-                pass
+                except Exception as e:
+                    # Si hay error al calcular, no establecer fecha_vencimiento_real
+                    # pero loguear el error para debugging
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.error(f"Error al calcular fecha_vencimiento_real para póliza {self.id}: {e}")
+                    pass
+        elif self.tiene_colchon and not self.meses_colchon:
+            # Si tiene colchón pero no meses_colchon, limpiar fecha_vencimiento_real
+            self.fecha_vencimiento_real = None
+        elif not self.tiene_colchon:
+            # Si no tiene colchón, limpiar fecha_vencimiento_real
+            self.fecha_vencimiento_real = None
         
         super().save(*args, **kwargs)
     
