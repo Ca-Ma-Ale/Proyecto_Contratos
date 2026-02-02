@@ -869,44 +869,40 @@ class Poliza(PolizaMixin, AuditoriaMixin):
             self.documento_origen_tipo = 'CONTRATO'
         
         # Calcular fecha_vencimiento_real si tiene colchón
-        # Usar la fecha final del documento origen específico, no la fecha final vigente del contrato
-        if self.tiene_colchon and self.contrato:
+        # La fecha real se calcula restando los meses de colchón de la fecha de vencimiento registrada
+        if self.tiene_colchon and self.meses_colchon and self.fecha_vencimiento:
             try:
-                fecha_final = None
-                
-                # Si pertenece a un Otro Sí específico, usar su fecha final
-                if self.otrosi:
-                    # Prioridad: nueva_fecha_final_actualizada > effective_to > fecha final inicial del contrato
-                    # Si el Otro Sí modifica la fecha final del contrato, usar esa fecha
-                    if self.otrosi.nueva_fecha_final_actualizada:
-                        fecha_final = self.otrosi.nueva_fecha_final_actualizada
-                    # Si tiene effective_to pero no nueva_fecha_final_actualizada, usar effective_to
-                    elif self.otrosi.effective_to:
-                        fecha_final = self.otrosi.effective_to
-                    else:
-                        # Si el Otro Sí no modifica la fecha final, usar la fecha final inicial del contrato
-                        # NO usar fecha final vigente que puede haber sido modificada por otros Otros Sí
-                        fecha_final = self.contrato.fecha_final_inicial
-                
-                # Si pertenece a una Renovación Automática específica, usar su fecha final
-                elif self.renovacion_automatica:
-                    if self.renovacion_automatica.nueva_fecha_final_actualizada:
-                        fecha_final = self.renovacion_automatica.nueva_fecha_final_actualizada
-                    elif self.renovacion_automatica.effective_to:
-                        fecha_final = self.renovacion_automatica.effective_to
-                    else:
-                        # Si no tiene fecha específica, usar la fecha final vigente antes de la renovación
-                        fecha_antes_renovacion = self.renovacion_automatica.effective_from - timedelta(days=1) if self.renovacion_automatica.effective_from else date.today()
-                        from gestion.services.alertas import _obtener_fecha_final_contrato
-                        fecha_final = _obtener_fecha_final_contrato(self.contrato, fecha_antes_renovacion)
-                
-                # Si pertenece al contrato base, usar la fecha final inicial del contrato
-                # NO usar fecha final vigente que puede haber sido modificada por Otros Sí o Renovaciones posteriores
-                else:
-                    fecha_final = self.contrato.fecha_final_inicial
-                
-                if fecha_final:
-                    self.fecha_vencimiento_real = fecha_final
+                # Restar meses de colchón de la fecha de vencimiento registrada
+                meses_colchon = self.meses_colchon or 0
+                if meses_colchon > 0:
+                    # Calcular fecha real restando meses
+                    from dateutil.relativedelta import relativedelta
+                    self.fecha_vencimiento_real = self.fecha_vencimiento - relativedelta(months=meses_colchon)
+            except ImportError:
+                # Si dateutil no está disponible, calcular manualmente
+                try:
+                    meses_colchon = self.meses_colchon or 0
+                    if meses_colchon > 0:
+                        año = self.fecha_vencimiento.year
+                        mes = self.fecha_vencimiento.month
+                        dia = self.fecha_vencimiento.day
+                        
+                        # Restar meses
+                        mes -= meses_colchon
+                        while mes <= 0:
+                            mes += 12
+                            año -= 1
+                        
+                        # Ajustar día si es inválido (ej: 31 de febrero)
+                        from calendar import monthrange
+                        max_dia = monthrange(año, mes)[1]
+                        if dia > max_dia:
+                            dia = max_dia
+                        
+                        self.fecha_vencimiento_real = date(año, mes, dia)
+                except Exception:
+                    # Si hay error al calcular, no establecer fecha_vencimiento_real
+                    pass
             except Exception:
                 # Si hay error al calcular, no establecer fecha_vencimiento_real
                 pass
