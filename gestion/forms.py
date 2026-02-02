@@ -1131,13 +1131,41 @@ class PolizaForm(BaseModelForm):
             poliza.renovacion_automatica = None
         
         # Calcular fecha_vencimiento_real si tiene colchón
+        # Usar la fecha final del documento origen específico, no la fecha final vigente del contrato
         # Nota: contrato debe estar asignado antes de llamar a este método
         if hasattr(poliza, 'tiene_colchon') and poliza.tiene_colchon:
             if hasattr(poliza, 'contrato') and poliza.contrato:
-                from datetime import date
+                from datetime import date, timedelta
                 try:
-                    from gestion.services.alertas import _obtener_fecha_final_contrato
-                    fecha_final = _obtener_fecha_final_contrato(poliza.contrato, date.today())
+                    fecha_final = None
+                    
+                    # Si pertenece a un Otro Sí específico, usar su fecha final
+                    if poliza.otrosi:
+                        if poliza.otrosi.effective_to:
+                            fecha_final = poliza.otrosi.effective_to
+                        elif poliza.otrosi.nueva_fecha_final_actualizada:
+                            fecha_final = poliza.otrosi.nueva_fecha_final_actualizada
+                        else:
+                            fecha_antes_otrosi = poliza.otrosi.effective_from - timedelta(days=1) if poliza.otrosi.effective_from else date.today()
+                            from gestion.services.alertas import _obtener_fecha_final_contrato
+                            fecha_final = _obtener_fecha_final_contrato(poliza.contrato, fecha_antes_otrosi)
+                    
+                    # Si pertenece a una Renovación Automática específica, usar su fecha final
+                    elif poliza.renovacion_automatica:
+                        if poliza.renovacion_automatica.nueva_fecha_final_actualizada:
+                            fecha_final = poliza.renovacion_automatica.nueva_fecha_final_actualizada
+                        elif poliza.renovacion_automatica.effective_to:
+                            fecha_final = poliza.renovacion_automatica.effective_to
+                        else:
+                            fecha_antes_renovacion = poliza.renovacion_automatica.effective_from - timedelta(days=1) if poliza.renovacion_automatica.effective_from else date.today()
+                            from gestion.services.alertas import _obtener_fecha_final_contrato
+                            fecha_final = _obtener_fecha_final_contrato(poliza.contrato, fecha_antes_renovacion)
+                    
+                    # Si pertenece al contrato base, usar la fecha final vigente del contrato
+                    else:
+                        from gestion.services.alertas import _obtener_fecha_final_contrato
+                        fecha_final = _obtener_fecha_final_contrato(poliza.contrato, date.today())
+                    
                     if fecha_final:
                         poliza.fecha_vencimiento_real = fecha_final
                 except Exception:

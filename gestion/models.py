@@ -858,7 +858,7 @@ class Poliza(PolizaMixin, AuditoriaMixin):
     
     def save(self, *args, **kwargs):
         """Auto-asignar documento_origen_tipo y calcular fecha_vencimiento_real antes de guardar"""
-        from datetime import date
+        from datetime import date, timedelta
         
         # Auto-asignar documento_origen_tipo según relaciones
         if self.otrosi:
@@ -869,10 +869,41 @@ class Poliza(PolizaMixin, AuditoriaMixin):
             self.documento_origen_tipo = 'CONTRATO'
         
         # Calcular fecha_vencimiento_real si tiene colchón
+        # Usar la fecha final del documento origen específico, no la fecha final vigente del contrato
         if self.tiene_colchon and self.contrato:
             try:
-                from gestion.services.alertas import _obtener_fecha_final_contrato
-                fecha_final = _obtener_fecha_final_contrato(self.contrato, date.today())
+                fecha_final = None
+                
+                # Si pertenece a un Otro Sí específico, usar su fecha final
+                if self.otrosi:
+                    # Prioridad: effective_to > nueva_fecha_final_actualizada > fecha final del contrato antes del Otro Sí
+                    if self.otrosi.effective_to:
+                        fecha_final = self.otrosi.effective_to
+                    elif self.otrosi.nueva_fecha_final_actualizada:
+                        fecha_final = self.otrosi.nueva_fecha_final_actualizada
+                    else:
+                        # Si no tiene fecha específica, usar la fecha final vigente antes del Otro Sí
+                        fecha_antes_otrosi = self.otrosi.effective_from - timedelta(days=1) if self.otrosi.effective_from else date.today()
+                        from gestion.services.alertas import _obtener_fecha_final_contrato
+                        fecha_final = _obtener_fecha_final_contrato(self.contrato, fecha_antes_otrosi)
+                
+                # Si pertenece a una Renovación Automática específica, usar su fecha final
+                elif self.renovacion_automatica:
+                    if self.renovacion_automatica.nueva_fecha_final_actualizada:
+                        fecha_final = self.renovacion_automatica.nueva_fecha_final_actualizada
+                    elif self.renovacion_automatica.effective_to:
+                        fecha_final = self.renovacion_automatica.effective_to
+                    else:
+                        # Si no tiene fecha específica, usar la fecha final vigente antes de la renovación
+                        fecha_antes_renovacion = self.renovacion_automatica.effective_from - timedelta(days=1) if self.renovacion_automatica.effective_from else date.today()
+                        from gestion.services.alertas import _obtener_fecha_final_contrato
+                        fecha_final = _obtener_fecha_final_contrato(self.contrato, fecha_antes_renovacion)
+                
+                # Si pertenece al contrato base, usar la fecha final vigente del contrato
+                else:
+                    from gestion.services.alertas import _obtener_fecha_final_contrato
+                    fecha_final = _obtener_fecha_final_contrato(self.contrato, date.today())
+                
                 if fecha_final:
                     self.fecha_vencimiento_real = fecha_final
             except Exception:
