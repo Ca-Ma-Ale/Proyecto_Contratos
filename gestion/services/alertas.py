@@ -893,6 +893,7 @@ def obtener_alertas_polizas_requeridas_no_aportadas(
                 fecha_fin_requerida = requisitos.get('fecha_fin_requerida')
                 
                 # Buscar póliza vigente del documento vigente
+                # Primero obtener todas las pólizas del documento vigente del tipo requerido
                 polizas_tipo = polizas_contrato.filter(tipo=tipo_poliza)
                 poliza_vigente = None
                 
@@ -915,7 +916,8 @@ def obtener_alertas_polizas_requeridas_no_aportadas(
                         # Si hay error al obtener fecha efectiva, continuar con la siguiente póliza
                         continue
                 
-                # Si el documento vigente NO tiene su póliza vigente, generar alerta
+                # Si el documento vigente tiene su póliza vigente, NO generar alerta
+                # Si NO tiene su póliza vigente, generar alerta
                 if not poliza_vigente:
                     otrosi_modificador_numero = identificador_documento_vigente
                     alertas.append(
