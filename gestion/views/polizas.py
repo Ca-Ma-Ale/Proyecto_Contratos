@@ -270,8 +270,9 @@ def nueva_poliza(request, contrato_id):
                             from gestion.services.alertas import _obtener_fecha_final_contrato
                             fecha_final = _obtener_fecha_final_contrato(poliza.contrato, fecha_antes_renovacion)
                     else:
-                        from gestion.services.alertas import _obtener_fecha_final_contrato
-                        fecha_final = _obtener_fecha_final_contrato(poliza.contrato, date.today())
+                        # Si pertenece al contrato base, usar la fecha final inicial del contrato
+                        # NO usar fecha final vigente que puede haber sido modificada por Otros Sí o Renovaciones posteriores
+                        fecha_final = poliza.contrato.fecha_final_inicial
                     
                     if fecha_final:
                         poliza.fecha_vencimiento_real = fecha_final
@@ -390,8 +391,9 @@ def editar_poliza(request, poliza_id):
                             from gestion.services.alertas import _obtener_fecha_final_contrato
                             fecha_final = _obtener_fecha_final_contrato(poliza.contrato, fecha_antes_renovacion)
                     else:
-                        from gestion.services.alertas import _obtener_fecha_final_contrato
-                        fecha_final = _obtener_fecha_final_contrato(poliza.contrato, date.today())
+                        # Si pertenece al contrato base, usar la fecha final inicial del contrato
+                        # NO usar fecha final vigente que puede haber sido modificada por Otros Sí o Renovaciones posteriores
+                        fecha_final = poliza.contrato.fecha_final_inicial
                     
                     if fecha_final:
                         poliza.fecha_vencimiento_real = fecha_final

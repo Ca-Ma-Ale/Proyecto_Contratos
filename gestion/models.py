@@ -899,10 +899,10 @@ class Poliza(PolizaMixin, AuditoriaMixin):
                         from gestion.services.alertas import _obtener_fecha_final_contrato
                         fecha_final = _obtener_fecha_final_contrato(self.contrato, fecha_antes_renovacion)
                 
-                # Si pertenece al contrato base, usar la fecha final vigente del contrato
+                # Si pertenece al contrato base, usar la fecha final inicial del contrato
+                # NO usar fecha final vigente que puede haber sido modificada por Otros Sí o Renovaciones posteriores
                 else:
-                    from gestion.services.alertas import _obtener_fecha_final_contrato
-                    fecha_final = _obtener_fecha_final_contrato(self.contrato, date.today())
+                    fecha_final = self.contrato.fecha_final_inicial
                 
                 if fecha_final:
                     self.fecha_vencimiento_real = fecha_final
