@@ -71,6 +71,12 @@ debug_polizas.txt
 activar.txt
 *.backup
 views.py.backup
+debug_*.py
+test_*.py
+consulta_*.py
+verificar_*.py
+*_test.py
+*_debug.py
 
 # Flask stuff:
 instance/
