@@ -1059,12 +1059,16 @@
                                     <td>{{ poliza.get_tipo_display }}</td>
                                     <td>$<span class="formato-moneda">{{ poliza.valor_asegurado|floatformat:0 }}</span></td>
                                     <td>
-                                        {{ poliza.fecha_vencimiento }}
                                         {% if poliza.tiene_colchon and poliza.fecha_vencimiento_real %}
+                                            {# Si tiene colchón, mostrar fecha real como principal #}
+                                            {{ poliza.fecha_vencimiento_real|date:"d/m/Y" }}
                                             <br><small class="text-muted">
                                                 <i class="fas fa-calendar-alt"></i> Con colchón hasta: {{ poliza.fecha_vencimiento|date:"d/m/Y" }}
                                                 <span class="badge bg-info ms-1">{{ poliza.meses_colchon }} mes(es) colchón</span>
                                             </small>
+                                        {% else %}
+                                            {# Si no tiene colchón, mostrar fecha normal #}
+                                            {{ poliza.fecha_vencimiento|date:"d/m/Y" }}
                                         {% endif %}
                                         {% if poliza.otrosi or poliza.renovacion_automatica %}
                                             <br><small class="text-muted">
