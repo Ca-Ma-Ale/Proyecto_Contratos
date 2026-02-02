@@ -414,6 +414,18 @@ def validar_poliza(request, poliza_id):
     poliza = get_object_or_404(Poliza, id=poliza_id)
     contrato = poliza.contrato
     
+    # Manejar acciones POST
+    if request.method == 'POST':
+        accion = request.POST.get('accion')
+        
+        if accion == 'corregir':
+            # Redirigir a editar póliza
+            return redirect('gestion:editar_poliza', poliza_id=poliza.id)
+        elif accion == 'continuar':
+            # Continuar de todas formas - redirigir a gestión de pólizas
+            messages.info(request, f'Póliza {poliza.numero_poliza} guardada con inconsistencias. Puede corregirla más tarde.')
+            return redirect('gestion:gestionar_polizas', contrato_id=contrato.id)
+    
     # Obtener requisitos del documento origen específico de la póliza
     documento = poliza.obtener_documento_origen()
     requisitos_contrato = {}
