@@ -1379,6 +1379,14 @@ def get_polizas_requeridas_contrato(contrato, fecha_referencia=None, permitir_fu
         valor_cumplimiento, otrosi_valor_cumplimiento = obtener_valor_y_otrosi('nuevo_valor_asegurado_cumplimiento', 'valor_asegurado_cumplimiento')
         otrosi_modificador_cumplimiento = otrosi_valor_cumplimiento
         
+        # Si el requisito viene del Otro Sí que modificó la exigencia, usar ese como modificador
+        # Esto asegura que el identificador coincida con el documento que realmente requiere la póliza
+        if otrosi_exige_cumplimiento:
+            # Verificar que el Otro Sí que modificó la exigencia sea vigente
+            if otrosi_exige_cumplimiento.effective_from <= fecha_referencia:
+                if otrosi_exige_cumplimiento.effective_to is None or otrosi_exige_cumplimiento.effective_to >= fecha_referencia:
+                    otrosi_modificador_cumplimiento = otrosi_exige_cumplimiento
+        
         polizas_requeridas['Cumplimiento'] = {
             'tipo': 'Cumplimiento',
             'valor_requerido': valor_cumplimiento,
