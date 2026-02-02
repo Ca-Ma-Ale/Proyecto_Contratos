@@ -804,7 +804,13 @@ def obtener_alertas_polizas_requeridas_no_aportadas(
     contratos_vigentes = (
         Contrato.objects.filter(vigente=True)
         .select_related('arrendatario', 'proveedor', 'local')
-        .prefetch_related('otrosi', 'renovaciones_automaticas', 'polizas')
+        .prefetch_related(
+            'otrosi',
+            'renovaciones_automaticas',
+            'polizas',
+            'polizas__otrosi',
+            'polizas__renovacion_automatica'
+        )
     )
     
     if tipo_contrato_cp:
@@ -875,13 +881,15 @@ def obtener_alertas_polizas_requeridas_no_aportadas(
             if documento_vigente:
                 if hasattr(documento_vigente, 'numero_otrosi'):
                     # Filtrar pólizas que pertenecen a este Otro Sí específico
+                    # Usar el ID para asegurar que la comparación funcione correctamente
                     polizas_contrato = contrato.polizas.filter(
-                        otrosi=documento_vigente
+                        otrosi_id=documento_vigente.id
                     )
                 elif hasattr(documento_vigente, 'numero_renovacion'):
                     # Filtrar pólizas que pertenecen a esta Renovación específica
+                    # Usar el ID para asegurar que la comparación funcione correctamente
                     polizas_contrato = contrato.polizas.filter(
-                        renovacion_automatica=documento_vigente
+                        renovacion_automatica_id=documento_vigente.id
                     )
                 else:
                     polizas_contrato = contrato.polizas.none()
@@ -898,6 +906,10 @@ def obtener_alertas_polizas_requeridas_no_aportadas(
                 # Primero obtener todas las pólizas del documento vigente del tipo requerido
                 polizas_tipo = polizas_contrato.filter(tipo=tipo_poliza)
                 poliza_vigente = None
+                
+                # Debug: verificar qué pólizas se están buscando
+                # print(f"DEBUG: Buscando pólizas de tipo '{tipo_poliza}' asociadas a documento vigente {identificador_documento_vigente}")
+                # print(f"DEBUG: Total pólizas del documento: {polizas_contrato.count()}, del tipo: {polizas_tipo.count()}")
                 
                 # Verificar cada póliza del tipo requerido para encontrar una vigente
                 for poliza_candidata in polizas_tipo:
@@ -980,15 +992,25 @@ def obtener_alertas_polizas_requeridas_no_aportadas(
                     # Buscar el Otro Sí por su número (normalizar para comparación)
                     from gestion.models import OtroSi
                     otrosi_modificador_normalizado = str(otrosi_modificador).strip()
+                    
+                    # Intentar buscar por número exacto primero
                     otrosi_requisito = OtroSi.objects.filter(
                         contrato=contrato,
                         numero_otrosi__iexact=otrosi_modificador_normalizado
                     ).first()
                     
+                    # Si no se encuentra, intentar búsqueda más flexible
+                    if not otrosi_requisito:
+                        otrosi_requisito = OtroSi.objects.filter(
+                            contrato=contrato,
+                            numero_otrosi__icontains=otrosi_modificador_normalizado
+                        ).first()
+                    
                     if otrosi_requisito:
                         # Buscar SOLO pólizas asociadas a este Otro Sí específico
+                        # Usar el ID para asegurar que la comparación funcione correctamente
                         polizas_otrosi = contrato.polizas.filter(
-                            otrosi=otrosi_requisito,
+                            otrosi_id=otrosi_requisito.id,
                             tipo=tipo_poliza
                         )
                         
