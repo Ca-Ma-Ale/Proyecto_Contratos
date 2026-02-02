@@ -649,6 +649,56 @@ def obtener_polizas_criticas(
                     continue
             # Si no tiene fecha final, se considera vigente (contrato indefinido)
             
+            # Verificar si hay un documento vigente (Otro Sí o Renovación) que requiere esta póliza
+            # Si el documento vigente ya tiene su propia póliza registrada, NO mostrar la del contrato base como crítica
+            documento_vigente = get_otrosi_vigente(contrato, fecha_base)
+            
+            if documento_vigente:
+                # Obtener pólizas requeridas para verificar si el documento vigente requiere esta póliza
+                from gestion.utils_otrosi import get_polizas_requeridas_contrato
+                polizas_requeridas = get_polizas_requeridas_contrato(contrato, fecha_base)
+                
+                # Obtener identificador del documento vigente
+                identificador_documento_vigente = None
+                if hasattr(documento_vigente, 'numero_otrosi'):
+                    identificador_documento_vigente = documento_vigente.numero_otrosi
+                elif hasattr(documento_vigente, 'numero_renovacion'):
+                    identificador_documento_vigente = documento_vigente.numero_renovacion
+                
+                # Verificar si esta póliza del contrato base está siendo reemplazada por una del documento vigente
+                tipo_poliza = poliza.tipo
+                if tipo_poliza in polizas_requeridas:
+                    requisitos = polizas_requeridas[tipo_poliza]
+                    otrosi_modificador = requisitos.get('otrosi_modificador')
+                    
+                    # Si el requisito viene del documento vigente (no del contrato base)
+                    if otrosi_modificador == identificador_documento_vigente:
+                        # Verificar si el documento vigente ya tiene su póliza registrada
+                        if hasattr(documento_vigente, 'numero_otrosi'):
+                            poliza_documento_vigente = contrato.polizas.filter(
+                                otrosi=documento_vigente,
+                                tipo=tipo_poliza
+                            ).first()
+                        elif hasattr(documento_vigente, 'numero_renovacion'):
+                            poliza_documento_vigente = contrato.polizas.filter(
+                                renovacion_automatica=documento_vigente,
+                                tipo=tipo_poliza
+                            ).first()
+                        else:
+                            poliza_documento_vigente = None
+                        
+                        # Si el documento vigente tiene su póliza y está vigente, NO mostrar la del contrato base
+                        if poliza_documento_vigente:
+                            try:
+                                fecha_vencimiento_efectiva_doc = poliza_documento_vigente.obtener_fecha_vencimiento_efectiva(fecha_base)
+                                if fecha_vencimiento_efectiva_doc >= fecha_base:
+                                    # El documento vigente tiene su póliza vigente, NO alertar sobre la del contrato base
+                                    continue
+                            except AttributeError:
+                                # Si no tiene método obtener_fecha_vencimiento_efectiva, usar fecha_vencimiento
+                                if poliza_documento_vigente.fecha_vencimiento >= fecha_base:
+                                    continue
+            
             # Usar fecha de vencimiento efectiva (considerando colchón si aplica)
             # Manejar caso donde los campos de colchón aún no existen (migración pendiente)
             try:
