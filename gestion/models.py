@@ -869,40 +869,65 @@ class Poliza(PolizaMixin, AuditoriaMixin):
             self.documento_origen_tipo = 'CONTRATO'
         
         # Calcular fecha_vencimiento_real si tiene colchón
-        # La fecha real se calcula restando los meses de colchón de la fecha de vencimiento registrada
-        if self.tiene_colchon and self.meses_colchon and self.fecha_vencimiento:
+        # La fecha real se calcula desde la fecha final que debería tener la póliza según su documento origen
+        # menos los meses de colchón
+        if self.tiene_colchon and self.meses_colchon and self.contrato:
             try:
-                # Restar meses de colchón de la fecha de vencimiento registrada
                 meses_colchon = self.meses_colchon or 0
                 if meses_colchon > 0:
-                    # Calcular fecha real restando meses
-                    from dateutil.relativedelta import relativedelta
-                    self.fecha_vencimiento_real = self.fecha_vencimiento - relativedelta(months=meses_colchon)
-            except ImportError:
-                # Si dateutil no está disponible, calcular manualmente
-                try:
-                    meses_colchon = self.meses_colchon or 0
-                    if meses_colchon > 0:
-                        año = self.fecha_vencimiento.year
-                        mes = self.fecha_vencimiento.month
-                        dia = self.fecha_vencimiento.day
-                        
-                        # Restar meses
-                        mes -= meses_colchon
-                        while mes <= 0:
-                            mes += 12
-                            año -= 1
-                        
-                        # Ajustar día si es inválido (ej: 31 de febrero)
-                        from calendar import monthrange
-                        max_dia = monthrange(año, mes)[1]
-                        if dia > max_dia:
-                            dia = max_dia
-                        
-                        self.fecha_vencimiento_real = date(año, mes, dia)
-                except Exception:
-                    # Si hay error al calcular, no establecer fecha_vencimiento_real
-                    pass
+                    # Obtener la fecha final que debería tener la póliza según su documento origen
+                    fecha_final_documento = None
+                    
+                    # Si pertenece a un Otro Sí específico
+                    if self.otrosi:
+                        if self.otrosi.nueva_fecha_final_actualizada:
+                            fecha_final_documento = self.otrosi.nueva_fecha_final_actualizada
+                        elif self.otrosi.effective_to:
+                            fecha_final_documento = self.otrosi.effective_to
+                        else:
+                            fecha_final_documento = self.contrato.fecha_final_inicial
+                    
+                    # Si pertenece a una Renovación Automática específica
+                    elif self.renovacion_automatica:
+                        if self.renovacion_automatica.nueva_fecha_final_actualizada:
+                            fecha_final_documento = self.renovacion_automatica.nueva_fecha_final_actualizada
+                        elif self.renovacion_automatica.effective_to:
+                            fecha_final_documento = self.renovacion_automatica.effective_to
+                        else:
+                            fecha_final_documento = self.contrato.fecha_final_inicial
+                    
+                    # Si pertenece al contrato base
+                    else:
+                        fecha_final_documento = self.contrato.fecha_final_inicial
+                    
+                    # Si no hay fecha_vencimiento registrada, usar la fecha final del documento como fecha_vencimiento
+                    if not self.fecha_vencimiento and fecha_final_documento:
+                        self.fecha_vencimiento = fecha_final_documento
+                    
+                    # Calcular fecha_vencimiento_real restando el colchón de la fecha final del documento
+                    if fecha_final_documento:
+                        try:
+                            from dateutil.relativedelta import relativedelta
+                            self.fecha_vencimiento_real = fecha_final_documento - relativedelta(months=meses_colchon)
+                        except ImportError:
+                            # Si dateutil no está disponible, calcular manualmente
+                            año = fecha_final_documento.year
+                            mes = fecha_final_documento.month
+                            dia = fecha_final_documento.day
+                            
+                            # Restar meses
+                            mes -= meses_colchon
+                            while mes <= 0:
+                                mes += 12
+                                año -= 1
+                            
+                            # Ajustar día si es inválido (ej: 31 de febrero)
+                            from calendar import monthrange
+                            max_dia = monthrange(año, mes)[1]
+                            if dia > max_dia:
+                                dia = max_dia
+                            
+                            self.fecha_vencimiento_real = date(año, mes, dia)
             except Exception:
                 # Si hay error al calcular, no establecer fecha_vencimiento_real
                 pass
