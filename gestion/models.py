@@ -626,7 +626,6 @@ class RequerimientoPoliza(AuditoriaMixin):
         return f"{self.tipo} - ${self.valor_asegurado_requerido:,.2f}"
 
 
-# Mantener el modelo Poliza para compatibilidad (deprecated)
 class Poliza(PolizaMixin, AuditoriaMixin):
     contrato = models.ForeignKey(Contrato, on_delete=models.CASCADE, related_name='polizas', verbose_name='Contrato')
     otrosi = models.ForeignKey('OtroSi', on_delete=models.CASCADE, null=True, blank=True, related_name='polizas', verbose_name='Otro Sí', help_text='Otro Sí al que pertenece esta póliza')
@@ -822,8 +821,8 @@ class Poliza(PolizaMixin, AuditoriaMixin):
     )
 
     class Meta:
-        verbose_name = 'Póliza (Deprecated)'
-        verbose_name_plural = 'Pólizas (Deprecated)'
+        verbose_name = 'Póliza'
+        verbose_name_plural = 'Pólizas'
         ordering = ['-fecha_vencimiento']
 
     def __str__(self):
