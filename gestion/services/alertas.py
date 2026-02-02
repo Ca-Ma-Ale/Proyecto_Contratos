@@ -789,53 +789,75 @@ def obtener_alertas_polizas_requeridas_no_aportadas(
         if not polizas_requeridas:
             continue
         
-        # Si hay un documento vigente, verificar si ya tiene sus pólizas registradas
+        # Si hay un documento vigente, verificar si los requisitos vienen de él
         # Si el documento vigente requiere pólizas y ya las tiene, NO alertar (efecto cadena)
         # Si el documento vigente requiere pólizas pero NO las tiene, SÍ alertar
         if documento_vigente:
-            # Obtener todas las pólizas del documento vigente
+            # Obtener identificador del documento vigente para comparar con otrosi_modificador
+            identificador_documento_vigente = None
             if hasattr(documento_vigente, 'numero_otrosi'):
-                # Es un Otro Sí - obtener todas sus pólizas
-                polizas_documento_vigente = contrato.polizas.filter(
-                    otrosi=documento_vigente
-                )
+                identificador_documento_vigente = documento_vigente.numero_otrosi
             elif hasattr(documento_vigente, 'numero_renovacion'):
-                # Es una Renovación Automática - obtener todas sus pólizas
-                polizas_documento_vigente = contrato.polizas.filter(
-                    renovacion_automatica=documento_vigente
-                )
-            else:
-                polizas_documento_vigente = contrato.polizas.none()
+                identificador_documento_vigente = documento_vigente.numero_renovacion
             
-            # Verificar si las pólizas del documento vigente cubren todos los requisitos
-            todas_cubiertas = True
+            # Verificar si algún requisito viene del documento vigente
+            requisitos_del_documento_vigente = {}
+            requisitos_del_contrato_base = {}
+            
             for tipo_poliza, requisitos in polizas_requeridas.items():
-                fecha_fin_requerida = requisitos.get('fecha_fin_requerida')
-                poliza_documento = polizas_documento_vigente.filter(tipo=tipo_poliza).first()
+                otrosi_modificador = requisitos.get('otrosi_modificador')
+                # Si otrosi_modificador coincide con el documento vigente, el requisito viene del documento vigente
+                if otrosi_modificador == identificador_documento_vigente:
+                    requisitos_del_documento_vigente[tipo_poliza] = requisitos
+                else:
+                    # El requisito viene del contrato base o de otro documento
+                    requisitos_del_contrato_base[tipo_poliza] = requisitos
+            
+            # Si hay requisitos del documento vigente, verificar si ya tiene sus pólizas
+            if requisitos_del_documento_vigente:
+                # Obtener todas las pólizas del documento vigente
+                if hasattr(documento_vigente, 'numero_otrosi'):
+                    polizas_documento_vigente = contrato.polizas.filter(
+                        otrosi=documento_vigente
+                    )
+                elif hasattr(documento_vigente, 'numero_renovacion'):
+                    polizas_documento_vigente = contrato.polizas.filter(
+                        renovacion_automatica=documento_vigente
+                    )
+                else:
+                    polizas_documento_vigente = contrato.polizas.none()
                 
-                if not poliza_documento:
-                    # El documento vigente requiere esta póliza pero no la tiene
-                    todas_cubiertas = False
-                    break
-                
-                # Verificar que la póliza esté vigente usando fecha efectiva (considera colchón)
-                fecha_vencimiento_efectiva = poliza_documento.obtener_fecha_vencimiento_efectiva(fecha_base)
-                if fecha_vencimiento_efectiva < fecha_base:
-                    # La póliza ya venció
-                    todas_cubiertas = False
-                    break
-                
-                if fecha_fin_requerida:
-                    # Verificar que la póliza cubra hasta la fecha requerida
-                    if fecha_vencimiento_efectiva < fecha_fin_requerida:
+                # Verificar si las pólizas del documento vigente cubren todos sus requisitos
+                todas_cubiertas = True
+                for tipo_poliza, requisitos in requisitos_del_documento_vigente.items():
+                    fecha_fin_requerida = requisitos.get('fecha_fin_requerida')
+                    poliza_documento = polizas_documento_vigente.filter(tipo=tipo_poliza).first()
+                    
+                    if not poliza_documento:
+                        # El documento vigente requiere esta póliza pero no la tiene
                         todas_cubiertas = False
                         break
-            
-            # Si el documento vigente ya tiene todas sus pólizas registradas y cubren los requisitos,
-            # NO alertar (efecto cadena: el documento vigente ya cumple)
-            if todas_cubiertas:
-                continue  # No alertar porque el documento vigente ya tiene sus pólizas
-            # Si no tiene todas las pólizas, continuar con la verificación para alertar
+                    
+                    # Verificar que la póliza esté vigente usando fecha efectiva (considera colchón)
+                    fecha_vencimiento_efectiva = poliza_documento.obtener_fecha_vencimiento_efectiva(fecha_base)
+                    if fecha_vencimiento_efectiva < fecha_base:
+                        # La póliza ya venció
+                        todas_cubiertas = False
+                        break
+                    
+                    if fecha_fin_requerida:
+                        # Verificar que la póliza cubra hasta la fecha requerida
+                        if fecha_vencimiento_efectiva < fecha_fin_requerida:
+                            todas_cubiertas = False
+                            break
+                
+                # Si el documento vigente ya tiene todas sus pólizas registradas y cubren los requisitos,
+                # NO alertar por esos requisitos (efecto cadena: el documento vigente ya cumple)
+                # Pero SÍ debemos verificar los requisitos del contrato base si existen
+                if todas_cubiertas and not requisitos_del_contrato_base:
+                    continue  # No alertar porque el documento vigente ya tiene todas sus pólizas y no hay requisitos del contrato base
+                # Si el documento vigente tiene sus pólizas pero hay requisitos del contrato base, continuar para verificarlos
+                # Si el documento vigente NO tiene todas sus pólizas, continuar para alertar
         
         # Obtener pólizas vigentes del contrato según el documento vigente
         # Si hay documento vigente que requiere pólizas pero NO las tiene, buscar sus pólizas para alertar
@@ -864,7 +886,29 @@ def obtener_alertas_polizas_requeridas_no_aportadas(
             )
         
         # Verificar cada tipo de póliza requerida
-        for tipo_poliza, requisitos in polizas_requeridas.items():
+        # Si hay documento vigente y ya verificamos que tiene sus pólizas, solo verificar requisitos del contrato base
+        polizas_requeridas_a_verificar = polizas_requeridas
+        if documento_vigente:
+            # Si hay requisitos del contrato base, solo verificar esos
+            # Si no hay requisitos del contrato base pero el documento vigente no tiene todas sus pólizas, verificar todos
+            identificador_documento_vigente = None
+            if hasattr(documento_vigente, 'numero_otrosi'):
+                identificador_documento_vigente = documento_vigente.numero_otrosi
+            elif hasattr(documento_vigente, 'numero_renovacion'):
+                identificador_documento_vigente = documento_vigente.numero_renovacion
+            
+            requisitos_del_contrato_base = {
+                tipo: req for tipo, req in polizas_requeridas.items()
+                if req.get('otrosi_modificador') != identificador_documento_vigente
+            }
+            
+            # Si hay requisitos del contrato base, solo verificar esos
+            # Si no hay requisitos del contrato base, significa que todos vienen del documento vigente
+            # En ese caso, si llegamos aquí es porque el documento vigente NO tiene todas sus pólizas
+            if requisitos_del_contrato_base:
+                polizas_requeridas_a_verificar = requisitos_del_contrato_base
+        
+        for tipo_poliza, requisitos in polizas_requeridas_a_verificar.items():
             nombre_poliza = requisitos.get('nombre', tipo_poliza)
             valor_requerido = requisitos.get('valor_requerido')
             fecha_fin_requerida = requisitos.get('fecha_fin_requerida')
