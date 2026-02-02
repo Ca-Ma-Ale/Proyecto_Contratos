@@ -1062,7 +1062,7 @@
                                         {{ poliza.fecha_vencimiento }}
                                         {% if poliza.tiene_colchon and poliza.fecha_vencimiento_real %}
                                             <br><small class="text-muted">
-                                                <i class="fas fa-shield-alt"></i> Real: {{ poliza.fecha_vencimiento_real|date:"d/m/Y" }}
+                                                <i class="fas fa-calendar-alt"></i> Con colchón hasta: {{ poliza.fecha_vencimiento|date:"d/m/Y" }}
                                                 <span class="badge bg-info ms-1">{{ poliza.meses_colchon }} mes(es) colchón</span>
                                             </small>
                                         {% endif %}
