@@ -162,19 +162,22 @@ class PolizaMixin:
     """
     
     def obtener_estado_vigencia(self):
-        """Retorna el estado de vigencia de la póliza"""
-        if self.fecha_vencimiento < date.today():
+        """Retorna el estado de vigencia de la póliza usando la fecha efectiva"""
+        fecha_efectiva = self.obtener_fecha_vencimiento_efectiva()
+        if fecha_efectiva < date.today():
             return 'Vencida'
         else:
             return 'Vigente'
     
     def obtener_dias_para_vencer(self):
-        """Retorna los días que faltan para que venza la póliza (puede ser negativo si ya venció)"""
-        diferencia = (self.fecha_vencimiento - date.today()).days
+        """Retorna los días que faltan para que venza la póliza (puede ser negativo si ya venció)
+        Usa la fecha de vencimiento efectiva (considerando colchón si aplica)"""
+        fecha_efectiva = self.obtener_fecha_vencimiento_efectiva()
+        diferencia = (fecha_efectiva - date.today()).days
         return diferencia
     
     def obtener_estado_legible(self):
-        """Retorna un texto legible del estado de la póliza"""
+        """Retorna un texto legible del estado de la póliza usando la fecha efectiva"""
         dias = self.obtener_dias_para_vencer()
         if dias < 0:
             return f'Vencida hace {abs(dias)} días'
