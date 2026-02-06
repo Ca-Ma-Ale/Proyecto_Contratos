@@ -373,6 +373,9 @@ class ContratoForm(BaseModelForm):
         }
 
     def __init__(self, *args, **kwargs):
+        # Extraer user del kwargs si existe (para verificar permisos)
+        self.user = kwargs.pop('user', None)
+        
         # Limpiar datos antes de la validación si hay datos POST
         if 'data' in kwargs and kwargs['data']:
             data = kwargs['data'].copy()
@@ -380,6 +383,42 @@ class ContratoForm(BaseModelForm):
             kwargs['data'] = data
             
         super().__init__(*args, **kwargs)
+        
+        # Verificar si es creación o edición
+        es_creacion = not (self.instance and self.instance.pk)
+        es_admin = self.user and self.user.is_staff
+        
+        # Campos de Datos Generales del Contrato
+        campos_datos_generales = [
+            'num_contrato', 'tipo_contrato_cliente_proveedor', 'objeto_destinacion',
+            'tipo_contrato', 'tipo_servicio'
+        ]
+        
+        # Campos de Partes Involucradas
+        campos_partes_involucradas = [
+            'nit_concedente', 'rep_legal_concedente', 'marca_comercial',
+            'supervisor_concedente', 'supervisor_contraparte', 'arrendatario',
+            'proveedor', 'local'
+        ]
+        
+        # Al crear: hacer readonly los campos NIT y Representante Legal
+        if es_creacion:
+            if 'nit_concedente' in self.fields:
+                self.fields['nit_concedente'].widget.attrs['readonly'] = True
+                self.fields['nit_concedente'].widget.attrs['class'] = self.fields['nit_concedente'].widget.attrs.get('class', '') + ' form-control-enhanced'
+            if 'rep_legal_concedente' in self.fields:
+                self.fields['rep_legal_concedente'].widget.attrs['readonly'] = True
+                self.fields['rep_legal_concedente'].widget.attrs['class'] = self.fields['rep_legal_concedente'].widget.attrs.get('class', '') + ' form-control-enhanced'
+        
+        # Al editar: deshabilitar campos para usuarios auxiliares (no admin)
+        if not es_creacion and not es_admin:
+            for field_name in campos_datos_generales + campos_partes_involucradas:
+                if field_name in self.fields:
+                    self.fields[field_name].widget.attrs['disabled'] = True
+                    # Mantener clases CSS existentes
+                    existing_class = self.fields[field_name].widget.attrs.get('class', '')
+                    if 'form-control-enhanced' not in existing_class:
+                        self.fields[field_name].widget.attrs['class'] = existing_class + ' form-control-enhanced'
         
         # Actualizar choices de IPC desde la BD
         if 'tipo_condicion_ipc' in self.fields:
@@ -495,6 +534,21 @@ class ContratoForm(BaseModelForm):
 
     def clean(self):
         cleaned_data = super().clean()
+        
+        # Si estamos editando y el usuario no es admin, restaurar valores de campos disabled
+        if self.instance and self.instance.pk and self.user and not self.user.is_staff:
+            campos_protegidos = [
+                'num_contrato', 'tipo_contrato_cliente_proveedor', 'objeto_destinacion',
+                'tipo_contrato', 'tipo_servicio', 'nit_concedente', 'rep_legal_concedente',
+                'marca_comercial', 'supervisor_concedente', 'supervisor_contraparte',
+                'arrendatario', 'proveedor', 'local'
+            ]
+            for campo in campos_protegidos:
+                if campo in self.fields and campo not in cleaned_data:
+                    # Restaurar desde la instancia original
+                    if hasattr(self.instance, campo):
+                        valor = getattr(self.instance, campo)
+                        cleaned_data[campo] = valor
         
         # Limpiar todos los campos numéricos y de porcentaje
         campos_numericos = [

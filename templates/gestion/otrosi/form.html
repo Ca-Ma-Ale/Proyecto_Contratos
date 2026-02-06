@@ -854,15 +854,20 @@ document.addEventListener('DOMContentLoaded', function() {
                     {% endif %}
                 </h1>
                 <div>
-                    {% if otrosi %}
-                        <a href="{% url 'gestion:detalle_otrosi' otrosi.id %}" class="btn btn-secondary">
-                            <i class="fas fa-arrow-left"></i> Volver
+                    <div class="d-flex gap-2">
+                        {% if otrosi %}
+                            <a href="{% url 'gestion:detalle_otrosi' otrosi.id %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Volver
+                            </a>
+                        {% else %}
+                            <a href="{% url 'gestion:lista_otrosi' contrato.id %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Cancelar
+                            </a>
+                        {% endif %}
+                        <a href="{% url 'gestion:dashboard' %}" class="btn btn-volver-inicio">
+                            <i class="fas fa-home"></i> Volver al Inicio
                         </a>
-                    {% else %}
-                        <a href="{% url 'gestion:lista_otrosi' contrato.id %}" class="btn btn-secondary">
-                            <i class="fas fa-arrow-left"></i> Cancelar
-                        </a>
-                    {% endif %}
+                    </div>
                 </div>
             </div>
         </div>

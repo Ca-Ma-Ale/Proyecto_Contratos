@@ -103,7 +103,7 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS('Resumen:'))
         self.stdout.write(f'  Agregados: {agregados}')
         if sobrescribir:
-            self.stdout.write(f'  Actualizados: {actualizadas}')
+            self.stdout.write(f'  Actualizados: {actualizados}')
         if existentes > 0:
             self.stdout.write(f'  Existentes (no modificados): {existentes}')
         self.stdout.write('')

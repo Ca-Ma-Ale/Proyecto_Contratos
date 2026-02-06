@@ -44,7 +44,7 @@ def nuevo_contrato(request):
     configuracion_empresa = obtener_configuracion_empresa()
     
     if request.method == 'POST':
-        form = ContratoForm(request.POST)
+        form = ContratoForm(request.POST, user=request.user)
         
         if form.is_valid():
             contrato = form.save(commit=False)
@@ -69,7 +69,7 @@ def nuevo_contrato(request):
             agregar_errores_formulario_a_mensajes(request, form)
             messages.error(request, 'Por favor corrija los errores en el formulario.')
     else:
-        form = ContratoForm()
+        form = ContratoForm(user=request.user)
         # Pre-llenar con datos de la empresa
         form.fields['nit_concedente'].initial = configuracion_empresa.nit_empresa
         form.fields['rep_legal_concedente'].initial = configuracion_empresa.representante_legal
@@ -100,7 +100,26 @@ def editar_contrato(request, contrato_id):
     polizas = contrato.polizas.all()
     
     if request.method == 'POST':
-        form = ContratoForm(request.POST, instance=contrato)
+        # Si el usuario no es admin, restaurar valores de campos disabled desde la instancia original
+        # Los campos disabled no se envían en POST, así que debemos agregarlos manualmente
+        post_data = request.POST.copy()
+        if not request.user.is_staff:
+            campos_protegidos = [
+                'num_contrato', 'tipo_contrato_cliente_proveedor', 'objeto_destinacion',
+                'tipo_contrato', 'tipo_servicio', 'nit_concedente', 'rep_legal_concedente',
+                'marca_comercial', 'supervisor_concedente', 'supervisor_contraparte',
+                'arrendatario', 'proveedor', 'local'
+            ]
+            for campo in campos_protegidos:
+                if campo not in post_data and hasattr(contrato, campo):
+                    valor = getattr(contrato, campo)
+                    if valor is not None:
+                        if hasattr(valor, 'pk'):  # ForeignKey
+                            post_data[campo] = str(valor.pk)
+                        else:
+                            post_data[campo] = str(valor)
+        
+        form = ContratoForm(post_data, instance=contrato, user=request.user)
         
         if form.is_valid():
             contrato = form.save(commit=False)
@@ -122,7 +141,7 @@ def editar_contrato(request, contrato_id):
         else:
             messages.error(request, 'Por favor corrija los errores en el formulario.')
     else:
-        form = ContratoForm(instance=contrato)
+        form = ContratoForm(instance=contrato, user=request.user)
     
     seguimientos_poliza_queryset = contrato.seguimientos_poliza.filter(
         poliza__isnull=True
@@ -1196,8 +1215,8 @@ def exportar_contratos(request):
                 ColumnaExportacion('Cláusula Penal Incumplimiento', ancho=32, es_numerica=True, alineacion='right'),
                 ColumnaExportacion('Penalidad Terminación Anticipada', ancho=35, es_numerica=True, alineacion='right'),
                 ColumnaExportacion('Multa Mora No Restitución', ancho=28, es_numerica=True, alineacion='right'),
-                ColumnaExportacion('NIT Concedente', ancho=20),
-                ColumnaExportacion('Representante Legal Concedente', ancho=35),
+                ColumnaExportacion('NIT', ancho=20),
+                ColumnaExportacion('Representante Legal', ancho=35),
                 ColumnaExportacion('Marca Comercial', ancho=25),
                 ColumnaExportacion('Supervisor Concedente', ancho=28),
                 ColumnaExportacion('Supervisor Contraparte', ancho=30),

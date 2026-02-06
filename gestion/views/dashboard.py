@@ -23,7 +23,7 @@ from gestion.services.exportes import (
     generar_excel_corporativo,
 )
 from gestion.utils_otrosi import get_ultimo_otrosi_que_modifico_campo_hasta_fecha
-from .utils import _respuesta_archivo_excel
+from .utils import _estado_vigente_contrato, _respuesta_archivo_excel
 
 
 @login_required_custom
@@ -34,33 +34,25 @@ def dashboard(request):
     fecha_actual = timezone.now().date()
     tipo_filtro = request.GET.get('tipo_alerta', '')  # Filtro para alertas: CLIENTE, PROVEEDOR o vacío (todos)
     total_contratos = Contrato.objects.count()
-    
-    contratos_activos = Contrato.objects.filter(vigente=True).prefetch_related('otrosi')
+
+    todos_los_contratos = Contrato.objects.prefetch_related('otrosi')
     contratos_vigentes = 0
     contratos_vencidos = 0
-    
-    for contrato in contratos_activos:
-        # Usar efecto cadena para obtener fecha final vigente hasta fecha_actual
-        otrosi_modificador = get_ultimo_otrosi_que_modifico_campo_hasta_fecha(
-            contrato, 'nueva_fecha_final_actualizada', fecha_actual
-        )
-        if otrosi_modificador and otrosi_modificador.nueva_fecha_final_actualizada:
-            fecha_final_actual = otrosi_modificador.nueva_fecha_final_actualizada
-        else:
-            fecha_final_actual = contrato.fecha_final_actualizada or contrato.fecha_final_inicial
-        
-        if fecha_final_actual and fecha_final_actual >= fecha_actual:
+    contratos_vigentes_list = []
+
+    for contrato in todos_los_contratos:
+        if _estado_vigente_contrato(contrato, fecha_actual):
             contratos_vigentes += 1
+            contratos_vigentes_list.append(contrato)
         else:
             contratos_vencidos += 1
-    
+
     total_polizas = Poliza.objects.count()
-    
+
     contratos_fijos = 0
     contratos_variables = 0
     contratos_hibridos = 0
-    
-    contratos_vigentes_list = Contrato.objects.filter(vigente=True).prefetch_related('otrosi')
+
     for contrato in contratos_vigentes_list:
         # Usar efecto cadena para obtener modalidad vigente hasta fecha_actual
         otrosi_modificador = get_ultimo_otrosi_que_modifico_campo_hasta_fecha(

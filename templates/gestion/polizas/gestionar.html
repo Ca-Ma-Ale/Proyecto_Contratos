@@ -15,9 +15,14 @@
                     <a href="{% url 'gestion:nueva_poliza' contrato.id %}" class="btn btn-success">
                         <i class="fas fa-plus"></i> Nueva Póliza
                     </a>
-                    <a href="{% url 'gestion:detalle_contrato' contrato.id %}" class="btn btn-secondary">
-                        <i class="fas fa-arrow-left"></i> Volver al Contrato
-                    </a>
+                    <div class="d-flex gap-2">
+                        <a href="{% url 'gestion:detalle_contrato' contrato.id %}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Volver al Contrato
+                        </a>
+                        <a href="{% url 'gestion:dashboard' %}" class="btn btn-volver-inicio">
+                            <i class="fas fa-home"></i> Volver al Inicio
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>

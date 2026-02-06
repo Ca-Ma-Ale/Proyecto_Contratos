@@ -748,6 +748,32 @@ def _es_contrato_vencido(contrato, fecha_referencia=None):
     return fecha_final < fecha_referencia
 
 
+def _estado_vigente_contrato(contrato, fecha_actual=None):
+    """
+    Determina si el contrato está vigente en la fecha dada.
+    Misma lógica que lista_contratos para mantener consistencia dashboard/lista.
+    """
+    from gestion.utils_otrosi import get_otrosi_vigente
+
+    if fecha_actual is None:
+        fecha_actual = date.today()
+
+    otrosi_vigente_actual = get_otrosi_vigente(contrato, fecha_actual)
+    fecha_final_vigente = _obtener_fecha_final_contrato(contrato, fecha_actual)
+
+    if otrosi_vigente_actual:
+        if otrosi_vigente_actual.effective_to:
+            return otrosi_vigente_actual.effective_from <= fecha_actual <= otrosi_vigente_actual.effective_to
+        if otrosi_vigente_actual.nueva_fecha_final_actualizada:
+            return otrosi_vigente_actual.nueva_fecha_final_actualizada >= fecha_actual
+        return otrosi_vigente_actual.effective_from <= fecha_actual
+    if contrato.vigente:
+        if fecha_final_vigente:
+            return fecha_final_vigente >= fecha_actual
+        return True
+    return False
+
+
 def procesar_polizas_del_formulario(request, contrato):
     """Procesa las pólizas enviadas desde el formulario dinámico"""
     from gestion.models import Poliza

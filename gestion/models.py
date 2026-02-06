@@ -311,8 +311,8 @@ class Contrato(models.Model):
     tipo_servicio = models.ForeignKey('TipoServicio', on_delete=models.PROTECT, related_name='contratos', blank=True, null=True, verbose_name='Tipo de Servicio (Proveedor)')
     
     # Partes Involucradas
-    nit_concedente = models.CharField(max_length=20, verbose_name='NIT Concedente')
-    rep_legal_concedente = models.CharField(max_length=100, verbose_name='Representante Legal Concedente')
+    nit_concedente = models.CharField(max_length=20, verbose_name='NIT')
+    rep_legal_concedente = models.CharField(max_length=100, verbose_name='Representante Legal')
     marca_comercial = models.CharField(max_length=100, blank=True, null=True, verbose_name='Marca Comercial')
     supervisor_concedente = models.CharField(max_length=100, blank=True, null=True, verbose_name='Supervisor Concedente')
     supervisor_contraparte = models.CharField(max_length=100, blank=True, null=True, verbose_name='Supervisor Contraparte')

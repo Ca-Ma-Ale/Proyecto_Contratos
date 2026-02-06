@@ -11,9 +11,14 @@
                 <h1 class="display-6">
                     <i class="fas fa-trash-alt text-danger"></i> {{ titulo }}
                 </h1>
-                <a href="{% url 'gestion:gestionar_polizas' contrato.id %}" class="btn btn-secondary">
-                    <i class="fas fa-arrow-left"></i> Volver a Pólizas
-                </a>
+                <div class="d-flex gap-2">
+                    <a href="{% url 'gestion:gestionar_polizas' contrato.id %}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Volver a Pólizas
+                    </a>
+                    <a href="{% url 'gestion:dashboard' %}" class="btn btn-volver-inicio">
+                        <i class="fas fa-home"></i> Volver al Inicio
+                    </a>
+                </div>
             </div>
         </div>
     </div>

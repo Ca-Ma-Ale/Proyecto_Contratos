@@ -178,6 +178,40 @@
         box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
     }
     
+    /* Estilos para campos readonly y disabled */
+    input[readonly],
+    input[disabled],
+    select[readonly],
+    select[disabled],
+    textarea[readonly],
+    textarea[disabled] {
+        background-color: #f3f4f6 !important;
+        color: #6b7280 !important;
+        cursor: not-allowed !important;
+        opacity: 0.8;
+    }
+    
+    input[readonly]:focus,
+    input[disabled]:focus,
+    select[readonly]:focus,
+    select[disabled]:focus,
+    textarea[readonly]:focus,
+    textarea[disabled]:focus {
+        border-color: #d1d5db !important;
+        box-shadow: none !important;
+        transform: none !important;
+    }
+    
+    input[readonly]:hover,
+    input[disabled]:hover,
+    select[readonly]:hover,
+    select[disabled]:hover,
+    textarea[readonly]:hover,
+    textarea[disabled]:hover {
+        border-color: #d1d5db !important;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+    }
+    
     /* Estilos mejorados para input-group */
     .input-group {
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
@@ -445,8 +479,8 @@
                         <h3>
                             <i class="fas fa-file-contract"></i> {{ titulo }}
                         </h3>
-                        <a href="{% url 'gestion:dashboard' %}" class="btn btn-outline-light btn-enhanced">
-                            <i class="fas fa-arrow-left"></i> Regresar al Dashboard
+                        <a href="{% url 'gestion:dashboard' %}" class="btn btn-volver-inicio">
+                            <i class="fas fa-home"></i> Volver al Inicio
                         </a>
                     </div>
                 </div>
