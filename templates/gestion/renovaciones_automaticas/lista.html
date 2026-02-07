@@ -328,11 +328,13 @@
                                                    title="Editar renovación automática">
                                                     <i class="fas fa-edit"></i>
                                                 </a>
+                                                {% if user.is_staff %}
                                                 <a href="{% url 'gestion:anular_renovacion_automatica' renovacion.id %}" 
                                                    class="btn btn-sm btn-danger" 
                                                    title="Eliminar renovación automática">
                                                     <i class="fas fa-trash-alt"></i>
                                                 </a>
+                                                {% endif %}
                                                 <a href="{% url 'gestion:detalle_contrato' contrato.pk %}" 
                                                    class="btn btn-sm btn-outline-secondary" 
                                                    title="Ver contrato">

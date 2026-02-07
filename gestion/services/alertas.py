@@ -612,7 +612,10 @@ def obtener_polizas_criticas(
             fecha_vencimiento__isnull=False,
             fecha_vencimiento__lte=fecha_limite
         )
-        .select_related('contrato', 'contrato__arrendatario', 'contrato__proveedor')
+        .select_related(
+            'contrato', 'contrato__arrendatario', 'contrato__proveedor',
+            'otrosi', 'renovacion_automatica',
+        )
         .prefetch_related('contrato__otrosi', 'contrato__renovaciones_automaticas')
         .order_by('fecha_vencimiento')
     )

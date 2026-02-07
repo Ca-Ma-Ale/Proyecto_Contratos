@@ -1877,6 +1877,7 @@ def editar_renovacion_automatica(request, renovacion_id):
     return render(request, 'gestion/renovaciones_automaticas/editar.html', context)
 
 
+@admin_required
 @login_required_custom
 def anular_renovacion_automatica(request, renovacion_id):
     """Vista para eliminar una renovación automática"""

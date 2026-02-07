@@ -586,6 +586,32 @@ def exportar_alertas_polizas(request):
         ColumnaExportacion('Estado', ancho=24),
     ]
 
+    TIPO_A_CAMPO_FECHA_INICIO = {
+        'RCE - Responsabilidad Civil': ('nuevo_fecha_inicio_vigencia_rce', 'fecha_inicio_vigencia_rce'),
+        'Cumplimiento': ('nuevo_fecha_inicio_vigencia_cumplimiento', 'fecha_inicio_vigencia_cumplimiento'),
+        'Poliza de Arrendamiento': ('nuevo_fecha_inicio_vigencia_arrendamiento', 'fecha_inicio_vigencia_arrendamiento'),
+        'Arrendamiento': ('nuevo_fecha_inicio_vigencia_todo_riesgo', 'fecha_inicio_vigencia_todo_riesgo'),
+        'Otra': ('nuevo_fecha_inicio_vigencia_otra_1', 'fecha_inicio_vigencia_otra_1'),
+    }
+
+    def _obtener_fecha_inicio_poliza(p):
+        if p.fecha_inicio_vigencia:
+            return p.fecha_inicio_vigencia
+        campo_otrosi, campo_contrato = TIPO_A_CAMPO_FECHA_INICIO.get(p.tipo, (None, None))
+        if p.otrosi and campo_otrosi:
+            valor = getattr(p.otrosi, campo_otrosi, None)
+            if valor:
+                return valor
+        if p.renovacion_automatica and campo_otrosi:
+            valor = getattr(p.renovacion_automatica, campo_otrosi, None)
+            if valor:
+                return valor
+        if campo_contrato:
+            valor = getattr(p.contrato, campo_contrato, None)
+            if valor:
+                return valor
+        return p.contrato.fecha_inicial_contrato
+
     registros = []
     for poliza in polizas:
         dias_restantes = None
@@ -595,11 +621,7 @@ def exportar_alertas_polizas(request):
         else:
             estado_legible = 'Sin fecha registrada'
 
-        # Obtener fecha de inicio si está disponible
-        fecha_inicio = None
-        if hasattr(poliza, 'requerimiento') and poliza.requerimiento:
-            # Intentar obtener fecha de inicio desde el contrato si está disponible
-            fecha_inicio = poliza.contrato.fecha_inicial_contrato
+        fecha_inicio = _obtener_fecha_inicio_poliza(poliza)
 
         tercero = poliza.contrato.obtener_tercero()
         nombre_tercero = tercero.razon_social if tercero else 'Sin tercero asignado'
