@@ -81,9 +81,25 @@ class AlertaEmailService:
         
         try:
             alertas = funcion(fecha_referencia=fecha_referencia)
+            cantidad_inicial = len(alertas)
+            logger.info(
+                f"Tipo {tipo_alerta}: Se obtuvieron {cantidad_inicial} alerta(s) inicial(es) "
+                f"(fecha_referencia={fecha_referencia})"
+            )
             
             if solo_criticas:
+                alertas_antes_filtro = len(alertas)
                 alertas = self._filtrar_solo_criticas(alertas, tipo_alerta)
+                cantidad_despues_filtro = len(alertas)
+                logger.info(
+                    f"Tipo {tipo_alerta}: Filtro 'solo críticas' aplicado. "
+                    f"Antes: {alertas_antes_filtro}, Después: {cantidad_despues_filtro}"
+                )
+                if cantidad_despues_filtro == 0 and cantidad_inicial > 0:
+                    logger.warning(
+                        f"Tipo {tipo_alerta}: Todas las alertas fueron filtradas por 'solo críticas'. "
+                        f"Hay {cantidad_inicial} alerta(s) pero ninguna es crítica (danger)"
+                    )
             
             return alertas
         except Exception as e:
@@ -195,20 +211,33 @@ class AlertaEmailService:
                 return resultado
             
             fecha_ref = fecha_referencia or timezone.now().date()
+            logger.info(
+                f"Obteniendo alertas de tipo {tipo_alerta} "
+                f"(solo_criticas={config.solo_criticas}, fecha={fecha_ref})"
+            )
             alertas = self.obtener_alertas_por_tipo(
                 tipo_alerta=tipo_alerta,
                 fecha_referencia=fecha_ref,
                 solo_criticas=config.solo_criticas
             )
             
+            logger.info(f"Tipo {tipo_alerta}: Se obtuvieron {len(alertas)} alerta(s) después de filtros")
+            
             destinatarios = self.obtener_destinatarios(tipo_alerta)
             if not destinatarios:
+                logger.warning(f"Tipo {tipo_alerta}: No hay destinatarios configurados")
                 resultado['errores'].append("No hay destinatarios configurados")
                 return resultado
             
             if not alertas:
-                logger.info(f"No hay alertas de tipo {tipo_alerta} para enviar")
-                resultado['errores'].append("No hay alertas para enviar")
+                mensaje_error = "No hay alertas para enviar"
+                if config.solo_criticas:
+                    mensaje_error += " (filtro 'solo críticas' activado - solo se envían alertas críticas)"
+                logger.warning(
+                    f"Tipo {tipo_alerta}: No hay alertas para enviar. "
+                    f"Configuración: solo_criticas={config.solo_criticas}"
+                )
+                resultado['errores'].append(mensaje_error)
                 return resultado
             
             contenido = self.generar_contenido_email(tipo_alerta, alertas, fecha_ref)

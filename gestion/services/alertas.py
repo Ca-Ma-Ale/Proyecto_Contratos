@@ -474,8 +474,9 @@ def obtener_alertas_salario_minimo(
         
         # Mostrar alertas si:
         # 1. La fecha ya pasó (dias_restantes < 0) - siempre mostrar
-        # 2. La fecha está dentro de 3 meses (90 días) en el futuro
-        if dias_restantes > 90:
+        # 2. La fecha está dentro de 1 año (365 días) en el futuro
+        # Nota: Se aumentó de 90 a 365 días para alertas de salario mínimo anual
+        if dias_restantes > 365:
             continue
         
         # Determinar color de alerta
