@@ -3075,7 +3075,11 @@ class ConfiguracionEmail(AuditoriaMixin):
     )
     email_host_password = models.TextField(
         verbose_name='Contraseña Encriptada',
-        help_text='Contraseña o token de aplicación (encriptada automáticamente)'
+        help_text=(
+            'Contraseña o token de aplicación (encriptada automáticamente). '
+            'Para Gmail: Debe usar una "Contraseña de aplicación" en lugar de su contraseña normal. '
+            'Obténgala en: https://myaccount.google.com/apppasswords'
+        )
     )
     email_from = models.EmailField(
         verbose_name='Email Remitente',

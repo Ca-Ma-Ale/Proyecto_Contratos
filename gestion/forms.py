@@ -741,10 +741,14 @@ class ConfiguracionEmailForm(BaseModelForm):
         label='Contraseña',
         required=False,
         widget=forms.PasswordInput(attrs={
-            'placeholder': 'Ingrese contraseña',
+            'placeholder': 'Ingrese contraseña o contraseña de aplicación',
             'class': 'vTextField'
         }),
-        help_text='Ingrese nueva contraseña o deje en blanco para mantener la actual'
+        help_text=(
+            'Ingrese nueva contraseña o deje en blanco para mantener la actual. '
+            'Para Gmail: Debe usar una "Contraseña de aplicación" (obténgala en '
+            'https://myaccount.google.com/apppasswords). No use su contraseña normal de Gmail.'
+        )
     )
     
     class Meta:
@@ -756,8 +760,11 @@ class ConfiguracionEmailForm(BaseModelForm):
         # Si es un nuevo registro, hacer el campo requerido
         if not self.instance.pk:
             self.fields['password_input'].required = True
-            self.fields['password_input'].help_text = 'Ingrese contraseña (requerida)'
-            self.fields['password_input'].widget.attrs['placeholder'] = 'Ingrese contraseña'
+            self.fields['password_input'].help_text = (
+                'Ingrese contraseña (requerida). Para Gmail: Use una "Contraseña de aplicación" '
+                'obtenida en https://myaccount.google.com/apppasswords'
+            )
+            self.fields['password_input'].widget.attrs['placeholder'] = 'Ingrese contraseña o contraseña de aplicación'
     
     def clean(self):
         """Validar que la contraseña esté presente al crear un nuevo registro"""

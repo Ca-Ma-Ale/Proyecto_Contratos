@@ -8,6 +8,7 @@ from django.template.loader import render_to_string
 from django.utils import timezone
 from typing import List, Optional, Dict, Any
 import logging
+import smtplib
 
 from gestion.models import ConfiguracionEmail, HistorialEnvioEmail
 
@@ -98,8 +99,34 @@ class EmailService:
             logger.info(f"Correo enviado exitosamente a {', '.join(destinatarios)}")
             return True
             
+        except smtplib.SMTPAuthenticationError as e:
+            error_msg = str(e)
+            if '5.7.9' in error_msg or 'contraseña específica de la aplicación' in error_msg.lower() or 'app password' in error_msg.lower() or 'InvalidSecondFactor' in error_msg:
+                mensaje_detallado = (
+                    "ERROR DE AUTENTICACIÓN CON GMAIL:\n"
+                    "Google requiere una 'Contraseña de aplicación' en lugar de tu contraseña normal.\n\n"
+                    "SOLUCIÓN:\n"
+                    "1. Ve a: https://myaccount.google.com/apppasswords\n"
+                    "2. Selecciona 'Correo' y 'Otro (nombre personalizado)'\n"
+                    "3. Ingresa un nombre (ej: 'Sistema Contratos')\n"
+                    "4. Haz clic en 'Generar'\n"
+                    "5. Copia la contraseña de 16 caracteres generada\n"
+                    "6. Actualiza la configuración de email en el admin con esta contraseña\n\n"
+                    f"Email configurado: {self.configuracion.email_host_user}\n"
+                    f"Error original: {error_msg}"
+                )
+                logger.error(mensaje_detallado)
+            else:
+                mensaje_detallado = (
+                    f"Error de autenticación SMTP: {error_msg}\n"
+                    f"Verifica que las credenciales sean correctas.\n"
+                    f"Email configurado: {self.configuracion.email_host_user}"
+                )
+                logger.error(mensaje_detallado)
+            return False
         except Exception as e:
-            logger.error(f"Error al enviar correo: {str(e)}", exc_info=True)
+            error_msg = str(e)
+            logger.error(f"Error al enviar correo: {error_msg}", exc_info=True)
             return False
     
     def enviar_email_template(
