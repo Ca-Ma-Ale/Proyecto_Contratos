@@ -309,6 +309,12 @@
                 </div>
                 <div class="card-body">
                     {% if polizas_criticas %}
+                        {% if hay_polizas_con_colchon %}
+                        <p class="small text-muted mb-2">
+                            <i class="fas fa-info-circle"></i>
+                            La alerta considera la <strong>vigencia real</strong> (fecha formal menos colchón cuando aplica) para renovación.
+                        </p>
+                        {% endif %}
                         <div class="table-responsive alert-collapsible" data-collapsed="true" style="max-height: 64px; overflow: hidden; position: relative;">
                             <table class="table table-sm">
                                 <thead>
@@ -329,12 +335,12 @@
                                         <td>{{ poliza.contrato.num_contrato }}</td>
                                         <td>
                                             {% if poliza.obtener_estado_vigencia == 'Vencida' %}
-                                                <span class="badge bg-danger">
-                                                    <i class="fas fa-times-circle"></i> {{ poliza.obtener_estado_legible }}
+                                                <span class="badge bg-danger" {% if poliza.tiene_colchon and poliza.meses_colchon %}title="Vigencia real (colchón de {{ poliza.meses_colchon }} mes{{ poliza.meses_colchon|pluralize:",es" }})"{% endif %}>
+                                                    <i class="fas fa-times-circle"></i> {{ poliza.obtener_estado_legible }}{% if poliza.tiene_colchon and poliza.meses_colchon %} <small>(vigencia real)</small>{% endif %}
                                                 </span>
                                             {% elif poliza.obtener_dias_para_vencer <= 30 %}
-                                                <span class="badge bg-warning">
-                                                    <i class="fas fa-exclamation-triangle"></i> {{ poliza.obtener_estado_legible }}
+                                                <span class="badge bg-warning" {% if poliza.tiene_colchon and poliza.meses_colchon %}title="Vigencia real (colchón de {{ poliza.meses_colchon }} mes{{ poliza.meses_colchon|pluralize:",es" }})"{% endif %}>
+                                                    <i class="fas fa-exclamation-triangle"></i> {{ poliza.obtener_estado_legible }}{% if poliza.tiene_colchon and poliza.meses_colchon %} <small>(vigencia real)</small>{% endif %}
                                                 </span>
                                             {% else %}
                                                 <span class="badge bg-success">
@@ -342,7 +348,14 @@
                                                 </span>
                                             {% endif %}
                                         </td>
-                                        <td>{{ poliza.fecha_vencimiento }}</td>
+                                        <td>
+                                            {% if poliza.tiene_colchon and poliza.fecha_vencimiento_real and poliza.fecha_vencimiento_real != poliza.fecha_vencimiento %}
+                                                <span title="Vigencia real (para renovación)">{{ poliza.obtener_fecha_vencimiento_efectiva|date:"d \d\e F \d\e Y" }}</span><br>
+                                                <small class="text-muted">Formal: {{ poliza.fecha_vencimiento|date:"d \d\e F \d\e Y" }}</small>
+                                            {% else %}
+                                                {{ poliza.fecha_vencimiento|date:"d \d\e F \d\e Y" }}
+                                            {% endif %}
+                                        </td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>

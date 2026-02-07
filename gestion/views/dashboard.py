@@ -178,6 +178,9 @@ def dashboard(request):
         'total_alertas_vencimiento': total_alertas_vencimiento,
         'polizas_criticas': polizas_criticas,
         'total_polizas_criticas': total_polizas_criticas,
+        'hay_polizas_con_colchon': any(
+            getattr(p, 'tiene_colchon', False) for p in polizas_criticas
+        ),
         'alertas_preaviso_renovacion': alertas_preaviso_con_fecha,
         'total_alertas_preaviso': total_alertas_preaviso,
         'alertas_ipc': alertas_ipc,
