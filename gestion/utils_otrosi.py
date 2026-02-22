@@ -140,31 +140,41 @@ def get_ultimo_otrosi_aprobado(contrato):
 def get_ultimo_otrosi_que_modifico_campo(contrato, campo_nombre):
     """
     Obtiene el último Otrosí o Renovación Automática aprobado que modificó un campo específico.
-    
-    Busca en orden cronológico descendente (más reciente primero) el último evento
-    que tiene un valor no nulo/no vacío en el campo especificado.
-    
+
+    Usa los managers de relación inversa (`contrato.otrosi` y
+    `contrato.renovaciones_automaticas`) para aprovechar el caché de
+    `prefetch_related` cuando está disponible, evitando queries N+1.
+    Si no hubo prefetch, Django emite la query automáticamente (sin regresión).
+
     Args:
         contrato: Instancia del modelo Contrato
-        campo_nombre: Nombre del campo en el modelo OtroSi/RenovacionAutomatica (ej: 'nuevo_valor_canon')
-    
+        campo_nombre: Nombre del campo en el modelo OtroSi/RenovacionAutomatica
+
     Returns:
         OtroSi, RenovacionAutomatica o None si ningún evento modificó ese campo
     """
-    from .models import OtroSi, RenovacionAutomatica
     from django.utils import timezone
-    
-    # Obtener todos los Otros Sí aprobados ordenados por fecha de aprobación descendente
-    otrosis_aprobados = OtroSi.objects.filter(
-        contrato=contrato,
-        estado='APROBADO'
-    ).order_by('-fecha_aprobacion', '-effective_from', '-version')
-    
-    # Obtener todas las Renovaciones Automáticas aprobadas ordenadas por fecha de aprobación descendente
-    renovaciones_aprobadas = RenovacionAutomatica.objects.filter(
-        contrato=contrato,
-        estado='APROBADO'
-    ).order_by('-fecha_aprobacion', '-effective_from', '-version')
+
+    # Filtrado en memoria usando el caché de prefetch_related cuando está disponible
+    otrosis_aprobados = sorted(
+        [o for o in contrato.otrosi.all() if o.estado == 'APROBADO'],
+        key=lambda o: (
+            o.effective_from,
+            o.fecha_aprobacion if o.fecha_aprobacion else timezone.now(),
+            -(o.version if hasattr(o, 'version') else 0),
+        ),
+        reverse=True,
+    )
+
+    renovaciones_aprobadas = sorted(
+        [r for r in contrato.renovaciones_automaticas.all() if r.estado == 'APROBADO'],
+        key=lambda r: (
+            r.effective_from,
+            r.fecha_aprobacion if r.fecha_aprobacion else timezone.now(),
+            -(r.version if hasattr(r, 'version') else 0),
+        ),
+        reverse=True,
+    )
     
     # Combinar y ordenar por fecha de aprobación descendente
     eventos = []
@@ -213,39 +223,60 @@ def get_ultimo_otrosi_que_modifico_campo_hasta_fecha(contrato, campo_nombre, fec
     Returns:
         OtroSi, RenovacionAutomatica o None si ningún evento modificó ese campo hasta esa fecha
     """
-    from .models import OtroSi, RenovacionAutomatica
-    from django.utils import timezone
-    
     if fecha_referencia is None:
         fecha_referencia = date.today()
-    
-    # Obtener eventos de ambos tipos
-    eventos = []
-    
-    # Si permitir_futuros es True, no filtrar por effective_from
+
+    from django.utils import timezone
+
+    # Filtrado en memoria usando el caché de prefetch_related cuando está disponible.
+    # Si no hubo prefetch, Django emite la query automáticamente (sin regresión).
+    # Esto elimina las 2 queries ORM por llamada cuando se usa desde vistas con
+    # prefetch_related('otrosi', 'renovaciones_automaticas').
+
     if permitir_futuros:
-        otrosis_aprobados = OtroSi.objects.filter(
-            contrato=contrato,
-            estado='APROBADO'
-        ).order_by('-effective_from', '-fecha_aprobacion', '-version')
-        
-        renovaciones_aprobadas = RenovacionAutomatica.objects.filter(
-            contrato=contrato,
-            estado='APROBADO'
-        ).order_by('-effective_from', '-fecha_aprobacion', '-version')
+        otrosis_aprobados = sorted(
+            [o for o in contrato.otrosi.all() if o.estado == 'APROBADO'],
+            key=lambda o: (
+                o.effective_from,
+                o.fecha_aprobacion if o.fecha_aprobacion else timezone.now(),
+                -(o.version if hasattr(o, 'version') else 0),
+            ),
+            reverse=True,
+        )
+        renovaciones_aprobadas = sorted(
+            [r for r in contrato.renovaciones_automaticas.all() if r.estado == 'APROBADO'],
+            key=lambda r: (
+                r.effective_from,
+                r.fecha_aprobacion if r.fecha_aprobacion else timezone.now(),
+                -(r.version if hasattr(r, 'version') else 0),
+            ),
+            reverse=True,
+        )
     else:
-        # Obtener todos los eventos aprobados que sean vigentes hasta la fecha de referencia
-        otrosis_aprobados = OtroSi.objects.filter(
-            contrato=contrato,
-            estado='APROBADO',
-            effective_from__lte=fecha_referencia
-        ).order_by('-effective_from', '-fecha_aprobacion', '-version')
-        
-        renovaciones_aprobadas = RenovacionAutomatica.objects.filter(
-            contrato=contrato,
-            estado='APROBADO',
-            effective_from__lte=fecha_referencia
-        ).order_by('-effective_from', '-fecha_aprobacion', '-version')
+        otrosis_aprobados = sorted(
+            [
+                o for o in contrato.otrosi.all()
+                if o.estado == 'APROBADO' and o.effective_from <= fecha_referencia
+            ],
+            key=lambda o: (
+                o.effective_from,
+                o.fecha_aprobacion if o.fecha_aprobacion else timezone.now(),
+                -(o.version if hasattr(o, 'version') else 0),
+            ),
+            reverse=True,
+        )
+        renovaciones_aprobadas = sorted(
+            [
+                r for r in contrato.renovaciones_automaticas.all()
+                if r.estado == 'APROBADO' and r.effective_from <= fecha_referencia
+            ],
+            key=lambda r: (
+                r.effective_from,
+                r.fecha_aprobacion if r.fecha_aprobacion else timezone.now(),
+                -(r.version if hasattr(r, 'version') else 0),
+            ),
+            reverse=True,
+        )
     
     # Combinar eventos
     # Para pólizas, incluimos todos los eventos que hayan iniciado antes o en la fecha de referencia

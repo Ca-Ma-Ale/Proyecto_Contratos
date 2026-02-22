@@ -6,6 +6,7 @@ from django.contrib.auth import authenticate, login
 from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.urls import reverse
+from django.utils.http import url_has_allowed_host_and_scheme
 from gestion.license_manager import LicenseManager
 
 
@@ -15,11 +16,21 @@ def login_with_license(request):
     """
     if request.user.is_authenticated:
         return redirect('gestion:dashboard')
-    
+
     if request.method == 'POST':
         username = request.POST.get('username')
         password = request.POST.get('password')
-        next_url = request.POST.get('next', reverse('gestion:dashboard'))
+
+        # Validar el parámetro 'next' para prevenir Open Redirect
+        raw_next = request.POST.get('next', '') or request.GET.get('next', '')
+        if url_has_allowed_host_and_scheme(
+            url=raw_next,
+            allowed_hosts={request.get_host()},
+            require_https=request.is_secure(),
+        ):
+            next_url = raw_next
+        else:
+            next_url = reverse('gestion:dashboard')
         
         # Autenticar usuario
         user = authenticate(request, username=username, password=password)
@@ -112,7 +123,15 @@ def login_with_license(request):
         else:
             messages.error(request, 'Usuario o contraseña incorrectos')
     
+    # Validar también el 'next' del GET para el template
+    raw_next_get = request.GET.get('next', '')
+    safe_next = raw_next_get if url_has_allowed_host_and_scheme(
+        url=raw_next_get,
+        allowed_hosts={request.get_host()},
+        require_https=request.is_secure(),
+    ) else reverse('gestion:dashboard')
+
     return render(request, 'registration/login.html', {
-        'next': request.GET.get('next', reverse('gestion:dashboard'))
+        'next': safe_next
     })
 

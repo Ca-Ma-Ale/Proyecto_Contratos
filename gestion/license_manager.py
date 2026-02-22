@@ -279,3 +279,32 @@ class LicenseManager:
             logger.error("Error verificando licencia", exc_info=True)
             return False, "Error verificando licencia. Por favor, contacte al administrador.", None
 
+    @staticmethod
+    def es_licencia_valida():
+        """
+        Retorna (is_valid: bool, status: str, message: str) con el estado
+        actual de la licencia primaria sin consultar Firebase.
+        Centraliza la lógica de validación usada en middleware y decoradores.
+        """
+        import logging
+        logger = logging.getLogger(__name__)
+        try:
+            from gestion.models import ClienteLicense
+            cliente_license = ClienteLicense.objects.filter(is_primary=True).first()
+            if not cliente_license:
+                return False, 'none', 'Sin licencia configurada para la organización'
+            cliente_license.refresh_from_db()
+            if cliente_license.verification_status == 'revoked':
+                return False, 'revoked', 'Licencia revocada o cancelada'
+            if not cliente_license.is_active:
+                return False, 'inactive', 'Licencia inactiva'
+            if cliente_license.verification_status == 'expired' or cliente_license.is_expired():
+                return False, 'expired', 'Licencia expirada'
+            if cliente_license.verification_status == 'invalid':
+                return False, 'invalid', 'Licencia inválida'
+            is_valid = cliente_license.verification_status == 'valid'
+            return is_valid, cliente_license.verification_status, 'Licencia válida'
+        except Exception:
+            logger.error("Error en es_licencia_valida", exc_info=True)
+            return False, 'error', 'Error verificando la licencia'
+

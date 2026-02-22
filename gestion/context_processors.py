@@ -2,6 +2,11 @@
 Context processors para hacer disponible información global en todos los templates
 """
 
+import logging
+
+logger = logging.getLogger(__name__)
+
+
 def empresa_config(request):
     """
     Agrega la configuración de la empresa al contexto de todos los templates
@@ -12,7 +17,8 @@ def empresa_config(request):
         return {
             'empresa_config': configuracion_empresa,
         }
-    except:
+    except Exception as e:
+        logger.warning("No se pudo cargar la configuración de empresa: %s", str(e))
         return {
             'empresa_config': None,
         }
@@ -108,17 +114,16 @@ def license_status(request):
                     'dias_restantes': dias_restantes
                 }
             
-            # Agregar información adicional
+            # Agregar información adicional (sin exponer license_key en templates)
             if license_status_data:
                 license_status_data['expiration_date'] = cliente_license.expiration_date
-                license_status_data['license_key'] = cliente_license.license_key
                 license_status_data['customer_name'] = cliente_license.customer_name
                 license_status_data['customer_email'] = cliente_license.customer_email
                 license_status_data['esta_vigente'] = estado_detallado.get('vigente', False)
                 license_status_data['estado_detallado'] = estado_detallado
-                
-        except:
-            pass
+
+        except Exception as e:
+            logger.warning("No se pudo cargar el estado de licencia: %s", str(e))
     
     return {
         'license_status': license_status_data,

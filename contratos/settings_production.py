@@ -44,7 +44,8 @@ MIDDLEWARE = [
     'axes.middleware.AxesMiddleware',  # Protección contra fuerza bruta
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'gestion.middleware.LicenseCheckMiddleware',  # Verificar licencia en cada request
+    'gestion.middleware.LicenseCheckMiddleware',                    # Verificar licencia en cada request
+    'gestion.csp_middleware.ContentSecurityPolicyMiddleware',       # Content-Security-Policy
 ]
 
 ROOT_URLCONF = 'contratos.urls'
@@ -81,6 +82,12 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / 'db.sqlite3',
+        'OPTIONS': {
+            # Esperar hasta 20 segundos antes de lanzar OperationalError por
+            # bloqueo de escritura concurrente. Reduce errores "database is locked"
+            # con múltiples usuarios simultáneos.
+            'timeout': 20,
+        },
     }
 }
 
@@ -280,4 +287,20 @@ EMAIL_USE_SSL = os.environ.get('EMAIL_USE_SSL', 'False') == 'True'
 EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
 DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'noreply@example.com')
+
+# ---------------------------------------------------------------------------
+# Protección adicional de datos sensibles en reportes de error
+# ---------------------------------------------------------------------------
+# Django's SafeExceptionReporterFilter enmascara automáticamente los valores
+# de parámetros POST que coincidan con estas claves en los reportes de error
+# (páginas de debug, emails de error, Sentry, etc.).
+SENSITIVE_POST_PARAMETERS = [
+    'password', 'password1', 'password2',
+    'email_host_password',
+    'new_password', 'old_password',
+    'token', 'secret', 'api_key',
+]
+
+# Usar el filtro seguro de Django para reportes de excepción
+DEFAULT_EXCEPTION_REPORTER_FILTER = 'django.views.debug.SafeExceptionReporterFilter'
 

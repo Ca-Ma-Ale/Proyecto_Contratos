@@ -64,35 +64,15 @@ def license_required(function):
             if next_url != login_url:
                 return redirect(f'{login_url}?{urlencode({"next": next_url})}')
             return redirect(login_url)
-        
-        # Verificar licencia
-        try:
-            from gestion.models import ClienteLicense
-            
-            cliente_license = ClienteLicense.objects.filter(is_primary=True).first()
-            
-            if not cliente_license:
-                messages.error(request, 'No hay licencia configurada para la organización.')
-                return redirect('gestion:dashboard')
-            
-            cliente_license.refresh_from_db()
-            
-            # Verificar que la licencia esté activa, vigente y no expirada
-            is_valid = (
-                cliente_license.is_active and
-                cliente_license.verification_status == 'valid' and
-                not cliente_license.is_expired()
-            )
-            
-            if not is_valid:
-                messages.error(request, 'Su licencia no está activa o ha expirado. Por favor, contacte al administrador.')
-                return redirect('gestion:dashboard')
-            
-            return function(request, *args, **kwargs)
-            
-        except Exception as e:
-            messages.error(request, 'Error verificando la licencia. Por favor, contacte al administrador.')
+
+        from gestion.license_manager import LicenseManager
+        is_valid, status, message = LicenseManager.es_licencia_valida()
+
+        if not is_valid:
+            messages.error(request, f'Acceso denegado: {message}. Por favor, contacte al administrador.')
             return redirect('gestion:dashboard')
-    
+
+        return function(request, *args, **kwargs)
+
     return wrap
 

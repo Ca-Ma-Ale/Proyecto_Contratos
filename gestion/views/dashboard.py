@@ -35,7 +35,7 @@ def dashboard(request):
     tipo_filtro = request.GET.get('tipo_alerta', '')  # Filtro para alertas: CLIENTE, PROVEEDOR o vacío (todos)
     total_contratos = Contrato.objects.count()
 
-    todos_los_contratos = Contrato.objects.prefetch_related('otrosi')
+    todos_los_contratos = Contrato.objects.prefetch_related('otrosi', 'renovaciones_automaticas')
     contratos_vigentes = 0
     contratos_vencidos = 0
     contratos_vigentes_list = []

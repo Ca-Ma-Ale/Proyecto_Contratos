@@ -32,7 +32,9 @@ except NameError:
     SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-your-secret-key-here-SOLO-DESARROLLO')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get('DEBUG', 'True') == 'True'
+# El default es False: si DEBUG no está en el entorno, el sistema arranca seguro.
+# Para desarrollo local, agrega DEBUG=True a tu archivo .env
+DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
@@ -57,7 +59,8 @@ MIDDLEWARE = [
     'axes.middleware.AxesMiddleware',  # Protección contra fuerza bruta
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'gestion.middleware.LicenseCheckMiddleware',  # Verificar licencia en cada request
+    'gestion.middleware.LicenseCheckMiddleware',       # Verificar licencia en cada request
+    'gestion.csp_middleware.ContentSecurityPolicyMiddleware',  # Content-Security-Policy
 ]
 
 ROOT_URLCONF = 'contratos.urls'
@@ -86,6 +89,12 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / 'db.sqlite3',
+        'OPTIONS': {
+            # Esperar hasta 20 segundos antes de lanzar OperationalError por
+            # bloqueo de escritura concurrente. Reduce errores "database is locked"
+            # con múltiples usuarios simultáneos.
+            'timeout': 20,
+        },
     }
 }
 
@@ -143,7 +152,8 @@ SESSION_COOKIE_HTTPONLY = True  # Previene acceso a cookies desde JavaScript (pr
 SESSION_COOKIE_SAMESITE = 'Strict'  # Protección CSRF mejorada
 SESSION_SAVE_EVERY_REQUEST = True  # Renueva la sesión en cada request
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True  # Expira la sesión al cerrar el navegador
-SESSION_COOKIE_SECURE = False  # Solo True en producción con HTTPS
+SESSION_COOKIE_SECURE = not DEBUG   # True automáticamente cuando DEBUG=False
+CSRF_COOKIE_SECURE = not DEBUG      # Idem para la cookie CSRF
 
 # Configuración de django-axes (Protección contra fuerza bruta)
 AXES_ENABLED = True
