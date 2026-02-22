@@ -921,55 +921,6 @@ def eliminar_contrato(request, contrato_id):
     return render(request, 'gestion/contratos/eliminar.html', context)
 
 
-def procesar_polizas_del_formulario(request, contrato):
-    """Procesa las pólizas enviadas desde el formulario dinámico"""
-    polizas_creadas = 0
-    
-    # Buscar campos de polizas en el request
-    i = 0
-    while True:
-        tipo_key = f'poliza_{i}_tipo'
-        valor_key = f'poliza_{i}_valor'
-        vigencia_key = f'poliza_{i}_vigencia'
-        
-        if tipo_key in request.POST:
-            tipo = request.POST.get(tipo_key)
-            valor = request.POST.get(valor_key)
-            vigencia = request.POST.get(vigencia_key)
-            
-            if tipo and valor and vigencia:
-                try:
-                    # Limpiar valor de formato
-                    import re
-                    valor_limpio = re.sub(r'[^\d]', '', valor)
-                    
-                    # Crear la poliza
-                    poliza = Poliza.objects.create(
-                        contrato=contrato,
-                        tipo=tipo,
-                        numero_poliza=f'AUTO-{contrato.num_contrato}-{i+1}',
-                        valor_asegurado=float(valor_limpio),
-                        fecha_vencimiento=date.today() + timedelta(days=30 * int(vigencia)),
-                        estado_aportado='No Aportada',
-                        aseguradora='Por definir',
-                        cobertura=f'Cobertura {tipo}',
-                        condiciones=f'Condiciones para {tipo}',
-                        garantias=f'Garantias para {tipo}'
-                    )
-                    polizas_creadas += 1
-                except Exception as e:
-                    import logging
-                    logger = logging.getLogger(__name__)
-                    logger.error("Error al crear póliza automática", exc_info=True)
-            
-            i += 1
-        else:
-            break
-    
-    if polizas_creadas > 0:
-        messages.info(request, f'Se crearon {polizas_creadas} polizas requeridas para el contrato.')
-
-
 # ============================================================================
 # VISTAS DE MÓDULO OTRO SÍ
 # ============================================================================

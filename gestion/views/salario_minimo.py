@@ -643,14 +643,6 @@ def detalle_calculo_salario_minimo(request, calculo_id):
     return render(request, 'gestion/salario_minimo/calculo_detalle.html', context)
 
 
-# Vista de edición deshabilitada - Los cálculos de Salario Mínimo no deben editarse
-# @login_required_custom
-# def editar_calculo_salario_minimo(request, calculo_id):
-#     """Vista para editar un cálculo de Salario Mínimo existente"""
-#     calculo = get_object_or_404(CalculoSalarioMinimo, id=calculo_id)
-#     messages.error(request, 'La edición de cálculos de Salario Mínimo está deshabilitada. Si necesita corregir un cálculo, elimínelo y créelo nuevamente.')
-#     return redirect('gestion:detalle_calculo_salario_minimo', calculo_id=calculo.id)
-
 
 @admin_required
 def eliminar_calculo_salario_minimo(request, calculo_id):

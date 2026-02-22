@@ -708,14 +708,6 @@ def detalle_calculo_ipc(request, calculo_id):
     return render(request, 'gestion/ipc/calculo_detalle.html', context)
 
 
-# Vista de edición deshabilitada - Los cálculos de IPC no deben editarse
-# @login_required_custom
-# def editar_calculo_ipc(request, calculo_id):
-#     """Vista para editar un cálculo de IPC existente"""
-#     calculo = get_object_or_404(CalculoIPC, id=calculo_id)
-#     messages.error(request, 'La edición de cálculos de IPC está deshabilitada. Si necesita corregir un cálculo, elimínelo y créelo nuevamente.')
-#     return redirect('gestion:detalle_calculo_ipc', calculo_id=calculo.id)
-
 
 @admin_required
 def eliminar_calculo_ipc(request, calculo_id):
