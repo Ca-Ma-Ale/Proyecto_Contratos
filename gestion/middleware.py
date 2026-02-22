@@ -81,7 +81,7 @@ class LicenseCheckMiddleware(MiddlewareMixin):
         # --- Comprobar caché de sesión ---
         cache_result = self._usar_cache_si_vigente(request)
         if cache_result == 'redirect_login':
-            return redirect('gestion:login')
+            return redirect('/login/')
         if cache_result is True:
             # Licencia válida según caché → no consultar BD
             return None
@@ -111,7 +111,7 @@ class LicenseCheckMiddleware(MiddlewareMixin):
                 messages.error(request, 'Su licencia ha sido revocada o cancelada. Por favor, contacte al administrador.')
                 logout(request)
                 self._invalidar_cache_licencia(request.session)
-                return redirect('gestion:login')
+                return redirect('/login/')
 
             is_valid = (
                 cliente_license.is_active and
@@ -150,7 +150,7 @@ class LicenseCheckMiddleware(MiddlewareMixin):
             messages.error(request, 'Error del sistema al verificar la licencia. Por favor, inicie sesión nuevamente.')
             logout(request)
             self._invalidar_cache_licencia(request.session)
-            return redirect('gestion:login')
+            return redirect('/login/')
 
         return None
 
