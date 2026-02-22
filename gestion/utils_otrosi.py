@@ -233,6 +233,8 @@ def get_ultimo_otrosi_que_modifico_campo_hasta_fecha(contrato, campo_nombre, fec
     # Esto elimina las 2 queries ORM por llamada cuando se usa desde vistas con
     # prefetch_related('otrosi', 'renovaciones_automaticas').
 
+    eventos = []
+
     if permitir_futuros:
         otrosis_aprobados = sorted(
             [o for o in contrato.otrosi.all() if o.estado == 'APROBADO'],
