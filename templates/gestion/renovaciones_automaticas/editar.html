@@ -226,24 +226,39 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     .edit-renovacion-page .poliza-card .card-body .row {
-        align-items: flex-end;
+        align-items: stretch;
     }
 
     .edit-renovacion-page .poliza-card .card-body .row > [class*="col-"] {
         display: flex;
         flex-direction: column;
+        position: relative;
+        padding-bottom: 1.4em;
     }
 
-    .edit-renovacion-page .poliza-card .card-body .row > [class*="col-"] .form-label {
-        min-height: 2.6em;
+    .edit-renovacion-page .poliza-card .card-body .row > [class*="col-"] > .form-label,
+    .edit-renovacion-page .poliza-card .card-body .row > [class*="col-"] > label {
+        flex: 1 1 auto;
         display: flex;
         align-items: flex-end;
+        padding-bottom: 0.3rem;
         line-height: 1.25;
     }
 
-    .edit-renovacion-page .poliza-card .card-body .row > [class*="col-"] .input-group,
-    .edit-renovacion-page .poliza-card .card-body .row > [class*="col-"] .form-control-modern {
-        margin-top: auto;
+    .edit-renovacion-page .poliza-card .card-body .row > [class*="col-"] > .input-group,
+    .edit-renovacion-page .poliza-card .card-body .row > [class*="col-"] > .form-control-modern,
+    .edit-renovacion-page .poliza-card .card-body .row > [class*="col-"] > input,
+    .edit-renovacion-page .poliza-card .card-body .row > [class*="col-"] > select {
+        flex: 0 0 auto;
+    }
+
+    .edit-renovacion-page .poliza-card .card-body .row > [class*="col-"] > small.form-text {
+        position: absolute;
+        bottom: 0;
+        left: calc(var(--bs-gutter-x, 0.75rem) * 0.5);
+        margin-top: 0 !important;
+        font-size: 0.78em;
+        white-space: nowrap;
     }
 
     .edit-renovacion-page .input-group-text {
@@ -262,7 +277,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     .edit-renovacion-page .card-body > form > .mb-4 > .row {
-        align-items: flex-end;
+        align-items: stretch;
     }
 
     .edit-renovacion-page .card-body > form > .mb-4 > .row > [class*="col-"] {
@@ -270,15 +285,19 @@ document.addEventListener('DOMContentLoaded', function() {
         flex-direction: column;
     }
 
-    .edit-renovacion-page .card-body > form > .mb-4 > .row > [class*="col-"] .form-label {
-        min-height: 2.6em;
+    .edit-renovacion-page .card-body > form > .mb-4 > .row > [class*="col-"] > .form-label,
+    .edit-renovacion-page .card-body > form > .mb-4 > .row > [class*="col-"] > label {
+        flex: 1 1 auto;
         display: flex;
         align-items: flex-end;
+        padding-bottom: 0.3rem;
         line-height: 1.25;
     }
 
-    .edit-renovacion-page .card-body > form > .mb-4 > .row > [class*="col-"] .form-control-modern {
-        margin-top: auto;
+    .edit-renovacion-page .card-body > form > .mb-4 > .row > [class*="col-"] > .form-control-modern,
+    .edit-renovacion-page .card-body > form > .mb-4 > .row > [class*="col-"] > input,
+    .edit-renovacion-page .card-body > form > .mb-4 > .row > [class*="col-"] > select {
+        flex: 0 0 auto;
     }
 </style>
 <div class="container-fluid edit-renovacion-page">
