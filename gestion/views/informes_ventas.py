@@ -14,27 +14,14 @@ from gestion.models import Contrato, InformeVentas, CalculoFacturacionVentas, Ti
 from gestion.utils_otrosi import (
     obtener_valores_vigentes_facturacion_ventas,
     es_fecha_fuera_vigencia_contrato,
-    get_ultimo_otrosi_que_modifico_campo_hasta_fecha,
 )
 from gestion.services.exportes import generar_pdf_calculo_facturacion, generar_excel_calculo_facturacion, generar_excel_informes_ventas
-from gestion.views.utils import obtener_configuracion_empresa
-
-
-def _obtener_fecha_final_para_corte(contrato, fecha_referencia):
-    """Determina la fecha final vigente del contrato para la fecha de corte."""
-    otrosi_modificador = get_ultimo_otrosi_que_modifico_campo_hasta_fecha(
-        contrato,
-        'nueva_fecha_final_actualizada',
-        fecha_referencia,
-    )
-    if otrosi_modificador and getattr(otrosi_modificador, 'nueva_fecha_final_actualizada', None):
-        return otrosi_modificador.nueva_fecha_final_actualizada
-    return contrato.fecha_final_actualizada or contrato.fecha_final_inicial
+from gestion.views.utils import obtener_configuracion_empresa, _obtener_fecha_final_contrato
 
 
 def _es_contrato_vigente_en_fecha(contrato, fecha_referencia):
     """Verifica si el contrato está vigente para la fecha de corte proporcionada."""
-    fecha_final = _obtener_fecha_final_para_corte(contrato, fecha_referencia)
+    fecha_final = _obtener_fecha_final_contrato(contrato, fecha_referencia)
     if not fecha_final:
         return True
     return fecha_final >= fecha_referencia
