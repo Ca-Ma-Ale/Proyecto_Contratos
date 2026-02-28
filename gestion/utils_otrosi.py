@@ -304,19 +304,13 @@ def get_ultimo_otrosi_que_modifico_campo_hasta_fecha(contrato, campo_nombre, fec
         -x[1].version if hasattr(x[1], 'version') else 0
     ), reverse=True)
     
-    # Buscar el primero que tenga el campo modificado (no None y no vacío)
-    # y que sea vigente en la fecha de referencia
+    # Buscar el primero que tenga el campo modificado (no None y no vacío).
+    # El efecto cadena significa que la última modificación persiste indefinidamente:
+    # un Otro Sí que cambió un campo sigue siendo la fuente del valor actual aunque
+    # su effective_to ya haya pasado, hasta que otro Otro Sí posterior lo reemplace.
+    # Por eso NO filtramos por effective_to >= fecha_referencia; solo importa que
+    # effective_from <= fecha_referencia (ya garantizado por la list comprehension).
     for tipo_evento, evento in eventos:
-        # Verificar que el evento sea vigente en la fecha de referencia
-        # Un evento es vigente si su effective_from <= fecha_referencia
-        # y (effective_to >= fecha_referencia o effective_to es None)
-        es_vigente = evento.effective_from <= fecha_referencia
-        if evento.effective_to is not None:
-            es_vigente = es_vigente and evento.effective_to >= fecha_referencia
-        
-        if not es_vigente:
-            continue
-        
         valor = getattr(evento, campo_nombre, None)
         # Verificar si el campo tiene un valor válido
         if valor is not None:

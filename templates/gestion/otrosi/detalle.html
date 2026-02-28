@@ -12,25 +12,25 @@
                 <h1 class="display-6">
                     <i class="fas fa-file-signature text-success"></i> {{ otrosi.numero_otrosi }}
                 </h1>
-                <div>
+                <div class="d-flex flex-wrap gap-2 align-items-center">
                     {% if otrosi.estado == 'BORRADOR' %}
                         <a href="{% url 'gestion:enviar_revision_otrosi' otrosi.id %}" class="btn btn-warning">
                             <i class="fas fa-paper-plane"></i> Enviar a Revisión
                         </a>
                     {% endif %}
-                    
+
                     {% if otrosi.estado == 'EN_REVISION' and user.is_staff %}
                         <a href="{% url 'gestion:aprobar_otrosi' otrosi.id %}" class="btn btn-success">
                             <i class="fas fa-check"></i> Aprobar/Rechazar
                         </a>
                     {% endif %}
-                    
+
                     {% if user.is_staff %}
                         <a href="{% url 'gestion:editar_otrosi' otrosi.id %}" class="btn btn-primary">
                             <i class="fas fa-edit"></i> Editar
                         </a>
                     {% endif %}
-                    
+
                     {% if user.is_staff %}
                         {% if tiene_posteriores %}
                             <button class="btn btn-danger" disabled title="No se puede eliminar porque existen Otros Sí posteriores">
@@ -42,15 +42,13 @@
                             </a>
                         {% endif %}
                     {% endif %}
-                    
-                    <div class="d-flex gap-2">
-                        <a href="{% url 'gestion:lista_otrosi' contrato.id %}" class="btn btn-secondary">
-                            <i class="fas fa-arrow-left"></i> Volver a Lista
-                        </a>
-                        <a href="{% url 'gestion:dashboard' %}" class="btn btn-volver-inicio">
-                            <i class="fas fa-home"></i> Volver al Inicio
-                        </a>
-                    </div>
+
+                    <a href="{% url 'gestion:lista_otrosi' contrato.id %}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Volver a Lista
+                    </a>
+                    <a href="{% url 'gestion:dashboard' %}" class="btn btn-volver-inicio">
+                        <i class="fas fa-home"></i> Volver al Inicio
+                    </a>
                 </div>
             </div>
         </div>

@@ -76,17 +76,48 @@ document.addEventListener('DOMContentLoaded', function() {
         const modalidadSeleccionada = modalidadSelect.value;
         const modalidadActual = '{{ modalidad_actual|default:"" }}';
         
-        // Si no hay modalidad seleccionada, deshabilitar ambos campos
+        // Si no hay modalidad seleccionada, habilitar campos según la modalidad actual del contrato
         if (!modalidadSeleccionada || modalidadSeleccionada === '') {
-            if (nuevoValorCanonInput) {
-                nuevoValorCanonInput.disabled = true;
-                nuevoValorCanonInput.style.backgroundColor = '#e9ecef';
-                nuevoValorCanonInput.style.cursor = 'not-allowed';
-            }
-            if (nuevoCanonMinimoInput) {
-                nuevoCanonMinimoInput.disabled = true;
-                nuevoCanonMinimoInput.style.backgroundColor = '#e9ecef';
-                nuevoCanonMinimoInput.style.cursor = 'not-allowed';
+            const modalidadRef = modalidadActual;
+            if (modalidadRef === 'Fijo') {
+                if (nuevoValorCanonInput) {
+                    nuevoValorCanonInput.disabled = false;
+                    nuevoValorCanonInput.readOnly = false;
+                    nuevoValorCanonInput.removeAttribute('readonly');
+                    nuevoValorCanonInput.removeAttribute('disabled');
+                    nuevoValorCanonInput.style.backgroundColor = '';
+                    nuevoValorCanonInput.style.cursor = '';
+                }
+                if (nuevoCanonMinimoInput) {
+                    nuevoCanonMinimoInput.disabled = true;
+                    nuevoCanonMinimoInput.style.backgroundColor = '#e9ecef';
+                    nuevoCanonMinimoInput.style.cursor = 'not-allowed';
+                }
+            } else if (modalidadRef === 'Hibrido (Min Garantizado)') {
+                if (nuevoValorCanonInput) {
+                    nuevoValorCanonInput.disabled = true;
+                    nuevoValorCanonInput.style.backgroundColor = '#e9ecef';
+                    nuevoValorCanonInput.style.cursor = 'not-allowed';
+                }
+                if (nuevoCanonMinimoInput) {
+                    nuevoCanonMinimoInput.disabled = false;
+                    nuevoCanonMinimoInput.readOnly = false;
+                    nuevoCanonMinimoInput.removeAttribute('readonly');
+                    nuevoCanonMinimoInput.removeAttribute('disabled');
+                    nuevoCanonMinimoInput.style.backgroundColor = '';
+                    nuevoCanonMinimoInput.style.cursor = '';
+                }
+            } else {
+                if (nuevoValorCanonInput) {
+                    nuevoValorCanonInput.disabled = true;
+                    nuevoValorCanonInput.style.backgroundColor = '#e9ecef';
+                    nuevoValorCanonInput.style.cursor = 'not-allowed';
+                }
+                if (nuevoCanonMinimoInput) {
+                    nuevoCanonMinimoInput.disabled = true;
+                    nuevoCanonMinimoInput.style.backgroundColor = '#e9ecef';
+                    nuevoCanonMinimoInput.style.cursor = 'not-allowed';
+                }
             }
             return;
         }
@@ -165,7 +196,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 nuevoCanonMinimoInput.value = '';
             }
         } else if (modalidadSeleccionada === 'Hibrido (Min Garantizado)') {
-            // Solo habilitar Nuevo Canon Mínimo Garantizado si es diferente a la actual
             // Siempre deshabilitar Nuevo Valor Canon para modalidad Híbrido
             if (nuevoValorCanonInput) {
                 nuevoValorCanonInput.disabled = true;
@@ -173,23 +203,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 nuevoValorCanonInput.style.cursor = 'not-allowed';
                 nuevoValorCanonInput.value = '';
             }
-            if (esModalidadDiferente) {
-                if (nuevoCanonMinimoInput) {
-                    nuevoCanonMinimoInput.disabled = false;
-                    nuevoCanonMinimoInput.readOnly = false;
-                    nuevoCanonMinimoInput.removeAttribute('readonly');
-                    nuevoCanonMinimoInput.removeAttribute('disabled');
-                    nuevoCanonMinimoInput.style.backgroundColor = '';
-                    nuevoCanonMinimoInput.style.cursor = '';
-                    nuevoCanonMinimoInput.required = false;
-                }
-            } else {
-                // Si es igual a la actual, deshabilitar
-                if (nuevoCanonMinimoInput) {
-                    nuevoCanonMinimoInput.disabled = true;
-                    nuevoCanonMinimoInput.style.backgroundColor = '#e9ecef';
-                    nuevoCanonMinimoInput.style.cursor = 'not-allowed';
-                }
+            // Siempre habilitar Nuevo Canon Mínimo Garantizado cuando la modalidad es Híbrido
+            // (independientemente de si es igual o diferente a la actual)
+            if (nuevoCanonMinimoInput) {
+                nuevoCanonMinimoInput.disabled = false;
+                nuevoCanonMinimoInput.readOnly = false;
+                nuevoCanonMinimoInput.removeAttribute('readonly');
+                nuevoCanonMinimoInput.removeAttribute('disabled');
+                nuevoCanonMinimoInput.style.backgroundColor = '';
+                nuevoCanonMinimoInput.style.cursor = '';
+                nuevoCanonMinimoInput.required = false;
             }
         } else {
             // Si no hay modalidad seleccionada o es otra, deshabilitar ambos
@@ -219,7 +242,7 @@ document.addEventListener('DOMContentLoaded', function() {
         modificarCondicionesCheckbox.addEventListener('change', function() {
             if (this.checked) {
                 setTimeout(validarCamposFinancierosPorModalidad, 100);
-                // Si la modalidad actual es "Fijo", habilitar el campo inmediatamente
+                // Si la modalidad actual es "Fijo", habilitar canon fijo
                 if (modalidadActual === 'Fijo') {
                     setTimeout(function() {
                         const nuevoValorCanonInput = document.getElementById('{{ form.nuevo_valor_canon.id_for_label }}');
@@ -230,6 +253,20 @@ document.addEventListener('DOMContentLoaded', function() {
                             nuevoValorCanonInput.removeAttribute('disabled');
                             nuevoValorCanonInput.style.backgroundColor = '';
                             nuevoValorCanonInput.style.cursor = '';
+                        }
+                    }, 150);
+                }
+                // Si la modalidad actual es "Híbrido", habilitar canon mínimo
+                if (modalidadActual === 'Hibrido (Min Garantizado)') {
+                    setTimeout(function() {
+                        const nuevoCanonMinimoInput = document.getElementById('{{ form.nuevo_canon_minimo_garantizado.id_for_label }}');
+                        if (nuevoCanonMinimoInput) {
+                            nuevoCanonMinimoInput.disabled = false;
+                            nuevoCanonMinimoInput.readOnly = false;
+                            nuevoCanonMinimoInput.removeAttribute('readonly');
+                            nuevoCanonMinimoInput.removeAttribute('disabled');
+                            nuevoCanonMinimoInput.style.backgroundColor = '';
+                            nuevoCanonMinimoInput.style.cursor = '';
                         }
                     }, 150);
                 }
@@ -256,20 +293,34 @@ document.addEventListener('DOMContentLoaded', function() {
         setTimeout(validarCamposFinancierosPorModalidad, 100);
     }
     
-    // Si la modalidad actual es "Fijo" y el checkbox está marcado, habilitar el campo desde el inicio
+    // Si la modalidad actual es conocida y el checkbox está marcado, habilitar el campo correcto desde el inicio
     const modalidadActualInicial = '{{ modalidad_actual|default:"" }}';
-    if (modalidadActualInicial === 'Fijo' && modificarCondicionesCheckbox && modificarCondicionesCheckbox.checked) {
-        setTimeout(function() {
-            const nuevoValorCanonInput = document.getElementById('{{ form.nuevo_valor_canon.id_for_label }}');
-            if (nuevoValorCanonInput) {
-                nuevoValorCanonInput.disabled = false;
-                nuevoValorCanonInput.readOnly = false;
-                nuevoValorCanonInput.removeAttribute('readonly');
-                nuevoValorCanonInput.removeAttribute('disabled');
-                nuevoValorCanonInput.style.backgroundColor = '';
-                nuevoValorCanonInput.style.cursor = '';
-            }
-        }, 200);
+    if (modificarCondicionesCheckbox && modificarCondicionesCheckbox.checked) {
+        if (modalidadActualInicial === 'Fijo') {
+            setTimeout(function() {
+                const nuevoValorCanonInput = document.getElementById('{{ form.nuevo_valor_canon.id_for_label }}');
+                if (nuevoValorCanonInput) {
+                    nuevoValorCanonInput.disabled = false;
+                    nuevoValorCanonInput.readOnly = false;
+                    nuevoValorCanonInput.removeAttribute('readonly');
+                    nuevoValorCanonInput.removeAttribute('disabled');
+                    nuevoValorCanonInput.style.backgroundColor = '';
+                    nuevoValorCanonInput.style.cursor = '';
+                }
+            }, 200);
+        } else if (modalidadActualInicial === 'Hibrido (Min Garantizado)') {
+            setTimeout(function() {
+                const nuevoCanonMinimoInput = document.getElementById('{{ form.nuevo_canon_minimo_garantizado.id_for_label }}');
+                if (nuevoCanonMinimoInput) {
+                    nuevoCanonMinimoInput.disabled = false;
+                    nuevoCanonMinimoInput.readOnly = false;
+                    nuevoCanonMinimoInput.removeAttribute('readonly');
+                    nuevoCanonMinimoInput.removeAttribute('disabled');
+                    nuevoCanonMinimoInput.style.backgroundColor = '';
+                    nuevoCanonMinimoInput.style.cursor = '';
+                }
+            }, 200);
+        }
     }
 
     // Configurar toggles para mostrar/ocultar campos modificables
