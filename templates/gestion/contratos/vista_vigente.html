@@ -238,8 +238,8 @@
                             <th>Último Canon por Aumento del IPC:</th>
                             <td>
                                 ${{ ultimo_calculo_ipc_aplicado.nuevo_canon|formato_moneda }}
-                                <span class="badge bg-success ms-2" title="Fecha de cálculo del aumento por IPC">
-                                    <i class="fas fa-calendar"></i> {{ ultimo_calculo_ipc_aplicado.fecha_calculo|date:"d/m/Y" }}
+                                <span class="badge bg-success ms-2" title="Ajuste por IPC aplicado el {{ ultimo_calculo_ipc_aplicado.fecha_aplicacion|date:'d/m/Y' }}">
+                                    <i class="fas fa-calculator"></i> IPC {{ ultimo_calculo_ipc_aplicado.fecha_aplicacion|date:"d/m/Y" }}
                                 </span>
                             </td>
                         </tr>
