@@ -14,6 +14,7 @@ from gestion.decorators import admin_required, login_required_custom
 from gestion.forms import SalarioMinimoHistoricoForm, CalculoSalarioMinimoForm, EditarCalculoSalarioMinimoForm
 from gestion.models import SalarioMinimoHistorico, CalculoSalarioMinimo, Contrato
 from gestion.utils_otrosi import get_ultimo_otrosi_que_modifico_campo_hasta_fecha
+from gestion.utils_ipc import calcular_proxima_fecha_aumento
 from gestion.utils_salario_minimo import (
     obtener_canon_base_para_salario_minimo,
     calcular_ajuste_salario_minimo,
@@ -64,11 +65,14 @@ def lista_salario_minimo_historico(request):
         
         # Obtener último cálculo de Salario Mínimo si existe
         ultimo_calculo = CalculoSalarioMinimo.objects.filter(contrato=contrato).order_by('-fecha_aplicacion', '-fecha_calculo').first()
+
+        proxima_fecha_aumento = calcular_proxima_fecha_aumento(contrato, fecha_actual)
         
         contratos_info.append({
             'contrato': contrato,
             'fecha_final': fecha_final,
             'fecha_aumento': fecha_aumento,
+            'proxima_fecha_aumento': proxima_fecha_aumento,
             'ultimo_calculo': ultimo_calculo,
         })
     

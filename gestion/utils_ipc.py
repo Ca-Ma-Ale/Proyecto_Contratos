@@ -330,11 +330,11 @@ def calcular_proxima_fecha_aumento(contrato, fecha_referencia=None):
     Calcula la próxima fecha de aumento IPC/Salario Mínimo para un contrato.
     
     Si hay un último cálculo realizado, calcula desde la fecha de aplicación del último cálculo + 1 año.
-    Si no hay cálculos, calcula desde fecha_inicial_contrato + 1 año o fecha_aumento_ipc + 1 año.
+    Si no hay cálculos, usa fecha_aumento_ipc del contrato como primera fecha de ajuste pendiente.
     
-    IMPORTANTE: Si hay una renovación (OtroSi tipo RENEWAL) que NO modificó las condiciones IPC
-    y su fecha de inicio es posterior al último cálculo, se considera la fecha de renovación
-    como nueva base para calcular el próximo ajuste.
+    IMPORTANTE: Las renovaciones automáticas NO modifican las fechas de IPC. Si hay renovación
+    posterior al último cálculo, solo se usa cuando HAY cálculos previos para determinar el
+    siguiente ciclo; sin cálculos, se usa siempre fecha_aumento_ipc del contrato.
     
     Args:
         contrato: Instancia del modelo Contrato
@@ -417,7 +417,8 @@ def calcular_proxima_fecha_aumento(contrato, fecha_referencia=None):
                 renovacion_relevante = renovaciones_automaticas
         
         # Si hay renovación relevante (posterior al último cálculo y sin modificar IPC),
-        # usar su fecha de inicio como base para calcular el próximo ajuste
+        # usar su fecha de inicio como base para calcular el próximo ajuste.
+        # NOTA: Solo cuando HAY último cálculo. Las renovaciones NO modifican las fechas IPC.
         if renovacion_relevante:
             fecha_base_renovacion = renovacion_relevante.effective_from
             fecha_proxima = date(
@@ -437,48 +438,8 @@ def calcular_proxima_fecha_aumento(contrato, fecha_referencia=None):
             )
             return fecha_proxima
         
-        # Si no hay cálculos, buscar renovaciones recientes que puedan servir como base
-        renovacion_base_otrosi = OtroSi.objects.filter(
-            contrato=contrato,
-            estado='APROBADO',
-            tipo='RENEWAL',
-            effective_from__lte=fecha_referencia
-        ).exclude(
-            nuevo_tipo_condicion_ipc__isnull=False
-        ).exclude(
-            nueva_periodicidad_ipc__isnull=False
-        ).exclude(
-            nueva_fecha_aumento_ipc__isnull=False
-        ).order_by('-effective_from', '-version').first()
-        
-        # Buscar Renovaciones Automáticas
-        from gestion.models import RenovacionAutomatica
-        renovacion_base_automatica = RenovacionAutomatica.objects.filter(
-            contrato=contrato,
-            estado='APROBADO',
-            effective_from__lte=fecha_referencia
-        ).order_by('-effective_from', '-version').first()
-        
-        # Determinar cuál renovación es más reciente
-        renovacion_base = None
-        if renovacion_base_otrosi and renovacion_base_automatica:
-            renovacion_base = renovacion_base_otrosi if renovacion_base_otrosi.effective_from >= renovacion_base_automatica.effective_from else renovacion_base_automatica
-        elif renovacion_base_otrosi:
-            renovacion_base = renovacion_base_otrosi
-        elif renovacion_base_automatica:
-            renovacion_base = renovacion_base_automatica
-        
-        if renovacion_base:
-            fecha_base_renovacion = renovacion_base.effective_from
-            fecha_proxima = date(
-                fecha_base_renovacion.year + 1,
-                fecha_base_renovacion.month,
-                fecha_base_renovacion.day
-            )
-            return fecha_proxima
-        
-        # Si no hay cálculos ni renovaciones, calcular desde fecha base o fecha inicial
-        # Obtener fecha de aumento considerando otrosí
+        # Si no hay cálculos: las renovaciones NO modifican las fechas de IPC.
+        # La primera fecha de ajuste pendiente es fecha_aumento_ipc del contrato.
         otrosi_fecha_ipc = get_ultimo_otrosi_que_modifico_campo_hasta_fecha(
             contrato, 'nueva_fecha_aumento_ipc', fecha_referencia
         )
@@ -486,15 +447,15 @@ def calcular_proxima_fecha_aumento(contrato, fecha_referencia=None):
             fecha_base = otrosi_fecha_ipc.nueva_fecha_aumento_ipc
         else:
             fecha_base = contrato.fecha_aumento_ipc
-        
+
         if fecha_base:
-            # Calcular fecha_base + 1 año
-            fecha_proxima = date(
-                fecha_base.year + 1,
-                fecha_base.month,
-                fecha_base.day
-            )
-            return fecha_proxima
+            # Sin cálculos: la primera fecha de ajuste es fecha_base.
+            # Encontrar la ocurrencia más reciente (pasada o futura) para mostrar en alertas.
+            candidato = date(fecha_referencia.year, fecha_base.month, fecha_base.day)
+            if candidato <= fecha_referencia:
+                return candidato
+            candidato_anterior = date(fecha_referencia.year - 1, fecha_base.month, fecha_base.day)
+            return candidato_anterior if candidato_anterior >= fecha_base else fecha_base
         elif contrato.fecha_inicial_contrato:
             # Calcular fecha_inicial + 1 año
             fecha_inicial = contrato.fecha_inicial_contrato

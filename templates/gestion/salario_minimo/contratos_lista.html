@@ -51,6 +51,7 @@
                                         <th>Tipo</th>
                                         <th>Fecha Final</th>
                                         <th>Fecha Aumento</th>
+                                        <th>Próxima Fecha Aumento</th>
                                         <th>Porcentaje SMLV</th>
                                         <th>Periodicidad</th>
                                         <th>Último Cálculo</th>
@@ -87,6 +88,20 @@
                                         <td>
                                             {% if info.fecha_aumento %}
                                                 {{ info.fecha_aumento|date:"d/m/Y" }}
+                                            {% else %}
+                                                <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if info.proxima_fecha_aumento %}
+                                                {% if info.proxima_fecha_aumento < fecha_actual %}
+                                                    <span class="badge bg-danger" title="La fecha de aumento ya pasó y aún no se ha gestionado">
+                                                        {{ info.proxima_fecha_aumento|date:"d/m/Y" }}
+                                                        <i class="fas fa-exclamation-triangle ms-1"></i>
+                                                    </span>
+                                                {% else %}
+                                                    {{ info.proxima_fecha_aumento|date:"d/m/Y" }}
+                                                {% endif %}
                                             {% else %}
                                                 <span class="text-muted">-</span>
                                             {% endif %}
