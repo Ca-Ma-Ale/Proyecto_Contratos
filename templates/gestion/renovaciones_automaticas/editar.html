@@ -141,9 +141,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 <h1 class="display-6">
                     <i class="fas fa-edit text-warning"></i> Editar Renovación Automática
                 </h1>
-                <div>
+                <div class="d-flex gap-2 flex-wrap">
                     <a href="{% url 'gestion:gestion_renovaciones_automaticas' %}" class="btn btn-secondary">
                         <i class="fas fa-arrow-left"></i> Volver
+                    </a>
+                    <a href="{% url 'gestion:dashboard' %}" class="btn btn-volver-inicio">
+                        <i class="fas fa-home"></i> Volver al Inicio
                     </a>
                 </div>
             </div>
@@ -163,7 +166,9 @@ document.addEventListener('DOMContentLoaded', function() {
                         {% csrf_token %}
                         
                         <div class="mb-4">
-                            <h6>Información de la Renovación</h6>
+                            <h6 class="fw-bold border-bottom pb-2 mb-3" style="color: var(--avenida-orange);">
+                                <i class="fas fa-sync-alt me-1"></i> Información de la Renovación
+                            </h6>
                             <div class="row">
                                 <div class="col-md-6">
                                     <div class="mb-3">
@@ -179,22 +184,16 @@ document.addEventListener('DOMContentLoaded', function() {
                                 </div>
                             </div>
                             <div class="row">
-                                <div class="col-md-4">
+                                <div class="col-md-6">
                                     <div class="mb-3">
                                         <label for="{{ form.fecha_renovacion.id_for_label }}" class="form-label">{{ form.fecha_renovacion.label }}</label>
                                         {{ form.fecha_renovacion }}
                                     </div>
                                 </div>
-                                <div class="col-md-4">
+                                <div class="col-md-6">
                                     <div class="mb-3">
                                         <label for="{{ form.effective_from.id_for_label }}" class="form-label">{{ form.effective_from.label }}</label>
                                         {{ form.effective_from }}
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="mb-3">
-                                        <label for="{{ form.effective_to.id_for_label }}" class="form-label">{{ form.effective_to.label }}</label>
-                                        {{ form.effective_to }}
                                     </div>
                                 </div>
                             </div>
@@ -223,9 +222,12 @@ document.addEventListener('DOMContentLoaded', function() {
                         </div>
 
                         <div class="mb-4">
+                            <h6 class="fw-bold border-bottom pb-2 mb-3" style="color: var(--avenida-orange);">
+                                <i class="fas fa-shield-alt me-1"></i> Modificación de Pólizas
+                            </h6>
                             <div class="form-check">
                                 {{ form.modifica_polizas }}
-                                <label class="form-check-label" for="{{ form.modifica_polizas.id_for_label }}">
+                                <label class="form-check-label fw-semibold" for="{{ form.modifica_polizas.id_for_label }}">
                                     {{ form.modifica_polizas.label }}
                                 </label>
                             </div>
@@ -240,12 +242,12 @@ document.addEventListener('DOMContentLoaded', function() {
                             </div>
                             
                             <!-- Póliza RCE -->
-                            <div class="card mb-4 shadow-sm">
-                                <div class="card-header border-0" style="background: linear-gradient(135deg, rgba(255, 152, 0, 0.1) 0%, rgba(255, 152, 0, 0.05) 100%); padding: 1.25rem 1.5rem;">
-                                    <div class="form-check d-flex align-items-center">
+                            <div class="card mb-3 border-primary">
+                                <div class="card-header bg-light">
+                                    <div class="form-check">
                                         {{ form.nuevo_exige_poliza_rce }}
-                                        <label class="form-check-label ms-3 d-flex align-items-center" for="{{ form.nuevo_exige_poliza_rce.id_for_label }}" style="font-weight: 600; font-size: 1.1rem; color: var(--avenida-orange); cursor: pointer;">
-                                            <i class="fas fa-shield-alt me-2" style="font-size: 1.2rem;"></i> RCE - Responsabilidad Civil
+                                        <label class="form-check-label" for="{{ form.nuevo_exige_poliza_rce.id_for_label }}">
+                                            <i class="fas fa-shield-alt text-primary"></i> <strong>RCE - Responsabilidad Civil</strong>
                                         </label>
                                     </div>
                                 </div>
@@ -524,12 +526,12 @@ document.addEventListener('DOMContentLoaded', function() {
                             </div>
 
                             <!-- Póliza Cumplimiento -->
-                            <div class="card mb-4 shadow-sm">
-                                <div class="card-header border-0" style="background: linear-gradient(135deg, rgba(255, 152, 0, 0.1) 0%, rgba(255, 152, 0, 0.05) 100%); padding: 1.25rem 1.5rem;">
-                                    <div class="form-check d-flex align-items-center">
+                            <div class="card mb-3 border-primary">
+                                <div class="card-header bg-light">
+                                    <div class="form-check">
                                         {{ form.nuevo_exige_poliza_cumplimiento }}
-                                        <label class="form-check-label ms-3 d-flex align-items-center" for="{{ form.nuevo_exige_poliza_cumplimiento.id_for_label }}" style="font-weight: 600; font-size: 1.1rem; color: var(--avenida-orange); cursor: pointer;">
-                                            <i class="fas fa-shield-alt me-2" style="font-size: 1.2rem;"></i> Cumplimiento
+                                        <label class="form-check-label" for="{{ form.nuevo_exige_poliza_cumplimiento.id_for_label }}">
+                                            <i class="fas fa-shield-alt text-primary"></i> <strong>Cumplimiento</strong>
                                         </label>
                                     </div>
                                 </div>
@@ -756,12 +758,12 @@ document.addEventListener('DOMContentLoaded', function() {
                             </div>
 
                             <!-- Póliza Arrendamiento -->
-                            <div class="card mb-4 shadow-sm">
-                                <div class="card-header border-0" style="background: linear-gradient(135deg, rgba(255, 152, 0, 0.1) 0%, rgba(255, 152, 0, 0.05) 100%); padding: 1.25rem 1.5rem;">
-                                    <div class="form-check d-flex align-items-center">
+                            <div class="card mb-3 border-primary">
+                                <div class="card-header bg-light">
+                                    <div class="form-check">
                                         {{ form.nuevo_exige_poliza_arrendamiento }}
-                                        <label class="form-check-label ms-3 d-flex align-items-center" for="{{ form.nuevo_exige_poliza_arrendamiento.id_for_label }}" style="font-weight: 600; font-size: 1.1rem; color: var(--avenida-orange); cursor: pointer;">
-                                            <i class="fas fa-shield-alt me-2" style="font-size: 1.2rem;"></i> Póliza de Arrendamiento
+                                        <label class="form-check-label" for="{{ form.nuevo_exige_poliza_arrendamiento.id_for_label }}">
+                                            <i class="fas fa-shield-alt text-primary"></i> <strong>Póliza de Arrendamiento</strong>
                                         </label>
                                     </div>
                                 </div>
@@ -863,12 +865,12 @@ document.addEventListener('DOMContentLoaded', function() {
                             </div>
 
                             <!-- Póliza Todo Riesgo -->
-                            <div class="card mb-4 shadow-sm">
-                                <div class="card-header border-0" style="background: linear-gradient(135deg, rgba(255, 152, 0, 0.1) 0%, rgba(255, 152, 0, 0.05) 100%); padding: 1.25rem 1.5rem;">
-                                    <div class="form-check d-flex align-items-center">
+                            <div class="card mb-3 border-primary">
+                                <div class="card-header bg-light">
+                                    <div class="form-check">
                                         {{ form.nuevo_exige_poliza_todo_riesgo }}
-                                        <label class="form-check-label ms-3 d-flex align-items-center" for="{{ form.nuevo_exige_poliza_todo_riesgo.id_for_label }}" style="font-weight: 600; font-size: 1.1rem; color: var(--avenida-orange); cursor: pointer;">
-                                            <i class="fas fa-shield-alt me-2" style="font-size: 1.2rem;"></i> Todo Riesgo para Equipos
+                                        <label class="form-check-label" for="{{ form.nuevo_exige_poliza_todo_riesgo.id_for_label }}">
+                                            <i class="fas fa-shield-alt text-primary"></i> <strong>Todo Riesgo para Equipos</strong>
                                         </label>
                                     </div>
                                 </div>
@@ -922,12 +924,12 @@ document.addEventListener('DOMContentLoaded', function() {
                             </div>
 
                             <!-- Otras Pólizas -->
-                            <div class="card mb-4 shadow-sm">
-                                <div class="card-header border-0" style="background: linear-gradient(135deg, rgba(255, 152, 0, 0.1) 0%, rgba(255, 152, 0, 0.05) 100%); padding: 1.25rem 1.5rem;">
-                                    <div class="form-check d-flex align-items-center">
+                            <div class="card mb-3 border-primary">
+                                <div class="card-header bg-light">
+                                    <div class="form-check">
                                         {{ form.nuevo_exige_poliza_otra_1 }}
-                                        <label class="form-check-label ms-3 d-flex align-items-center" for="{{ form.nuevo_exige_poliza_otra_1.id_for_label }}" style="font-weight: 600; font-size: 1.1rem; color: var(--avenida-orange); cursor: pointer;">
-                                            <i class="fas fa-shield-alt me-2" style="font-size: 1.2rem;"></i> Otras Pólizas
+                                        <label class="form-check-label" for="{{ form.nuevo_exige_poliza_otra_1.id_for_label }}">
+                                            <i class="fas fa-shield-alt text-primary"></i> <strong>Otras Pólizas</strong>
                                         </label>
                                     </div>
                                 </div>
