@@ -12,6 +12,13 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    const formFields = document.querySelectorAll(
+        '.edit-renovacion-page input:not([type="checkbox"]):not([type="radio"]), .edit-renovacion-page select, .edit-renovacion-page textarea'
+    );
+    formFields.forEach(function(field) {
+        field.classList.add('form-control-modern');
+    });
+
     // Configurar formateo automático para campos de dinero
     const moneyInputs = document.querySelectorAll('.money-input');
     moneyInputs.forEach(function(input) {
@@ -134,11 +141,99 @@ document.addEventListener('DOMContentLoaded', function() {
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid">
+<style>
+    .edit-renovacion-page {
+        --panel-border: #e6eaf0;
+        --surface-soft: #f8fafc;
+    }
+
+    .edit-renovacion-page .page-title {
+        font-weight: 700;
+        color: var(--avenida-dark);
+        letter-spacing: 0.2px;
+    }
+
+    .edit-renovacion-page .main-card {
+        border: 1px solid var(--panel-border);
+        border-radius: 16px;
+        box-shadow: 0 10px 30px rgba(44, 62, 80, 0.08);
+        overflow: hidden;
+    }
+
+    .edit-renovacion-page .main-card .card-header {
+        background: linear-gradient(90deg, var(--avenida-orange) 0%, #ffad33 100%);
+        border-bottom: none;
+        color: #fff;
+        padding: 1rem 1.25rem;
+    }
+
+    .edit-renovacion-page .section-title {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        font-weight: 700;
+        color: var(--avenida-orange);
+        border-bottom: 1px solid #ffe0b2;
+        padding-bottom: 0.6rem;
+        margin-bottom: 1rem;
+    }
+
+    .edit-renovacion-page .form-label {
+        color: #334155;
+        font-weight: 600;
+        margin-bottom: 0.35rem;
+    }
+
+    .edit-renovacion-page .form-control-modern {
+        border: 1px solid #d7dde5;
+        border-radius: 10px;
+        min-height: 42px;
+        background-color: #fff;
+        transition: all 0.2s ease;
+    }
+
+    .edit-renovacion-page textarea.form-control-modern {
+        min-height: 100px;
+    }
+
+    .edit-renovacion-page .form-control-modern:focus {
+        border-color: var(--avenida-orange);
+        box-shadow: 0 0 0 0.2rem rgba(255, 152, 0, 0.15);
+        outline: none;
+    }
+
+    .edit-renovacion-page .poliza-card {
+        border: 1px solid #e2e8f0;
+        border-radius: 14px;
+        overflow: hidden;
+        box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05);
+    }
+
+    .edit-renovacion-page .poliza-card .card-header {
+        background: var(--surface-soft);
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .edit-renovacion-page .input-group-text {
+        border-radius: 10px 0 0 10px;
+        border: 1px solid #d7dde5;
+        border-right: 0;
+    }
+
+    .edit-renovacion-page .input-group .form-control-modern {
+        border-radius: 0 10px 10px 0;
+    }
+
+    .edit-renovacion-page .btn {
+        border-radius: 10px;
+        font-weight: 600;
+    }
+</style>
+<div class="container-fluid edit-renovacion-page">
     <div class="row">
         <div class="col-12">
             <div class="d-flex justify-content-between align-items-center mb-4">
-                <h1 class="display-6">
+                <h1 class="display-6 page-title">
                     <i class="fas fa-edit text-warning"></i> Editar Renovación Automática
                 </h1>
                 <div class="d-flex gap-2 flex-wrap">
@@ -155,8 +250,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     <div class="row">
         <div class="col-12">
-            <div class="card">
-                <div class="card-header" style="background-color: var(--avenida-orange); color: white;">
+            <div class="card main-card">
+                <div class="card-header">
                     <h5 class="mb-0">
                         <i class="fas fa-sync-alt"></i> Renovación: {{ renovacion.numero_renovacion }} - Contrato: {{ contrato.num_contrato }}
                     </h5>
@@ -166,7 +261,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         {% csrf_token %}
                         
                         <div class="mb-4">
-                            <h6 class="fw-bold border-bottom pb-2 mb-3" style="color: var(--avenida-orange);">
+                            <h6 class="section-title">
                                 <i class="fas fa-sync-alt me-1"></i> Información de la Renovación
                             </h6>
                             <div class="row">
@@ -222,7 +317,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         </div>
 
                         <div class="mb-4">
-                            <h6 class="fw-bold border-bottom pb-2 mb-3" style="color: var(--avenida-orange);">
+                            <h6 class="section-title">
                                 <i class="fas fa-shield-alt me-1"></i> Modificación de Pólizas
                             </h6>
                             <div class="form-check">
@@ -242,8 +337,8 @@ document.addEventListener('DOMContentLoaded', function() {
                             </div>
                             
                             <!-- Póliza RCE -->
-                            <div class="card mb-3 border-primary">
-                                <div class="card-header bg-light">
+                            <div class="card mb-3 border-primary poliza-card">
+                                <div class="card-header">
                                     <div class="form-check">
                                         {{ form.nuevo_exige_poliza_rce }}
                                         <label class="form-check-label" for="{{ form.nuevo_exige_poliza_rce.id_for_label }}">
@@ -526,8 +621,8 @@ document.addEventListener('DOMContentLoaded', function() {
                             </div>
 
                             <!-- Póliza Cumplimiento -->
-                            <div class="card mb-3 border-primary">
-                                <div class="card-header bg-light">
+                            <div class="card mb-3 border-primary poliza-card">
+                                <div class="card-header">
                                     <div class="form-check">
                                         {{ form.nuevo_exige_poliza_cumplimiento }}
                                         <label class="form-check-label" for="{{ form.nuevo_exige_poliza_cumplimiento.id_for_label }}">
@@ -758,8 +853,8 @@ document.addEventListener('DOMContentLoaded', function() {
                             </div>
 
                             <!-- Póliza Arrendamiento -->
-                            <div class="card mb-3 border-primary">
-                                <div class="card-header bg-light">
+                            <div class="card mb-3 border-primary poliza-card">
+                                <div class="card-header">
                                     <div class="form-check">
                                         {{ form.nuevo_exige_poliza_arrendamiento }}
                                         <label class="form-check-label" for="{{ form.nuevo_exige_poliza_arrendamiento.id_for_label }}">
@@ -865,8 +960,8 @@ document.addEventListener('DOMContentLoaded', function() {
                             </div>
 
                             <!-- Póliza Todo Riesgo -->
-                            <div class="card mb-3 border-primary">
-                                <div class="card-header bg-light">
+                            <div class="card mb-3 border-primary poliza-card">
+                                <div class="card-header">
                                     <div class="form-check">
                                         {{ form.nuevo_exige_poliza_todo_riesgo }}
                                         <label class="form-check-label" for="{{ form.nuevo_exige_poliza_todo_riesgo.id_for_label }}">
@@ -924,8 +1019,8 @@ document.addEventListener('DOMContentLoaded', function() {
                             </div>
 
                             <!-- Otras Pólizas -->
-                            <div class="card mb-3 border-primary">
-                                <div class="card-header bg-light">
+                            <div class="card mb-3 border-primary poliza-card">
+                                <div class="card-header">
                                     <div class="form-check">
                                         {{ form.nuevo_exige_poliza_otra_1 }}
                                         <label class="form-check-label" for="{{ form.nuevo_exige_poliza_otra_1.id_for_label }}">
