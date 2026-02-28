@@ -65,7 +65,6 @@ urlpatterns = [
     
     # URLs de Informes de Ventas
     path('informes-ventas/', views.lista_informes_ventas, name='lista_informes_ventas'),
-    path('informes-ventas/nuevo/', views.nuevo_informe_ventas, name='nuevo_informe_ventas'),
     path('informes-ventas/<int:informe_id>/editar/', views.editar_informe_ventas, name='editar_informe_ventas'),
     path('informes-ventas/<int:informe_id>/marcar-entregado/', views.marcar_entregado_informe, name='marcar_entregado_informe'),
     path('informes-ventas/<int:informe_id>/marcar-pendiente/', views.marcar_pendiente_informe, name='marcar_pendiente_informe'),

@@ -110,51 +110,6 @@ def lista_informes_ventas(request):
     return render(request, 'gestion/informes/ventas/lista.html', context)
 
 
-@login_required_custom
-def nuevo_informe_ventas(request):
-    """Vista para crear un nuevo informe de ventas"""
-    if request.method == 'POST':
-        form = InformeVentasForm(request.POST)
-        
-        if form.is_valid():
-            informe = form.save(commit=False)
-            informe.registrado_por = request.user.get_username() if request.user.is_authenticated else None
-            informe.estado = 'PENDIENTE'
-            informe.fecha_entrega = None
-            informe.fecha_limite = None
-            
-            informe.save()
-            messages.success(request, f'Informe de ventas creado exitosamente para {informe.contrato.num_contrato} - {informe.get_mes_display()}/{informe.año}')
-            # Redirigir automáticamente al cálculo
-            from django.urls import reverse
-            return redirect(reverse('gestion:calcular_facturacion') + f'?informe_id={informe.id}')
-        else:
-            from gestion.utils import agregar_errores_formulario_a_mensajes
-            agregar_errores_formulario_a_mensajes(request, form)
-    else:
-        form = InformeVentasForm()
-        # Si viene un contrato_id en la URL, pre-seleccionarlo
-        contrato_id = request.GET.get('contrato_id')
-        if contrato_id:
-            try:
-                contrato = Contrato.objects.get(id=contrato_id, reporta_ventas=True)
-                form.fields['contrato'].initial = contrato
-            except Contrato.DoesNotExist:
-                pass
-        mes_param = request.GET.get('mes')
-        año_param = request.GET.get('año')
-        if mes_param and mes_param.isdigit():
-            form.fields['mes'].initial = int(mes_param)
-        if año_param and año_param.isdigit():
-            form.fields['año'].initial = int(año_param)
-    
-    context = {
-        'form': form,
-        'titulo': 'Nuevo Informe de Ventas',
-    }
-    
-    return render(request, 'gestion/informes/ventas/form.html', context)
-
 
 @login_required_custom
 def editar_informe_ventas(request, informe_id):
@@ -439,14 +394,18 @@ def calcular_facturacion(request):
                 }
                 return render(request, 'gestion/calculos/facturacion_form.html', context)
             
-            # Obtener el informe de ventas asociado (usar el informe editado si existe, sino buscar)
+            # Obtener o crear el informe de ventas asociado
             informe_ventas = informe
             if not informe_ventas:
-                informe_ventas = InformeVentas.objects.filter(
+                informe_ventas, _ = InformeVentas.objects.get_or_create(
                     contrato=contrato,
                     mes=mes,
-                    año=año
-                ).first()
+                    año=año,
+                    defaults={
+                        'estado': 'PENDIENTE',
+                        'registrado_por': request.user.get_username() if request.user.is_authenticated else None,
+                    }
+                )
             
             # Guardar el cálculo
             try:
@@ -547,11 +506,22 @@ def calcular_facturacion(request):
                 mes_actual = date.today().month
                 form.fields['mes'].initial = str(mes_actual)
         else:
-            form = CalculoFacturacionVentasForm()
-            # Establecer valores por defecto
-            form.fields['año'].initial = date.today().year
-            mes_actual = date.today().month
-            form.fields['mes'].initial = str(mes_actual)
+            contrato_id_param = request.GET.get('contrato_id')
+            mes_param = request.GET.get('mes')
+            año_param = request.GET.get('año')
+            initial = {}
+            if contrato_id_param:
+                initial['contrato'] = contrato_id_param
+            if mes_param and mes_param.isdigit():
+                initial['mes'] = mes_param
+            if año_param and año_param.isdigit():
+                initial['año'] = int(año_param)
+            if initial:
+                form = CalculoFacturacionVentasForm(initial=initial)
+            else:
+                form = CalculoFacturacionVentasForm()
+                form.fields['año'].initial = date.today().year
+                form.fields['mes'].initial = str(date.today().month)
     
     try:
         logger.info("Renderizando formulario de cálculo")

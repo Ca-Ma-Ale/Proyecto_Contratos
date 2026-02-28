@@ -149,7 +149,7 @@
                                             {% endif %}
                                         </td>
                                         <td>
-                                            <a href="{% url 'gestion:nuevo_informe_ventas' %}?contrato_id={{ item.contrato.id }}&mes={{ mes_seleccionado }}&año={{ año_seleccionado }}" 
+                                            <a href="{% url 'gestion:calcular_facturacion' %}?contrato_id={{ item.contrato.id }}&mes={{ mes_seleccionado }}&año={{ año_seleccionado }}"
                                                class="btn btn-sm btn-primary" title="Registrar Ventas">
                                                 <i class="fas fa-plus"></i> Registrar Ventas
                                             </a>

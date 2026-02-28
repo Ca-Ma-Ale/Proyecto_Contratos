@@ -72,7 +72,6 @@ from gestion.views.otrosi import (
 from gestion.views.configuracion import configuracion_empresa
 from gestion.views.informes_ventas import (
     lista_informes_ventas,
-    nuevo_informe_ventas,
     editar_informe_ventas,
     marcar_entregado_informe,
     marcar_pendiente_informe,
@@ -195,7 +194,6 @@ __all__ = [
     'eliminar_otrosi',
     'configuracion_empresa',
     'lista_informes_ventas',
-    'nuevo_informe_ventas',
     'editar_informe_ventas',
     'marcar_entregado_informe',
     'marcar_pendiente_informe',
