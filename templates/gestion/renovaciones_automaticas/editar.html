@@ -160,7 +160,7 @@ document.addEventListener('DOMContentLoaded', function() {
         overflow: hidden;
     }
 
-    .edit-renovacion-page .main-card .card-header {
+    .edit-renovacion-page .main-card > .card-header {
         background: linear-gradient(90deg, var(--avenida-orange) 0%, #ffad33 100%);
         border-bottom: none;
         color: #fff;
@@ -212,6 +212,38 @@ document.addEventListener('DOMContentLoaded', function() {
     .edit-renovacion-page .poliza-card .card-header {
         background: var(--surface-soft);
         border-bottom: 1px solid #e5e7eb;
+        color: #1e293b;
+        padding: 0.75rem 1.25rem;
+    }
+
+    .edit-renovacion-page .poliza-card .form-check-label {
+        color: #1e293b;
+        font-size: 0.95rem;
+    }
+
+    .edit-renovacion-page .poliza-card .form-check-label strong {
+        color: var(--avenida-dark);
+    }
+
+    .edit-renovacion-page .poliza-card .card-body .row {
+        align-items: flex-end;
+    }
+
+    .edit-renovacion-page .poliza-card .card-body .row > [class*="col-"] {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .edit-renovacion-page .poliza-card .card-body .row > [class*="col-"] .form-label {
+        min-height: 2.6em;
+        display: flex;
+        align-items: flex-end;
+        line-height: 1.25;
+    }
+
+    .edit-renovacion-page .poliza-card .card-body .row > [class*="col-"] .input-group,
+    .edit-renovacion-page .poliza-card .card-body .row > [class*="col-"] .form-control-modern {
+        margin-top: auto;
     }
 
     .edit-renovacion-page .input-group-text {
@@ -227,6 +259,26 @@ document.addEventListener('DOMContentLoaded', function() {
     .edit-renovacion-page .btn {
         border-radius: 10px;
         font-weight: 600;
+    }
+
+    .edit-renovacion-page .card-body > form > .mb-4 > .row {
+        align-items: flex-end;
+    }
+
+    .edit-renovacion-page .card-body > form > .mb-4 > .row > [class*="col-"] {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .edit-renovacion-page .card-body > form > .mb-4 > .row > [class*="col-"] .form-label {
+        min-height: 2.6em;
+        display: flex;
+        align-items: flex-end;
+        line-height: 1.25;
+    }
+
+    .edit-renovacion-page .card-body > form > .mb-4 > .row > [class*="col-"] .form-control-modern {
+        margin-top: auto;
     }
 </style>
 <div class="container-fluid edit-renovacion-page">
