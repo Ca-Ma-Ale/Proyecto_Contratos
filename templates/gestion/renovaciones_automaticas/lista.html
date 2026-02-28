@@ -302,7 +302,9 @@
                                         <td>{{ renovacion.fecha_renovacion|date:"d/m/Y" }}</td>
                                         <td>{{ renovacion.effective_from|date:"d/m/Y" }}</td>
                                         <td>
-                                            {% if renovacion.effective_to %}
+                                            {% if renovacion.nueva_fecha_final_actualizada %}
+                                                {{ renovacion.nueva_fecha_final_actualizada|date:"d/m/Y" }}
+                                            {% elif renovacion.effective_to %}
                                                 {{ renovacion.effective_to|date:"d/m/Y" }}
                                             {% else %}
                                                 <span class="text-muted">Sin límite</span>
