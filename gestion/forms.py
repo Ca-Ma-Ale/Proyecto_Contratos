@@ -1779,19 +1779,6 @@ class CalculoFacturacionVentasForm(BaseForm):
             if not contrato.reporta_ventas:
                 raise ValidationError('El contrato seleccionado no reporta ventas.')
             
-            # Validar que exista un informe de ventas para ese mes
-            informe_existente = InformeVentas.objects.filter(
-                contrato=contrato,
-                mes=int(mes),
-                año=año
-            ).first()
-            
-            if not informe_existente:
-                raise ValidationError(
-                    f'No existe un informe de ventas para este contrato en {self.get_mes_display(int(mes))}/{año}. '
-                    f'Por favor, cree el informe primero.'
-                )
-            
             # Validar que las devoluciones no sean mayores que las ventas totales
             if isinstance(ventas_totales, Decimal) and devoluciones > ventas_totales:
                 raise ValidationError('Las devoluciones no pueden ser mayores que las ventas totales.')
