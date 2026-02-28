@@ -85,6 +85,21 @@ class AlertaSalarioMinimo:
         return abs(self.meses_restantes)
 
 
+def obtener_tipo_condicion_ipc_vigente(contrato: Contrato, fecha_referencia: date) -> Optional[str]:
+    """
+    Obtiene el tipo de condición IPC vigente aplicando efecto cadena.
+    El último documento (Otrosí o contrato base) que modificó el campo determina el valor.
+    """
+    otrosi_tipo_ipc = get_ultimo_otrosi_que_modifico_campo_hasta_fecha(
+        contrato, 'nuevo_tipo_condicion_ipc', fecha_referencia
+    )
+    return (
+        otrosi_tipo_ipc.nuevo_tipo_condicion_ipc
+        if otrosi_tipo_ipc and otrosi_tipo_ipc.nuevo_tipo_condicion_ipc
+        else contrato.tipo_condicion_ipc
+    )
+
+
 def _obtener_fecha_final_contrato(contrato: Contrato, fecha_referencia: date) -> Optional[date]:
     """
     Obtiene la fecha final actualizada de un contrato considerando Otrosí y Renovaciones Automáticas vigentes.

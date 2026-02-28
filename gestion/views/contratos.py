@@ -967,20 +967,26 @@ def vista_vigente_contrato(request, contrato_id):
     # Obtener el último cálculo IPC aplicado
     ultimo_calculo_ipc_aplicado = obtener_ultimo_calculo_ipc_aplicado(contrato)
     
-    # Obtener alertas de IPC y Salario Mínimo para este contrato
+    # Obtener alertas de IPC y Salario Mínimo para este contrato.
+    # Siempre consultar ambos servicios: cada uno aplica efecto cadena y filtra por tipo vigente
+    # (último documento: Otrosí o contrato base). Un contrato solo puede tener una alerta: IPC o SM, nunca ambas.
     alertas_ipc = []
     alertas_salario_minimo = []
     try:
-        if contrato.tipo_condicion_ipc == 'IPC':
-            from gestion.services.alertas import obtener_alertas_ipc
-            todas_alertas_ipc = obtener_alertas_ipc(fecha_referencia, contrato.tipo_contrato_cliente_proveedor)
-            alertas_ipc = [a for a in todas_alertas_ipc if a.contrato.id == contrato.id]
-        elif contrato.tipo_condicion_ipc == 'SALARIO_MINIMO':
-            from gestion.services.alertas import obtener_alertas_salario_minimo
-            todas_alertas_sm = obtener_alertas_salario_minimo(fecha_referencia, contrato.tipo_contrato_cliente_proveedor)
-            alertas_salario_minimo = [a for a in todas_alertas_sm if a.contrato.id == contrato.id]
+        from gestion.services.alertas import obtener_alertas_ipc, obtener_alertas_salario_minimo
+        todas_alertas_ipc = obtener_alertas_ipc(fecha_referencia, contrato.tipo_contrato_cliente_proveedor)
+        todas_alertas_sm = obtener_alertas_salario_minimo(fecha_referencia, contrato.tipo_contrato_cliente_proveedor)
+        alertas_ipc = [a for a in todas_alertas_ipc if a.contrato.id == contrato.id]
+        alertas_salario_minimo = [a for a in todas_alertas_sm if a.contrato.id == contrato.id]
+        # Exclusividad: si aparecen ambas, conservar solo la del último cambio (efecto cadena)
+        if alertas_ipc and alertas_salario_minimo:
+            from gestion.services.alertas import obtener_tipo_condicion_ipc_vigente
+            tipo_vigente = obtener_tipo_condicion_ipc_vigente(contrato, fecha_referencia)
+            if tipo_vigente == 'IPC':
+                alertas_salario_minimo = []
+            else:
+                alertas_ipc = []
     except Exception as e:
-        # Si hay error al obtener alertas, continuar sin alertas para evitar que falle la vista
         import logging
         logger = logging.getLogger(__name__)
         logger.error(f'Error al obtener alertas IPC/SM para contrato {contrato.id}: {str(e)}', exc_info=True)

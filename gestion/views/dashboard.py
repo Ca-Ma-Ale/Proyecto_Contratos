@@ -131,6 +131,24 @@ def dashboard(request):
         alertas_salario_minimo.append(alerta)
     total_alertas_salario_minimo = len(alertas_salario_minimo)
     
+    # Exclusividad: un contrato solo puede tener alerta IPC o Salario Mínimo, nunca ambas.
+    # Si aparece en ambas listas, conservar la del último cambio (efecto cadena: último documento).
+    from gestion.services.alertas import obtener_tipo_condicion_ipc_vigente
+    ids_en_sm = {a.contrato.id for a in alertas_salario_minimo}
+    ids_en_ipc = {a.contrato.id for a in alertas_ipc}
+    contratos_duplicados = ids_en_ipc & ids_en_sm
+    if contratos_duplicados:
+        alertas_ipc = [
+            a for a in alertas_ipc
+            if a.contrato.id not in contratos_duplicados
+            or obtener_tipo_condicion_ipc_vigente(a.contrato, fecha_actual) == 'IPC'
+        ]
+        alertas_salario_minimo = [
+            a for a in alertas_salario_minimo
+            if a.contrato.id not in contratos_duplicados
+            or obtener_tipo_condicion_ipc_vigente(a.contrato, fecha_actual) == 'SALARIO_MINIMO'
+        ]
+    total_alertas_ipc = len(alertas_ipc)
     # Combinar alertas de IPC y Salario Mínimo para mostrar en la misma sección
     alertas_ajuste_facturacion = list(alertas_ipc) + list(alertas_salario_minimo)
     # Ordenar por prioridad (danger primero, luego warning, luego success) y luego por meses restantes
