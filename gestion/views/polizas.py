@@ -171,19 +171,21 @@ def gestionar_polizas(request, contrato_id):
     pólizas_aportadas_tipos = [p.tipo for p in polizas]
     pólizas_faltantes = [tipo for tipo in pólizas_requeridas if tipo not in pólizas_aportadas_tipos]
     
-    # Verificar si el contrato aún no ha iniciado
-    contrato_no_iniciado = es_fecha_fuera_vigencia_contrato(contrato, date.today())
-    
-    # Buscar Otros Sí futuros que modifiquen pólizas (para mostrar información al usuario)
+    # Verificar estado de vigencia del contrato
+    hoy = date.today()
+    fecha_inicio = getattr(contrato, 'fecha_inicial_contrato', None)
+    contrato_no_iniciado = bool(fecha_inicio and hoy < fecha_inicio)
+    contrato_vencido = (not contrato_no_iniciado) and es_fecha_fuera_vigencia_contrato(contrato, hoy)
+
+    # Buscar Otros Sí futuros que modifiquen pólizas (solo aplica si el contrato aún no ha iniciado)
     otrosi_futuro_polizas = None
     if contrato_no_iniciado:
         otrosi_futuro = OtroSi.objects.filter(
             contrato=contrato,
             estado='APROBADO',
             modifica_polizas=True,
-            effective_from__gt=date.today()
+            effective_from__gt=hoy
         ).order_by('effective_from').first()
-        
         if otrosi_futuro:
             otrosi_futuro_polizas = otrosi_futuro
     
@@ -205,6 +207,8 @@ def gestionar_polizas(request, contrato_id):
         'pólizas_requeridas': pólizas_requeridas,
         'pólizas_faltantes': pólizas_faltantes,
         'contrato_no_iniciado': contrato_no_iniciado,
+        'contrato_vencido': contrato_vencido,
+        'requiere_polizas_actualmente': len(pólizas_requeridas) > 0,
         'otrosi_futuro_polizas': otrosi_futuro_polizas,
         'titulo': f'Gestionar Pólizas - {contrato.num_contrato}'
     }
