@@ -207,6 +207,13 @@ def obtener_alertas_ipc(
 
     alertas: List[AlertaIPC] = []
     for contrato in contratos_con_ipc:
+        try:
+            fecha_final_actual = _obtener_fecha_final_contrato(contrato, fecha_base)
+            if fecha_final_actual and fecha_final_actual < fecha_base:
+                continue
+        except Exception:
+            pass
+
         # Obtener valores actualizados de IPC usando efecto cadena (considera otrosí vigentes hasta fecha_referencia)
         otrosi_tipo_ipc = get_ultimo_otrosi_que_modifico_campo_hasta_fecha(
             contrato, 'nuevo_tipo_condicion_ipc', fecha_base
@@ -409,6 +416,13 @@ def obtener_alertas_salario_minimo(
 
     alertas: List[AlertaSalarioMinimo] = []
     for contrato in contratos_con_sm:
+        try:
+            fecha_final_actual = _obtener_fecha_final_contrato(contrato, fecha_base)
+            if fecha_final_actual and fecha_final_actual < fecha_base:
+                continue
+        except Exception:
+            pass
+
         # Obtener valores actualizados usando efecto cadena (considera otrosí vigentes hasta fecha_referencia)
         otrosi_tipo_ipc = get_ultimo_otrosi_que_modifico_campo_hasta_fecha(
             contrato, 'nuevo_tipo_condicion_ipc', fecha_base
