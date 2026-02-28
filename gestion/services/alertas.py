@@ -214,23 +214,24 @@ def obtener_alertas_ipc(
         except Exception:
             pass
 
-        # Obtener valores actualizados de IPC usando efecto cadena (considera otrosí vigentes hasta fecha_referencia)
+        # Efecto cadena: si un OtroSí modificó nuevo_tipo_condicion_ipc, usar ese valor;
+        # si no, usar contrato.tipo_condicion_ipc (edición directa del contrato).
         otrosi_tipo_ipc = get_ultimo_otrosi_que_modifico_campo_hasta_fecha(
             contrato, 'nuevo_tipo_condicion_ipc', fecha_base
         )
+        tipo_condicion_ipc = (
+            otrosi_tipo_ipc.nuevo_tipo_condicion_ipc
+            if otrosi_tipo_ipc and otrosi_tipo_ipc.nuevo_tipo_condicion_ipc
+            else contrato.tipo_condicion_ipc
+        )
+
         otrosi_periodicidad = get_ultimo_otrosi_que_modifico_campo_hasta_fecha(
             contrato, 'nueva_periodicidad_ipc', fecha_base
         )
         otrosi_fecha_ipc = get_ultimo_otrosi_que_modifico_campo_hasta_fecha(
             contrato, 'nueva_fecha_aumento_ipc', fecha_base
         )
-        
-        tipo_condicion_ipc = (
-            otrosi_tipo_ipc.nuevo_tipo_condicion_ipc
-            if otrosi_tipo_ipc and otrosi_tipo_ipc.nuevo_tipo_condicion_ipc
-            else contrato.tipo_condicion_ipc
-        )
-        
+
         periodicidad_ipc = (
             otrosi_periodicidad.nueva_periodicidad_ipc
             if otrosi_periodicidad and otrosi_periodicidad.nueva_periodicidad_ipc
@@ -423,23 +424,24 @@ def obtener_alertas_salario_minimo(
         except Exception:
             pass
 
-        # Obtener valores actualizados usando efecto cadena (considera otrosí vigentes hasta fecha_referencia)
+        # Efecto cadena: si un OtroSí modificó nuevo_tipo_condicion_ipc, usar ese valor;
+        # si no, usar contrato.tipo_condicion_ipc (edición directa del contrato).
         otrosi_tipo_ipc = get_ultimo_otrosi_que_modifico_campo_hasta_fecha(
             contrato, 'nuevo_tipo_condicion_ipc', fecha_base
         )
+        tipo_condicion_ipc = (
+            otrosi_tipo_ipc.nuevo_tipo_condicion_ipc
+            if otrosi_tipo_ipc and otrosi_tipo_ipc.nuevo_tipo_condicion_ipc
+            else contrato.tipo_condicion_ipc
+        )
+
         otrosi_periodicidad = get_ultimo_otrosi_que_modifico_campo_hasta_fecha(
             contrato, 'nueva_periodicidad_ipc', fecha_base
         )
         otrosi_fecha_ipc = get_ultimo_otrosi_que_modifico_campo_hasta_fecha(
             contrato, 'nueva_fecha_aumento_ipc', fecha_base
         )
-        
-        tipo_condicion_ipc = (
-            otrosi_tipo_ipc.nuevo_tipo_condicion_ipc
-            if otrosi_tipo_ipc and otrosi_tipo_ipc.nuevo_tipo_condicion_ipc
-            else contrato.tipo_condicion_ipc
-        )
-        
+
         periodicidad_ipc = (
             otrosi_periodicidad.nueva_periodicidad_ipc
             if otrosi_periodicidad and otrosi_periodicidad.nueva_periodicidad_ipc
