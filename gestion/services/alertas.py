@@ -229,17 +229,11 @@ def obtener_alertas_ipc(
         except Exception:
             pass
 
-        # Efecto cadena: si un OtroSí modificó nuevo_tipo_condicion_ipc, usar ese valor;
-        # si no, usar contrato.tipo_condicion_ipc (edición directa del contrato).
+        tipo_condicion_ipc = obtener_tipo_condicion_ipc_vigente(contrato, fecha_base)
+
         otrosi_tipo_ipc = get_ultimo_otrosi_que_modifico_campo_hasta_fecha(
             contrato, 'nuevo_tipo_condicion_ipc', fecha_base
         )
-        tipo_condicion_ipc = (
-            otrosi_tipo_ipc.nuevo_tipo_condicion_ipc
-            if otrosi_tipo_ipc and otrosi_tipo_ipc.nuevo_tipo_condicion_ipc
-            else contrato.tipo_condicion_ipc
-        )
-
         otrosi_periodicidad = get_ultimo_otrosi_que_modifico_campo_hasta_fecha(
             contrato, 'nueva_periodicidad_ipc', fecha_base
         )
@@ -259,7 +253,6 @@ def obtener_alertas_ipc(
             else contrato.fecha_aumento_ipc
         )
         
-        # Solo procesar si tiene tipo de condición IPC configurado
         if not tipo_condicion_ipc or tipo_condicion_ipc != 'IPC':
             continue
             
@@ -439,17 +432,11 @@ def obtener_alertas_salario_minimo(
         except Exception:
             pass
 
-        # Efecto cadena: si un OtroSí modificó nuevo_tipo_condicion_ipc, usar ese valor;
-        # si no, usar contrato.tipo_condicion_ipc (edición directa del contrato).
+        tipo_condicion_ipc = obtener_tipo_condicion_ipc_vigente(contrato, fecha_base)
+
         otrosi_tipo_ipc = get_ultimo_otrosi_que_modifico_campo_hasta_fecha(
             contrato, 'nuevo_tipo_condicion_ipc', fecha_base
         )
-        tipo_condicion_ipc = (
-            otrosi_tipo_ipc.nuevo_tipo_condicion_ipc
-            if otrosi_tipo_ipc and otrosi_tipo_ipc.nuevo_tipo_condicion_ipc
-            else contrato.tipo_condicion_ipc
-        )
-
         otrosi_periodicidad = get_ultimo_otrosi_que_modifico_campo_hasta_fecha(
             contrato, 'nueva_periodicidad_ipc', fecha_base
         )
@@ -469,7 +456,6 @@ def obtener_alertas_salario_minimo(
             else contrato.fecha_aumento_ipc
         )
         
-        # Solo procesar si tiene tipo de condición SALARIO_MINIMO configurado
         if not tipo_condicion_ipc or tipo_condicion_ipc != 'SALARIO_MINIMO':
             continue
             

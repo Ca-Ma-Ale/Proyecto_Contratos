@@ -149,6 +149,7 @@ def dashboard(request):
             or obtener_tipo_condicion_ipc_vigente(a.contrato, fecha_actual) == 'SALARIO_MINIMO'
         ]
     total_alertas_ipc = len(alertas_ipc)
+    total_alertas_salario_minimo = len(alertas_salario_minimo)
     # Combinar alertas de IPC y Salario Mínimo para mostrar en la misma sección
     alertas_ajuste_facturacion = list(alertas_ipc) + list(alertas_salario_minimo)
     # Ordenar por prioridad (danger primero, luego warning, luego success) y luego por meses restantes
