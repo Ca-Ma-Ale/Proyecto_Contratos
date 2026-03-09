@@ -3,6 +3,7 @@ Módulo de gestión de licencias adaptado para Django
 Validación de licencia por cliente al iniciar sesión
 """
 
+import os
 import requests
 from datetime import datetime
 from django.utils import timezone
@@ -10,6 +11,10 @@ from django.contrib.auth.models import User
 
 # URL de la Cloud Function de Firebase
 URL_FUNCION_FIREBASE = "https://us-central1-app-contable-licencias.cloudfunctions.net/activateLicense"
+
+# Bypass temporal: si LICENSE_BYPASS_FIREBASE=1, no consultar Firebase y confiar en el estado en BD.
+# Usar solo cuando Firebase devuelve incorrectamente "expirada" (ej. fingerprint incompatible).
+LICENSE_BYPASS_FIREBASE = os.environ.get('LICENSE_BYPASS_FIREBASE', '').lower() in ('1', 'true', 'yes')
 
 
 class LicenseManager:
@@ -140,9 +145,21 @@ class LicenseManager:
             
             if not cliente_license:
                 return False, "No hay licencia configurada para la organización", None
-            
+
+            # Bypass: no consultar Firebase, validar solo contra el estado actual en BD
+            if LICENSE_BYPASS_FIREBASE:
+                cliente_license.refresh_from_db()
+                if cliente_license.verification_status == 'revoked':
+                    return False, "Licencia revocada o cancelada", None
+                if not cliente_license.is_active or cliente_license.is_expired():
+                    return False, "Licencia expirada o inactiva", None
+                if cliente_license.verification_status == 'invalid':
+                    return False, "Licencia inválida", None
+                dias = cliente_license.dias_para_vencimiento()
+                msg = f"Licencia vigente - Vence en {dias} día(s)" if dias is not None else "Licencia vigente"
+                return True, msg, None
+
             # SIEMPRE verificar con Firebase para detectar cambios inmediatamente (especialmente REVOCADA)
-            # Se eliminó el uso de caché para garantizar que siempre se consulte Firebase
             valida, mensaje, datos = LicenseManager.verificar_licencia_firebase(cliente_license.license_key)
             
             # Si Firebase devuelve error 403 o mensaje de expiración, marcar como expirada
