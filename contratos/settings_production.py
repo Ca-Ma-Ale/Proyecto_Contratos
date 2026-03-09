@@ -44,7 +44,6 @@ MIDDLEWARE = [
     'axes.middleware.AxesMiddleware',  # Protección contra fuerza bruta
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'gestion.middleware.LicenseCheckMiddleware',                    # Verificar licencia en cada request
     'gestion.csp_middleware.ContentSecurityPolicyMiddleware',       # Content-Security-Policy
 ]
 
@@ -62,7 +61,6 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'gestion.context_processors.empresa_config',
-                'gestion.context_processors.license_status',
                 'gestion.context_processors.admin_general_status',
             ],
         },

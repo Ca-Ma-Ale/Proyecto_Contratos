@@ -78,29 +78,4 @@ def admin_general_required(function):
     return wrap
 
 
-def license_required(function):
-    """
-    Decorador que requiere que la licencia esté activa y vigente.
-    Solo permite acceso si la licencia está en estado 'valid', activa y no expirada.
-    """
-    @wraps(function)
-    def wrap(request, *args, **kwargs):
-        if not request.user.is_authenticated:
-            messages.warning(request, 'Debe iniciar sesión para acceder a esta página.')
-            login_url = '/login/'
-            next_url = request.get_full_path()
-            if next_url != login_url:
-                return redirect(f'{login_url}?{urlencode({"next": next_url})}')
-            return redirect(login_url)
-
-        from gestion.license_manager import LicenseManager
-        is_valid, status, message = LicenseManager.es_licencia_valida()
-
-        if not is_valid:
-            messages.error(request, f'Acceso denegado: {message}. Por favor, contacte al administrador.')
-            return redirect('gestion:dashboard')
-
-        return function(request, *args, **kwargs)
-
-    return wrap
 
