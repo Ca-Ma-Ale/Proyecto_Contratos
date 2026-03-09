@@ -460,3 +460,25 @@ def verificar_calculo_existente_para_fecha(contrato, fecha_aplicacion):
         'tipo': None,
     }
 
+
+def obtener_otrosi_para_legalizar_smlv(contrato, año_aplicacion):
+    """
+    Retorna QuerySet de OtroSí aprobados del contrato que modificaron el canon
+    (nuevo_valor_canon O nuevo_canon_minimo_garantizado) y tienen effective_from
+    dentro del año indicado. Ordenados del más reciente al más antiguo.
+
+    Uso: detectar si ya existen aumentos de canon en el período correspondiente
+    al ajuste por Salario Mínimo, para ofrecer la opción de legalizarlos.
+    """
+    primer_dia = date(año_aplicacion, 1, 1)
+    ultimo_dia = date(año_aplicacion, 12, 31)
+
+    return OtroSi.objects.filter(
+        contrato=contrato,
+        estado='APROBADO',
+        effective_from__gte=primer_dia,
+        effective_from__lte=ultimo_dia,
+    ).filter(
+        Q(nuevo_valor_canon__isnull=False) |
+        Q(nuevo_canon_minimo_garantizado__isnull=False)
+    ).order_by('-effective_from', '-version')

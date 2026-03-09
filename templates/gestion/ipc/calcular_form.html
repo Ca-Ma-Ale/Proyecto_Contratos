@@ -29,16 +29,20 @@
 
     <div class="row">
         <div class="col-md-10 offset-md-1">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">
-                        <i class="fas fa-file-alt"></i> Datos para el Cálculo
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <form method="post" id="calculo-ipc-form">
-                        {% csrf_token %}
-                        
+
+            {# ── Formulario principal (un único <form> que envuelve todo) ──────── #}
+            <form method="post" id="calculo-ipc-form">
+                {% csrf_token %}
+
+                {# ── PASO 1: Contrato + Fecha ──────────────────────────────────── #}
+                <div class="card mb-3">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">
+                            <i class="fas fa-search"></i>
+                            Paso 1 — Selecciona el contrato y la fecha de ajuste
+                        </h5>
+                    </div>
+                    <div class="card-body">
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="{{ form.contrato.id_for_label }}" class="form-label fw-bold">
@@ -76,6 +80,20 @@
                                 {% endif %}
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                {# ── Panel dinámico de OtroSí (se llena via AJAX) ─────────────── #}
+                <div id="panel-otrosi-dinamico" class="mb-3"></div>
+
+                {# ── PASO 2: Datos del cálculo ─────────────────────────────────── #}
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-file-alt"></i> Paso 2 — Datos del Cálculo
+                        </h5>
+                    </div>
+                    <div class="card-body">
 
                         <div class="mb-3">
                             <label for="{{ form.ipc_historico.id_for_label }}" class="form-label fw-bold">
@@ -157,10 +175,11 @@
                                 <i class="fas fa-calculator"></i> Calcular
                             </button>
                         </div>
-                    </form>
+                    </div>
                 </div>
-            </div>
-            
+
+            </form>{# ── fin form principal ────────────────────────────────────────── #}
+
             {% if mostrar_resultado %}
             <div class="card mt-4">
                 <div class="card-header bg-primary text-white">
@@ -176,7 +195,7 @@
                                     <h6>Canon Anterior</h6>
                                     <h4>${{ canon_anterior|floatformat:2|intcomma }}</h4>
                                     <small class="text-muted">
-                                        Fuente: 
+                                        Fuente:
                                         <span class="badge bg-info ms-1" title="Fuente del canon anterior">
                                             {{ fuente_canon }}
                                         </span>
@@ -190,7 +209,7 @@
                                     <h6>Porcentaje Total a Aplicar</h6>
                                     <h4>{{ resultado.porcentaje_total }}%</h4>
                                     <small class="text-muted">
-                                        IPC: {{ ipc_historico.valor_ipc }}% + 
+                                        IPC: {{ ipc_historico.valor_ipc }}% +
                                         Puntos: {{ puntos_adicionales }}%
                                         <span class="badge bg-info ms-2" title="Fuente de los puntos adicionales">
                                             {{ fuente_puntos.fuente }}
@@ -228,7 +247,7 @@
                             <input type="hidden" name="canon_anterior_manual" value="{% if canon_anterior_manual %}on{% endif %}">
                             <input type="hidden" name="observaciones" value="{{ observaciones }}">
                             <input type="hidden" name="accion" value="guardar">
-                            
+
                             <div class="card border-warning mb-3">
                                 <div class="card-header bg-warning text-dark">
                                     <i class="fas fa-exclamation-triangle"></i> <strong>Aplicar Cálculo</strong>
@@ -249,7 +268,7 @@
                                     </div>
                                 </div>
                             </div>
-                            
+
                             <button type="submit" class="btn btn-primary">
                                 <i class="fas fa-save"></i> Guardar Cálculo
                             </button>
@@ -271,25 +290,136 @@ document.addEventListener('DOMContentLoaded', function() {
     const canonManualCheck = document.getElementById('{{ form.canon_anterior_manual.id_for_label }}');
     const canonFuente = document.getElementById('canon-fuente');
     const lockIcon = document.getElementById('lock-icon');
+    const panelOtrosi = document.getElementById('panel-otrosi-dinamico');
     const isStaff = {% if user.is_staff %}true{% else %}false{% endif %};
-    
-    // Inicializar formateo de miles DESPUÉS de que el DOM esté listo
-    // Esperar un momento para asegurar que el input esté completamente renderizado
+    const csrfToken = '{{ csrf_token }}';
+
     let formateadorInicializado = false;
     setTimeout(function() {
         if (typeof initMoneyFormatter === 'function') {
             initMoneyFormatter('.money-input');
             formateadorInicializado = true;
-            console.log('Formateador de dinero inicializado');
         }
     }, 100);
-    
+
+    // ── Panel dinámico de OtroSí ──────────────────────────────────────────
+    const btnCalcular = document.querySelector('button[name="accion"][value="calcular"]');
+
+    function setCalcularHabilitado(habilitado) {
+        if (!btnCalcular) return;
+        btnCalcular.disabled = !habilitado;
+        if (habilitado) {
+            btnCalcular.classList.remove('btn-secondary');
+            btnCalcular.classList.add('btn-primary');
+            btnCalcular.title = '';
+        } else {
+            btnCalcular.classList.remove('btn-primary');
+            btnCalcular.classList.add('btn-secondary');
+            btnCalcular.title = 'Primero resuelve el Otro Sí detectado en el período';
+        }
+    }
+
+    function actualizarPanelOtrosi() {
+        const contratoId = contratoSelect.value;
+        const fecha = fechaAplicacionInput ? fechaAplicacionInput.value : '';
+
+        if (!contratoId || !fecha) {
+            panelOtrosi.innerHTML = '';
+            setCalcularHabilitado(true);
+            return;
+        }
+
+        const url = `{% url 'gestion:otrosi_legalizables_ipc_ajax' %}?contrato_id=${contratoId}&fecha=${fecha}`;
+
+        fetch(url)
+            .then(r => r.json())
+            .then(data => {
+                if (!data.hay_otrosi) {
+                    panelOtrosi.innerHTML = '';
+                    setCalcularHabilitado(true);
+                    return;
+                }
+                setCalcularHabilitado(false);
+                const año = data.año;
+                let filas = '';
+                data.otrosi.forEach(function(os) {
+                    const canon = os.nuevo_valor_canon || os.nuevo_canon_minimo_garantizado;
+                    const tipo = os.nuevo_valor_canon ? 'Canon fijo' : 'Canon mínimo garantizado';
+                    const canonNum = parseFloat(canon).toLocaleString('es-CO');
+                    filas += `
+                        <tr>
+                            <td class="text-center">
+                                <input class="form-check-input" type="radio" name="otrosi_id"
+                                       value="${os.pk}" id="otrosi_ipc_${os.pk}" required>
+                            </td>
+                            <td>
+                                <label for="otrosi_ipc_${os.pk}" class="fw-semibold mb-0">
+                                    Versión ${os.version}
+                                </label>
+                            </td>
+                            <td>${os.effective_from}</td>
+                            <td class="text-end fw-bold text-success">$${canonNum}</td>
+                            <td><small class="text-muted">${tipo}</small></td>
+                        </tr>`;
+                });
+                panelOtrosi.innerHTML = `
+                    <div class="card border-warning shadow-sm">
+                        <div class="card-header bg-warning bg-opacity-25 border-warning">
+                            <h5 class="mb-0 text-warning-emphasis">
+                                <i class="fas fa-exclamation-triangle text-warning me-2"></i>
+                                Aumentos de canon detectados en ${año} — ¿Ya se realizó el ajuste por IPC?
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <p class="mb-3">
+                                Los siguientes <strong>Otro Sí aprobados</strong> modificaron el canon durante el período
+                                correspondiente al ajuste por IPC (<strong>${año}</strong>).
+                                Puedes seleccionar uno y legalizarlo como el ajuste oficial de IPC, o continuar
+                                calculando el IPC de forma independiente más abajo.
+                            </p>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-bordered table-hover align-middle mb-3">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th style="width:50px;">Sel.</th>
+                                            <th>Otro Sí</th>
+                                            <th>Vigente desde</th>
+                                            <th>Canon nuevo</th>
+                                            <th>Descripción</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>${filas}</tbody>
+                                </table>
+                            </div>
+                            <div class="d-flex gap-2 align-items-center">
+                                <button type="submit" name="accion" value="ver_comparativa" class="btn btn-warning">
+                                    <i class="fas fa-check-circle me-1"></i> Ver comparativa y legalizar
+                                </button>
+                                <span class="text-muted small">
+                                    <i class="fas fa-info-circle"></i>
+                                    Selecciona un Otro Sí y haz clic para comparar valores antes de confirmar.
+                                </span>
+                            </div>
+                            <hr class="my-3">
+                            <p class="text-muted small mb-0">
+                                <i class="fas fa-arrow-down me-1"></i>
+                                O bien, desplázate hacia abajo para calcular el IPC de forma independiente.
+                            </p>
+                        </div>
+                    </div>`;
+            })
+            .catch(function() {
+                panelOtrosi.innerHTML = '';
+                setCalcularHabilitado(true);
+            });
+    }
+
+    // ── Canon anterior (lógica existente) ────────────────────────────────
     function actualizarEstadoCanon(esManual) {
         const canonInputGroup = document.getElementById('canon-input-group');
         const lockText = document.getElementById('lock-text');
-        
+
         if (esManual) {
-            // Modo manual: editable
             canonInput.readOnly = false;
             canonInput.classList.remove('bg-light', 'border-secondary', 'border-2');
             canonInput.classList.add('border-success', 'border-2');
@@ -307,20 +437,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 canonInputGroup.classList.add('border-success', 'border-2');
             }
         } else {
-            // Modo automático: solo lectura (pero editable si no es staff y no hay checkbox)
-            if (!isStaff || !canonManualCheck) {
-                // Si no es staff o no existe el checkbox, el campo debe ser de solo lectura pero visible
-                canonInput.readOnly = true;
-                canonInput.classList.remove('border-success', 'border-2');
-                canonInput.classList.add('bg-light', 'border-secondary', 'border-2');
-                canonInput.style.cursor = 'not-allowed';
-            } else {
-                // Si es staff y existe checkbox, aplicar bloqueo normal
-                canonInput.readOnly = true;
-                canonInput.classList.remove('border-success', 'border-2');
-                canonInput.classList.add('bg-light', 'border-secondary', 'border-2');
-                canonInput.style.cursor = 'not-allowed';
-            }
+            canonInput.readOnly = true;
+            canonInput.classList.remove('border-success', 'border-2');
+            canonInput.classList.add('bg-light', 'border-secondary', 'border-2');
+            canonInput.style.cursor = 'not-allowed';
             if (lockIcon) {
                 lockIcon.className = 'fas fa-lock text-white';
                 lockIcon.parentElement.classList.remove('bg-success', 'text-white', 'fw-bold');
@@ -333,61 +453,46 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
     }
-    
+
     function obtenerCanonAnterior() {
         const contratoId = contratoSelect.value;
         const fechaAplicacion = fechaAplicacionInput ? fechaAplicacionInput.value : '';
-        
-        console.log('obtenerCanonAnterior - Contrato:', contratoId, 'Fecha:', fechaAplicacion);
-        
+
         if (!contratoId || !fechaAplicacion) {
             canonInput.value = '';
             canonFuente.textContent = '';
             return;
         }
-        
+
         if (canonManualCheck && canonManualCheck.checked) {
             actualizarEstadoCanon(true);
             return;
         }
-        
-        // Mostrar loading
+
         canonFuente.innerHTML = '<div class="alert alert-info mb-0" role="alert">' +
             '<i class="fas fa-spinner fa-spin"></i> Obteniendo canon anterior...' +
             '</div>';
-        
+
         const url = `{% url 'gestion:obtener_canon_anterior_ajax' %}?contrato_id=${contratoId}&fecha_aplicacion=${fechaAplicacion}`;
-        console.log('Llamando AJAX:', url);
-        
+
         fetch(url)
             .then(response => response.json())
             .then(data => {
                 if (data.canon) {
-                    // El valor viene del servidor como número limpio (ej: 6800000)
                     const valorNumerico = parseFloat(data.canon);
                     if (!isNaN(valorNumerico) && valorNumerico > 0) {
-                        // Redondear a entero
                         const valorEntero = Math.round(valorNumerico);
-                        
-                        // Limpiar el input primero
                         canonInput.value = '';
-                        
-                        // Asignar el valor numérico limpio (sin formato)
                         canonInput.value = valorEntero.toString();
-                        
-                        // Esperar a que el formateador esté inicializado antes de formatear
                         const formatearValor = function() {
                             if (formateadorInicializado && canonInput.value) {
-                                // El formateador de formatMiles.js maneja el formateo en el evento blur
                                 const blurEvent = new Event('blur', { bubbles: true, cancelable: true });
                                 canonInput.dispatchEvent(blurEvent);
                             } else if (!formateadorInicializado) {
-                                // Si aún no está inicializado, esperar un poco más
                                 setTimeout(formatearValor, 50);
                             }
                         };
                         setTimeout(formatearValor, 150);
-                        
                         canonFuente.innerHTML = `<div class="alert alert-success alert-dismissible fade show mb-0" role="alert">` +
                             `<i class="fas fa-check-circle"></i> <strong>Fuente:</strong> ${data.fuente}` +
                             `<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>` +
@@ -406,34 +511,31 @@ document.addEventListener('DOMContentLoaded', function() {
                         '<i class="fas fa-exclamation-triangle"></i> <strong>Atención:</strong> No se pudo obtener el canon anterior automáticamente. Por favor, marque "Ingresar Canon Anterior Manualmente" e ingrese el valor.' +
                         '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>' +
                         '</div>';
-                    actualizarEstadoCanon(true); // Permitir edición manual
+                    actualizarEstadoCanon(true);
                 }
             })
             .catch(error => {
-                console.error('Error:', error);
                 canonFuente.innerHTML = '<div class="alert alert-danger alert-dismissible fade show mb-0" role="alert">' +
                     '<i class="fas fa-exclamation-circle"></i> <strong>Error:</strong> No se pudo obtener el canon anterior. Por favor, ingréselo manualmente.' +
                     '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>' +
                     '</div>';
-                actualizarEstadoCanon(true); // Permitir edición manual en caso de error
+                actualizarEstadoCanon(true);
             });
     }
-    
-    contratoSelect.addEventListener('change', function() {
-        console.log('Contrato cambiado');
+
+    // ── Listeners ─────────────────────────────────────────────────────────
+    function onContratoOFechaChange() {
+        actualizarPanelOtrosi();
         obtenerCanonAnterior();
-    });
-    if (fechaAplicacionInput) {
-        fechaAplicacionInput.addEventListener('change', function() {
-            console.log('Fecha de aplicación cambiada a:', fechaAplicacionInput.value);
-            obtenerCanonAnterior();
-        });
-        fechaAplicacionInput.addEventListener('input', function() {
-            console.log('Fecha de aplicación input cambiado a:', fechaAplicacionInput.value);
-            obtenerCanonAnterior();
-        });
     }
-    
+
+    contratoSelect.addEventListener('change', onContratoOFechaChange);
+
+    if (fechaAplicacionInput) {
+        fechaAplicacionInput.addEventListener('change', onContratoOFechaChange);
+        fechaAplicacionInput.addEventListener('input', onContratoOFechaChange);
+    }
+
     if (canonManualCheck) {
         canonManualCheck.addEventListener('change', function() {
             actualizarEstadoCanon(this.checked);
@@ -442,47 +544,40 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
-    
-    // Limpiar valores antes de enviar el formulario
+
+    // ── Limpiar valores antes de enviar ───────────────────────────────────
     const form = document.getElementById('calculo-ipc-form');
     const formGuardar = document.getElementById('guardar-calculo-form');
-    
+
     if (form) {
         form.addEventListener('submit', function(e) {
             if (typeof cleanFormValues === 'function') {
                 cleanFormValues();
-                console.log('Valores limpiados correctamente');
             } else {
-                // Fallback: limpiar manualmente
                 if (canonInput && canonInput.value) {
                     canonInput.value = canonInput.value.replace(/\./g, '').replace(',', '.');
                 }
             }
         });
     }
-    
+
     if (formGuardar) {
         formGuardar.addEventListener('submit', function(e) {
             if (typeof cleanFormValues === 'function') {
                 cleanFormValues();
-                console.log('Valores limpiados correctamente (formulario guardar)');
             }
         });
     }
-    
-    // Obtener canon inicial si hay valores
-    // Esperar un momento para asegurar que todos los campos estén completamente renderizados
+
+    // ── Inicialización ────────────────────────────────────────────────────
     setTimeout(function() {
         if (contratoSelect.value && fechaAplicacionInput && fechaAplicacionInput.value) {
-            console.log('Inicializando canon - Contrato:', contratoSelect.value, 'Fecha:', fechaAplicacionInput.value);
+            actualizarPanelOtrosi();
             obtenerCanonAnterior();
         } else {
-            // Inicializar estado por defecto
             actualizarEstadoCanon(canonManualCheck ? canonManualCheck.checked : false);
         }
     }, 500);
 });
 </script>
 {% endblock %}
-
-

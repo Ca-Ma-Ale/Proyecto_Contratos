@@ -63,6 +63,7 @@ TEMPLATES = [
                 'django.contrib.messages.context_processors.messages',
                 'gestion.context_processors.empresa_config',
                 'gestion.context_processors.license_status',
+                'gestion.context_processors.admin_general_status',
             ],
         },
     },

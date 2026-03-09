@@ -1206,11 +1206,10 @@ document.addEventListener('DOMContentLoaded', function() {
             if (valores.fecha_inicio) fechaInicio.value = valores.fecha_inicio;
             if (valores.meses_vigencia && meses) meses.value = valores.meses_vigencia;
             
-            // Calcular fecha fin si hay fecha inicio y meses
-            if (valores.fecha_inicio && valores.meses_vigencia) {
-                const fecha = new Date(valores.fecha_inicio);
-                fecha.setMonth(fecha.getMonth() + parseInt(valores.meses_vigencia));
-                if (fechaFin) fechaFin.value = fecha.toISOString().split('T')[0];
+            // Calcular fecha fin si hay fecha inicio y meses (último día del período)
+            if (valores.fecha_inicio && valores.meses_vigencia && typeof calcularFechaVencimiento === 'function' && typeof formatearFechaInput === 'function') {
+                const fechaFinCalculada = calcularFechaVencimiento(valores.fecha_inicio, parseInt(valores.meses_vigencia));
+                if (fechaFin && fechaFinCalculada) fechaFin.value = formatearFechaInput(fechaFinCalculada);
             } else if (valores.fecha_fin && fechaFin) {
                 fechaFin.value = valores.fecha_fin;
             }
@@ -1370,15 +1369,14 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         
         // Configurar cálculo automático de fecha fin
-        if (fechaInicio && meses && fechaFin) {
+        if (fechaInicio && meses && fechaFin && typeof calcularFechaVencimiento === 'function' && typeof formatearFechaInput === 'function') {
             function calcularFechaFin() {
                 if (fechaInicio.value && meses.value) {
-                    const fecha = new Date(fechaInicio.value);
-                    fecha.setMonth(fecha.getMonth() + parseInt(meses.value));
-                    fechaFin.value = fecha.toISOString().split('T')[0];
+                    const fechaFinCalculada = calcularFechaVencimiento(fechaInicio.value, parseInt(meses.value));
+                    if (fechaFinCalculada) fechaFin.value = formatearFechaInput(fechaFinCalculada);
                 }
             }
-            
+
             fechaInicio.addEventListener('change', calcularFechaFin);
             meses.addEventListener('change', calcularFechaFin);
         }

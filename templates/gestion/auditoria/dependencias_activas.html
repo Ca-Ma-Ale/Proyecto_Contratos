@@ -1,0 +1,164 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Auditoría — Dependencias Activas{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+
+    <!-- Encabezado -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="fw-bold mb-0">
+                <i class="fas fa-link text-warning me-2"></i>
+                {{ titulo }}
+            </h3>
+            <small class="text-muted">
+                Solo visible para el Admin General &mdash;
+                {{ total_registros|intcomma }} bloqueo{{ total_registros|pluralize }} activo{{ total_registros|pluralize }}
+            </small>
+        </div>
+        <a href="{% url 'gestion:auditoria_historial_campos' %}" class="btn btn-outline-dark btn-sm">
+            <i class="fas fa-history me-1"></i> Ver Historial Completo
+        </a>
+    </div>
+
+    <!-- Filtros -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-dark text-white py-2">
+            <i class="fas fa-filter me-2"></i> Filtros
+        </div>
+        <div class="card-body">
+            <form method="get" class="row g-2">
+                <div class="col-md-3">
+                    <select name="bloqueador_tipo" class="form-select form-select-sm">
+                        <option value="">— Tipo Bloqueador —</option>
+                        {% for valor, label in bloqueador_tipos %}
+                        <option value="{{ valor }}" {% if filtro_bloqueador_tipo == valor %}selected{% endif %}>
+                            {{ label }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <select name="bloqueado_tipo" class="form-select form-select-sm">
+                        <option value="">— Tipo Bloqueado —</option>
+                        {% for valor, label in bloqueado_tipos %}
+                        <option value="{{ valor }}" {% if filtro_bloqueado_tipo == valor %}selected{% endif %}>
+                            {{ label }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <input type="text" name="campo" class="form-control form-control-sm"
+                           placeholder="Campo bloqueado" value="{{ filtro_campo }}">
+                </div>
+                <div class="col-md-2 d-flex gap-1">
+                    <button type="submit" class="btn btn-primary btn-sm flex-grow-1">
+                        <i class="fas fa-search"></i> Filtrar
+                    </button>
+                    <a href="{% url 'gestion:auditoria_dependencias_activas' %}" class="btn btn-outline-secondary btn-sm">
+                        <i class="fas fa-times"></i>
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Tabla -->
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-sm table-hover table-striped mb-0" style="font-size:0.83rem;">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Bloqueador</th>
+                            <th>Bloqueado</th>
+                            <th>Campo Bloqueado</th>
+                            <th>Desde</th>
+                            <th>Ir al Bloqueador</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for dep in page_obj %}
+                        <tr>
+                            <td>
+                                <span class="badge
+                                    {% if dep.bloqueador_tipo == 'OTROSI' %}bg-info text-dark
+                                    {% elif dep.bloqueador_tipo == 'RENOVACION' %}bg-success
+                                    {% elif dep.bloqueador_tipo == 'CALCULO_IPC' %}bg-primary
+                                    {% elif dep.bloqueador_tipo == 'CALCULO_SMLV' %}bg-secondary
+                                    {% else %}bg-warning text-dark{% endif %}">
+                                    {{ dep.get_bloqueador_tipo_display }}
+                                </span>
+                                <br>
+                                <small class="text-muted" title="{{ dep.bloqueador_descripcion }}">
+                                    {{ dep.bloqueador_descripcion|truncatechars:50 }}
+                                </small>
+                            </td>
+                            <td>
+                                <span class="badge {% if dep.bloqueado_tipo == 'CONTRATO' %}bg-primary{% else %}bg-info text-dark{% endif %}">
+                                    {{ dep.get_bloqueado_tipo_display }}
+                                </span>
+                                <small class="d-block text-muted">ID: {{ dep.bloqueado_id }}</small>
+                            </td>
+                            <td>
+                                <i class="fas fa-lock text-danger me-1"></i>
+                                <strong>{{ dep.label_campo|default:dep.campo_bloqueado }}</strong>
+                                <small class="d-block text-muted font-monospace">{{ dep.campo_bloqueado }}</small>
+                            </td>
+                            <td class="text-nowrap">
+                                {{ dep.fecha_registro|date:"d/m/Y H:i" }}
+                            </td>
+                            <td>
+                                {% if dep.bloqueador_url %}
+                                <a href="{{ dep.bloqueador_url }}" class="btn btn-outline-secondary btn-sm" target="_blank">
+                                    <i class="fas fa-external-link-alt"></i>
+                                </a>
+                                {% else %}
+                                <span class="text-muted">—</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center text-muted py-4">
+                                <i class="fas fa-check-circle fa-2x text-success mb-2 d-block"></i>
+                                No hay bloqueos activos en este momento.
+                            </td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Paginación -->
+        {% if page_obj.has_other_pages %}
+        <div class="card-footer d-flex justify-content-center">
+            <nav>
+                <ul class="pagination pagination-sm mb-0">
+                    {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?{{ request.GET.urlencode }}&page={{ page_obj.previous_page_number }}">&laquo;</a>
+                    </li>
+                    {% endif %}
+                    <li class="page-item disabled">
+                        <span class="page-link">
+                            Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+                        </span>
+                    </li>
+                    {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?{{ request.GET.urlencode }}&page={{ page_obj.next_page_number }}">&raquo;</a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+{% endblock %}

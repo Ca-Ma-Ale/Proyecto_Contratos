@@ -661,10 +661,15 @@ def get_vista_vigente_contrato(contrato, fecha_referencia=None):
         canon_minimo = getattr(contrato, 'canon_minimo_garantizado', None)
         otrosi_canon_min = None
     
+    # Para PROVEEDOR: si no hay OtroSi que modificó canon_minimo_garantizado pero sí
+    # hay uno que modificó nuevo_valor_canon, usar ese valor como "Valor mensual".
+    # Esto cubre el caso donde el formulario de OtroSi guarda el cambio de canon
+    # en nuevo_valor_canon independientemente del tipo de contrato.
+    if contrato.tipo_contrato_cliente_proveedor == 'PROVEEDOR' and not otrosi_canon_min and otrosi_canon:
+        canon_minimo = valor_canon
+        otrosi_canon_min = otrosi_canon
+
     vista['canon_minimo_garantizado'] = canon_minimo
-    # Verificar si el Otro Sí realmente modificó el campo:
-    # 1. Debe tener un valor no nulo/no vacío en el campo
-    # 2. Ese valor debe ser diferente del valor vigente ANTES del Otro Sí
     if otrosi_canon_min and canon_minimo is not None:
         try:
             # Verificar que el campo realmente tenga un valor válido (no None, no 0 para Decimal)
@@ -727,53 +732,23 @@ def get_vista_vigente_contrato(contrato, fecha_referencia=None):
                     otrosi_modifico_realmente = True
             
             if not otrosi_modifico_realmente:
-                # No hay Otro Sí que realmente modificó el campo, aplicar el cálculo
                 aplicar_calculo = True
             else:
-                # Hay Otro Sí que realmente modificó, verificar si el cálculo es posterior
+                # El cálculo solo es válido si fue basado en el mismo canon que el
+                # Otro Sí vigente estableció. Si un Otro Sí posterior fijó un canon
+                # distinto, ese valor explícito tiene prioridad sobre el cálculo.
                 try:
-                    if otrosi_canon_min and hasattr(otrosi_canon_min, 'fecha_aprobacion') and otrosi_canon_min.fecha_aprobacion:
-                        fecha_otrosi = otrosi_canon_min.fecha_aprobacion
-                        # Convertir a date si es datetime
-                        if hasattr(fecha_otrosi, 'date'):
-                            fecha_otrosi = fecha_otrosi.date()
-                        elif not isinstance(fecha_otrosi, date):
-                            # Si no es date ni datetime, intentar convertir
-                            if isinstance(fecha_otrosi, datetime):
-                                fecha_otrosi = fecha_otrosi.date()
-                            else:
-                                aplicar_calculo = True
-                                fecha_otrosi = None
-                        
-                        if fecha_otrosi:
-                            # Convertir fecha_aplicacion a date si es necesario
-                            fecha_calculo = None
-                            if hasattr(ultimo_calculo_aplicado, 'fecha_aplicacion') and ultimo_calculo_aplicado.fecha_aplicacion:
-                                fecha_calculo = ultimo_calculo_aplicado.fecha_aplicacion
-                                if hasattr(fecha_calculo, 'date'):
-                                    fecha_calculo = fecha_calculo.date()
-                                elif isinstance(fecha_calculo, datetime):
-                                    fecha_calculo = fecha_calculo.date()
-                                elif not isinstance(fecha_calculo, date):
-                                    aplicar_calculo = True
-                                    fecha_calculo = None
-                            
-                            if fecha_calculo:
-                                aplicar_calculo = fecha_calculo >= fecha_otrosi
-                            else:
-                                aplicar_calculo = True
-                        else:
-                            aplicar_calculo = True
+                    canon_anterior_calculo = getattr(ultimo_calculo_aplicado, 'canon_anterior', None)
+                    if canon_anterior_calculo is not None and canon_minimo is not None:
+                        from decimal import Decimal
+                        aplicar_calculo = Decimal(str(canon_anterior_calculo)) == Decimal(str(canon_minimo))
                     else:
-                        # Si no tiene fecha de aprobación, aplicar el cálculo
                         aplicar_calculo = True
-                except Exception:
-                    # Si hay algún error al comparar fechas, aplicar el cálculo por seguridad
+                except (ValueError, TypeError):
                     aplicar_calculo = True
             
             if aplicar_calculo:
                 try:
-                    # Usar el valor del cálculo o el valor vigente actual (que puede ser del contrato base)
                     valor_base_para_calculo = canon_minimo if canon_minimo is not None else getattr(contrato, 'canon_minimo_garantizado', None)
                     if ultimo_calculo_aplicado.nuevo_canon is not None:
                         vista['canon_minimo_garantizado'] = ultimo_calculo_aplicado.nuevo_canon
@@ -818,53 +793,20 @@ def get_vista_vigente_contrato(contrato, fecha_referencia=None):
                     otrosi_modifico_realmente = True
             
             if not otrosi_modifico_realmente:
-                # No hay Otro Sí que realmente modificó el campo, aplicar el cálculo
                 aplicar_calculo = True
             else:
-                # Hay Otro Sí que realmente modificó, verificar si el cálculo es posterior
                 try:
-                    if otrosi_canon and hasattr(otrosi_canon, 'fecha_aprobacion') and otrosi_canon.fecha_aprobacion:
-                        fecha_otrosi = otrosi_canon.fecha_aprobacion
-                        # Convertir a date si es datetime
-                        if hasattr(fecha_otrosi, 'date'):
-                            fecha_otrosi = fecha_otrosi.date()
-                        elif not isinstance(fecha_otrosi, date):
-                            # Si no es date ni datetime, intentar convertir
-                            if isinstance(fecha_otrosi, datetime):
-                                fecha_otrosi = fecha_otrosi.date()
-                            else:
-                                aplicar_calculo = True
-                                fecha_otrosi = None
-                        
-                        if fecha_otrosi:
-                            # Convertir fecha_aplicacion a date si es necesario
-                            fecha_calculo = None
-                            if hasattr(ultimo_calculo_aplicado, 'fecha_aplicacion') and ultimo_calculo_aplicado.fecha_aplicacion:
-                                fecha_calculo = ultimo_calculo_aplicado.fecha_aplicacion
-                                if hasattr(fecha_calculo, 'date'):
-                                    fecha_calculo = fecha_calculo.date()
-                                elif isinstance(fecha_calculo, datetime):
-                                    fecha_calculo = fecha_calculo.date()
-                                elif not isinstance(fecha_calculo, date):
-                                    aplicar_calculo = True
-                                    fecha_calculo = None
-                            
-                            if fecha_calculo:
-                                aplicar_calculo = fecha_calculo >= fecha_otrosi
-                            else:
-                                aplicar_calculo = True
-                        else:
-                            aplicar_calculo = True
+                    canon_anterior_calculo = getattr(ultimo_calculo_aplicado, 'canon_anterior', None)
+                    if canon_anterior_calculo is not None and valor_canon is not None:
+                        from decimal import Decimal
+                        aplicar_calculo = Decimal(str(canon_anterior_calculo)) == Decimal(str(valor_canon))
                     else:
-                        # Si no tiene fecha de aprobación, aplicar el cálculo
                         aplicar_calculo = True
-                except Exception:
-                    # Si hay algún error al comparar fechas, aplicar el cálculo por seguridad
+                except (ValueError, TypeError):
                     aplicar_calculo = True
             
             if aplicar_calculo:
                 try:
-                    # Usar el valor del cálculo o el valor vigente actual (que puede ser del contrato base)
                     valor_base_para_calculo = valor_canon if valor_canon is not None else getattr(contrato, 'valor_canon_fijo', None)
                     if ultimo_calculo_aplicado.nuevo_canon is not None:
                         vista['valor_canon'] = ultimo_calculo_aplicado.nuevo_canon
@@ -1307,10 +1249,12 @@ def get_polizas_requeridas_contrato(contrato, fecha_referencia=None, permitir_fu
         if not fecha_fin_rce and fecha_inicio_rce and meses_rce:
             from .utils import calcular_fecha_vencimiento
             fecha_fin_rce = calcular_fecha_vencimiento(fecha_inicio_rce, meses_rce)
-        # Si no hay fecha inicio pero hay meses, usar fecha final del contrato
+        # Si no hay fecha inicio pero hay meses, usar día siguiente a fecha final del contrato
         elif not fecha_inicio_rce and meses_rce and contrato.fecha_final_actualizada:
             from .utils import calcular_fecha_vencimiento
-            fecha_fin_rce = calcular_fecha_vencimiento(contrato.fecha_final_actualizada, meses_rce)
+            fecha_fin_rce = calcular_fecha_vencimiento(
+                contrato.fecha_final_actualizada + timedelta(days=1), meses_rce
+            )
         
         detalles_rce = {
             'plo': obtener_valor('nuevo_valor_propietario_locatario_ocupante_rce', 'valor_propietario_locatario_ocupante_rce'),
@@ -1377,7 +1321,9 @@ def get_polizas_requeridas_contrato(contrato, fecha_referencia=None, permitir_fu
             fecha_fin_cumplimiento = calcular_fecha_vencimiento(fecha_inicio_cumplimiento, meses_cumplimiento)
         elif not fecha_inicio_cumplimiento and meses_cumplimiento and contrato.fecha_final_actualizada:
             from .utils import calcular_fecha_vencimiento
-            fecha_fin_cumplimiento = calcular_fecha_vencimiento(contrato.fecha_final_actualizada, meses_cumplimiento)
+            fecha_fin_cumplimiento = calcular_fecha_vencimiento(
+                contrato.fecha_final_actualizada + timedelta(days=1), meses_cumplimiento
+            )
         
         detalles_cumplimiento = {
             'remuneraciones': obtener_valor('nuevo_valor_remuneraciones_cumplimiento', 'valor_remuneraciones_cumplimiento'),
@@ -1447,7 +1393,9 @@ def get_polizas_requeridas_contrato(contrato, fecha_referencia=None, permitir_fu
             fecha_fin_arrendamiento = calcular_fecha_vencimiento(fecha_inicio_arrendamiento, meses_arrendamiento)
         elif not fecha_inicio_arrendamiento and meses_arrendamiento and contrato.fecha_final_actualizada:
             from .utils import calcular_fecha_vencimiento
-            fecha_fin_arrendamiento = calcular_fecha_vencimiento(contrato.fecha_final_actualizada, meses_arrendamiento)
+            fecha_fin_arrendamiento = calcular_fecha_vencimiento(
+                contrato.fecha_final_actualizada + timedelta(days=1), meses_arrendamiento
+            )
         
         # Obtener el Otro Sí que modificó el valor principal para determinar la fuente
         valor_arrendamiento, otrosi_valor_arrendamiento = obtener_valor_y_otrosi('nuevo_valor_asegurado_arrendamiento', 'valor_asegurado_arrendamiento')
@@ -1491,7 +1439,9 @@ def get_polizas_requeridas_contrato(contrato, fecha_referencia=None, permitir_fu
             fecha_fin_todo_riesgo = calcular_fecha_vencimiento(fecha_inicio_todo_riesgo, meses_todo_riesgo)
         elif not fecha_inicio_todo_riesgo and meses_todo_riesgo and contrato.fecha_final_actualizada:
             from .utils import calcular_fecha_vencimiento
-            fecha_fin_todo_riesgo = calcular_fecha_vencimiento(contrato.fecha_final_actualizada, meses_todo_riesgo)
+            fecha_fin_todo_riesgo = calcular_fecha_vencimiento(
+                contrato.fecha_final_actualizada + timedelta(days=1), meses_todo_riesgo
+            )
         
         # Obtener el Otro Sí que modificó el valor principal para determinar la fuente
         valor_todo_riesgo, otrosi_valor_todo_riesgo = obtener_valor_y_otrosi('nuevo_valor_asegurado_todo_riesgo', 'valor_asegurado_todo_riesgo')
@@ -1529,7 +1479,9 @@ def get_polizas_requeridas_contrato(contrato, fecha_referencia=None, permitir_fu
             fecha_fin_otra = calcular_fecha_vencimiento(fecha_inicio_otra, meses_otra)
         elif not fecha_inicio_otra and meses_otra and contrato.fecha_final_actualizada:
             from .utils import calcular_fecha_vencimiento
-            fecha_fin_otra = calcular_fecha_vencimiento(contrato.fecha_final_actualizada, meses_otra)
+            fecha_fin_otra = calcular_fecha_vencimiento(
+                contrato.fecha_final_actualizada + timedelta(days=1), meses_otra
+            )
         
         nombre_otra = obtener_valor('nuevo_nombre_poliza_otra_1', 'nombre_poliza_otra_1') or 'Otra'
         # Obtener el Otro Sí que modificó el valor principal para determinar la fuente
@@ -1798,8 +1750,8 @@ def procesar_renovacion_automatica(contrato, usuario, meses_renovacion=None, usa
     elif not meses_renovacion:
         return None
     
-    nueva_fecha_final = calcular_fecha_vencimiento(fecha_fin_actual, meses_renovacion)
     fecha_inicio_renovacion = fecha_fin_actual + timedelta(days=1)
+    nueva_fecha_final = calcular_fecha_vencimiento(fecha_inicio_renovacion, meses_renovacion)
     
     username = usuario.get_username() if hasattr(usuario, "get_username") else str(usuario)
     

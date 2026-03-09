@@ -8,9 +8,11 @@ from django.contrib import messages
 from django.db.models import Q
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 
 from gestion.decorators import admin_required, login_required_custom
+from gestion.services.chain_validation import auditar_cambio as _auditar_cambio
 from gestion.forms import SalarioMinimoHistoricoForm, CalculoSalarioMinimoForm, EditarCalculoSalarioMinimoForm
 from gestion.models import SalarioMinimoHistorico, CalculoSalarioMinimo, Contrato
 from gestion.utils_otrosi import get_ultimo_otrosi_que_modifico_campo_hasta_fecha
@@ -25,6 +27,7 @@ from gestion.utils_salario_minimo import (
     obtener_fuente_puntos_adicionales_salario_minimo,
     verificar_otrosi_vigente_para_fecha,
     verificar_calculo_existente_para_fecha,
+    obtener_otrosi_para_legalizar_smlv,
 )
 from gestion.utils_formateo import limpiar_valor_numerico
 
@@ -178,6 +181,164 @@ def calcular_salario_minimo(request):
         form = CalculoSalarioMinimoForm(request.POST, user=request.user)
         accion = request.POST.get('accion', 'calcular')
         
+        # Manejar confirmación de legalización (lee desde sesión, no requiere form válido)
+        if accion == 'confirmar_legalizacion':
+            datos = request.session.get('legalizacion_smlv_pendiente')
+            if not datos:
+                messages.error(request, 'No hay legalización pendiente de confirmación.')
+                return redirect('gestion:calcular_salario_minimo')
+
+            valor_elegido = request.POST.get('valor_elegido')
+            if valor_elegido not in ('otrosi', 'smlv'):
+                messages.error(request, 'Debe seleccionar qué valor registrar.')
+                return redirect('gestion:calcular_salario_minimo')
+
+            contrato = get_object_or_404(Contrato, id=datos['contrato_id'])
+            salario_minimo_historico = get_object_or_404(
+                SalarioMinimoHistorico, id=datos['salario_minimo_historico_id']
+            )
+            from gestion.models import OtroSi
+            otrosi = get_object_or_404(
+                OtroSi, id=datos['otrosi_id'], contrato=contrato, estado='APROBADO'
+            )
+
+            canon_anterior = Decimal(datos['canon_anterior'])
+            canon_otrosi = Decimal(datos['canon_otrosi'])
+            nuevo_canon_smlv = Decimal(datos['nuevo_canon_smlv'])
+            puntos_adicionales = Decimal(datos['puntos_adicionales'])
+            variacion_smlv = Decimal(datos['variacion_smlv'])
+            fuente_canon_anterior = datos['fuente_canon_anterior']
+
+            nuevo_canon_final = canon_otrosi if valor_elegido == 'otrosi' else nuevo_canon_smlv
+
+            valor_incremento = nuevo_canon_final - canon_anterior
+            if canon_anterior > 0:
+                porcentaje_total = ((nuevo_canon_final / canon_anterior) - Decimal('1')) * Decimal('100')
+            else:
+                porcentaje_total = Decimal('0')
+
+            otrosi_effective_from = date.fromisoformat(datos['otrosi_effective_from'])
+            label_valor = 'Otro Sí' if valor_elegido == 'otrosi' else 'Cálculo SMLV'
+            observaciones_legalizacion = (
+                f'Legalizado vía Otro Sí versión {otrosi.version} '
+                f'(effective_from: {otrosi_effective_from.strftime("%d/%m/%Y")}). '
+                f'Valor registrado: {label_valor}.'
+            )
+
+            calculo = CalculoSalarioMinimo.objects.create(
+                contrato=contrato,
+                año_aplicacion=otrosi_effective_from.year,
+                fecha_aplicacion=otrosi_effective_from,
+                salario_minimo_historico=salario_minimo_historico,
+                canon_anterior=canon_anterior,
+                canon_anterior_manual=False,
+                fuente_canon_anterior=fuente_canon_anterior,
+                porcentaje_salario_minimo=variacion_smlv,
+                puntos_adicionales=puntos_adicionales,
+                porcentaje_total_aplicar=porcentaje_total.quantize(Decimal('0.0001')),
+                valor_incremento=valor_incremento.quantize(Decimal('0.01')),
+                nuevo_canon=nuevo_canon_final.quantize(Decimal('0.01')),
+                periodicidad_contrato=contrato.periodicidad_ipc,
+                fecha_aumento_contrato=contrato.fecha_aumento_ipc,
+                observaciones=observaciones_legalizacion,
+                estado='APLICADO',
+                otrosi_referencia=otrosi,
+                legalizado_via_otrosi=True,
+                calculado_por=request.user.get_full_name() or request.user.username,
+                aplicado_por=request.user.get_full_name() or request.user.username,
+                fecha_aplicacion_real=timezone.now(),
+            )
+
+            del request.session['legalizacion_smlv_pendiente']
+            messages.success(
+                request,
+                f'Ajuste por Salario Mínimo legalizado exitosamente mediante el Otro Sí versión {otrosi.version}. '
+                f'Nuevo canon registrado: ${nuevo_canon_final:,.2f}'
+            )
+            return redirect('gestion:detalle_calculo_salario_minimo', calculo_id=calculo.id)
+
+        # Mostrar comparativa antes de confirmar legalización SMLV
+        if accion == 'ver_comparativa':
+            from gestion.models import OtroSi
+            contrato_id_post = request.POST.get('contrato')
+            smlv_historico_id_post = request.POST.get('salario_minimo_historico')
+            otrosi_id = request.POST.get('otrosi_id')
+
+            if not otrosi_id:
+                messages.error(request, 'Debe seleccionar un Otro Sí para legalizar.')
+                return redirect(
+                    f"{reverse('gestion:calcular_salario_minimo')}?contrato={contrato_id_post or ''}"
+                )
+
+            contrato_leg = get_object_or_404(Contrato, id=contrato_id_post)
+            smlv_hist_leg = get_object_or_404(SalarioMinimoHistorico, id=smlv_historico_id_post)
+
+            try:
+                otrosi_sel = OtroSi.objects.get(id=otrosi_id, contrato=contrato_leg, estado='APROBADO')
+            except OtroSi.DoesNotExist:
+                messages.error(request, 'El Otro Sí seleccionado no es válido.')
+                return redirect('gestion:calcular_salario_minimo')
+
+            canon_info_leg = obtener_canon_base_para_salario_minimo(contrato_leg, otrosi_sel.effective_from)
+            canon_base = canon_info_leg['canon']
+            fuente_canon = canon_info_leg.get('fuente', 'Automático')
+
+            fuente_puntos_leg = obtener_fuente_puntos_adicionales_salario_minimo(
+                contrato_leg, otrosi_sel.effective_from
+            )
+            puntos_adicionales_leg = fuente_puntos_leg['puntos']
+
+            # Variación del SMLV
+            variacion_leg = smlv_hist_leg.variacion_porcentual
+            if variacion_leg is None:
+                fuente_porc = obtener_fuente_porcentaje_salario_minimo(contrato_leg, otrosi_sel.effective_from)
+                variacion_leg = fuente_porc.get('porcentaje') or Decimal('0')
+
+            canon_otrosi = otrosi_sel.nuevo_valor_canon or otrosi_sel.nuevo_canon_minimo_garantizado
+
+            if canon_base and canon_base > 0:
+                porcentaje_real = ((canon_otrosi / canon_base) - Decimal('1')) * Decimal('100')
+            else:
+                porcentaje_real = Decimal('0')
+
+            resultado_smlv_leg = calcular_ajuste_salario_minimo(
+                canon_base, variacion_leg, puntos_adicionales_leg
+            )
+            nuevo_canon_smlv = resultado_smlv_leg['nuevo_canon']
+            porcentaje_smlv = resultado_smlv_leg['porcentaje_total']
+
+            request.session['legalizacion_smlv_pendiente'] = {
+                'contrato_id': contrato_leg.id,
+                'salario_minimo_historico_id': smlv_hist_leg.id,
+                'otrosi_id': otrosi_sel.id,
+                'otrosi_effective_from': otrosi_sel.effective_from.isoformat(),
+                'canon_anterior': str(canon_base),
+                'canon_otrosi': str(canon_otrosi),
+                'nuevo_canon_smlv': str(nuevo_canon_smlv),
+                'puntos_adicionales': str(puntos_adicionales_leg),
+                'variacion_smlv': str(variacion_leg),
+                'fuente_canon_anterior': fuente_canon,
+                'porcentaje_real': str(porcentaje_real.quantize(Decimal('0.0001'))),
+                'porcentaje_smlv': str(porcentaje_smlv),
+            }
+
+            context = {
+                'titulo': 'Legalizar Ajuste por Salario Mínimo vía Otro Sí',
+                'contrato': contrato_leg,
+                'otrosi': otrosi_sel,
+                'salario_minimo_historico': smlv_hist_leg,
+                'canon_anterior': canon_base,
+                'fuente_canon': fuente_canon,
+                'canon_otrosi': canon_otrosi,
+                'porcentaje_real': porcentaje_real,
+                'nuevo_canon_smlv': nuevo_canon_smlv,
+                'porcentaje_smlv': porcentaje_smlv,
+                'variacion_salario_minimo': variacion_leg,
+                'puntos_adicionales': puntos_adicionales_leg,
+                'user': request.user,
+            }
+            return render(request, 'gestion/salario_minimo/comparativa_legalizacion.html', context)
+
         if form.is_valid():
             contrato = form.cleaned_data['contrato']
             fecha_aplicacion = form.cleaned_data['fecha_aplicacion']
@@ -185,7 +346,7 @@ def calcular_salario_minimo(request):
             canon_anterior_manual = form.cleaned_data.get('canon_anterior_manual', False)
             canon_anterior = form.cleaned_data.get('canon_anterior')
             observaciones = form.cleaned_data.get('observaciones', '')
-            
+
             # Si no es manual y no hay canon, obtenerlo automáticamente
             if not canon_anterior_manual and not canon_anterior:
                 canon_info = obtener_canon_base_para_salario_minimo(contrato, fecha_aplicacion)
@@ -504,10 +665,25 @@ def calcular_salario_minimo(request):
             except (Contrato.DoesNotExist, ValueError):
                 pass
     
+    # Detectar OtroSís disponibles para legalizar (solo cuando hay contrato)
+    otrosi_legalizables = None
+    hay_otrosi_para_legalizar = False
+    if contrato_id:
+        try:
+            contrato_obj = Contrato.objects.get(id=contrato_id)
+            año_buscar = int(año)
+            otrosi_legalizables = obtener_otrosi_para_legalizar_smlv(contrato_obj, año_buscar)
+            hay_otrosi_para_legalizar = otrosi_legalizables.exists()
+        except (Contrato.DoesNotExist, ValueError):
+            pass
+
     context = {
         'form': form,
         'titulo': 'Calcular Ajuste por Salario Mínimo',
         'user': request.user,
+        'otrosi_legalizables': otrosi_legalizables,
+        'hay_otrosi_para_legalizar': hay_otrosi_para_legalizar,
+        'año_aplicacion': año,
     }
     return render(request, 'gestion/salario_minimo/calcular_form.html', context)
 
@@ -536,15 +712,18 @@ def confirmar_calculo_salario_minimo(request):
             variacion_salario_minimo,
             puntos_adicionales
         )
-        
+
         estado_calculo = 'APLICADO' if aplicar_calculo == 'si' else 'PENDIENTE'
-        
+
         canon_info = obtener_canon_base_para_salario_minimo(contrato, fecha_aplicacion)
         if datos.get('canon_anterior_manual'):
             canon_info['fuente'] = 'Manual (Usuario)'
-        
+
         fuente_porcentaje = obtener_fuente_porcentaje_salario_minimo(contrato, fecha_aplicacion)
-        
+
+        # Verificar si hay Otro Sí vigente (necesario para preparar observaciones)
+        otrosi_info = verificar_otrosi_vigente_para_fecha(contrato, fecha_aplicacion)
+
         # Preparar observaciones: agregar nota si se usó valor de Otro Sí
         observaciones_finales = observaciones
         if otrosi_info['existe'] and otrosi_info['valor_canon']:
@@ -651,19 +830,45 @@ def detalle_calculo_salario_minimo(request, calculo_id):
 @admin_required
 def eliminar_calculo_salario_minimo(request, calculo_id):
     """Vista para eliminar un cálculo de Salario Mínimo"""
+    from gestion.models import DependenciaDocumento
     calculo = get_object_or_404(CalculoSalarioMinimo, id=calculo_id)
-    
+
+    # ── Efecto Cadena: informar qué bloqueos se liberarán ────────────────────
+    bloqueos_a_liberar = list(
+        DependenciaDocumento.objects.filter(
+            bloqueador_tipo='CALCULO_SMLV',
+            bloqueador_id=calculo.pk,
+        ).values('campo_bloqueado', 'label_campo', 'bloqueado_tipo', 'bloqueado_id')
+    )
+
     if request.method == 'POST':
         contrato_num = calculo.contrato.num_contrato
-        fecha = calculo.fecha_aplicacion.strftime("%d/%m/%Y")
+        fecha = calculo.fecha_aplicacion.strftime('%d/%m/%Y')
+
+        _auditar_cambio(
+            tipo_documento='CONTRATO',
+            documento_id=calculo.contrato_id,
+            documento_descripcion=f"Contrato {contrato_num}",
+            nombre_campo='calculo_smlv_eliminado',
+            valor_anterior=f'CalculoSMLV #{calculo.pk} — {fecha} — ${calculo.nuevo_canon:,.0f}',
+            valor_nuevo=None,
+            modificado_por=request.user.get_username(),
+            causa_tipo='ELIMINACION_OTROSI',
+            causa_descripcion=f'Cálculo SMLV eliminado. Liberados {len(bloqueos_a_liberar)} bloqueo(s).',
+            ip_origen=request.META.get('REMOTE_ADDR'),
+        )
+
         calculo.delete()
-        messages.success(request, f'Cálculo de Salario Mínimo para el contrato {contrato_num} de la fecha {fecha} eliminado exitosamente!')
-        # Redirigir a la vista de gestión de IPC para que se actualice la información
+        msg = f'Cálculo de Salario Mínimo para el contrato {contrato_num} de la fecha {fecha} eliminado exitosamente!'
+        if bloqueos_a_liberar:
+            msg += f' Se liberaron {len(bloqueos_a_liberar)} bloqueo(s) de campos.'
+        messages.success(request, msg)
         return redirect('gestion:lista_ipc_historico')
-    
+
     context = {
         'calculo': calculo,
         'titulo': f'Eliminar Cálculo Salario Mínimo {calculo.fecha_aplicacion.strftime("%d/%m/%Y")} - {calculo.contrato.num_contrato}',
+        'bloqueos_a_liberar': bloqueos_a_liberar,
     }
     return render(request, 'gestion/salario_minimo/eliminar_calculo.html', context)
 
@@ -771,6 +976,33 @@ def obtener_variacion_salario_minimo_ajax(request):
             logger = logging.getLogger(__name__)
             logger.error("Error en obtener_variacion_salario_minimo_ajax", exc_info=True)
             return JsonResponse({'error': 'Error procesando la solicitud'}, status=500)
-    
+
     return JsonResponse({'error': 'Método no permitido'}, status=405)
 
+
+@login_required_custom
+def otrosi_legalizables_smlv_ajax(request):
+    """Retorna JSON con los OtroSí legalizables para un contrato y año dados (para SMLV)."""
+    contrato_id = request.GET.get('contrato_id')
+    fecha_str = request.GET.get('fecha')
+
+    if not contrato_id or not fecha_str:
+        return JsonResponse({'otrosi': [], 'hay_otrosi': False})
+
+    try:
+        contrato = Contrato.objects.get(id=contrato_id)
+        año = date.fromisoformat(fecha_str).year
+        otrosi_qs = obtener_otrosi_para_legalizar_smlv(contrato, año)
+        otrosi_list = [
+            {
+                'pk': os.pk,
+                'version': os.version,
+                'effective_from': os.effective_from.strftime('%d/%m/%Y'),
+                'nuevo_valor_canon': str(os.nuevo_valor_canon) if os.nuevo_valor_canon else None,
+                'nuevo_canon_minimo_garantizado': str(os.nuevo_canon_minimo_garantizado) if os.nuevo_canon_minimo_garantizado else None,
+            }
+            for os in otrosi_qs
+        ]
+        return JsonResponse({'otrosi': otrosi_list, 'hay_otrosi': bool(otrosi_list), 'año': año})
+    except (Contrato.DoesNotExist, ValueError):
+        return JsonResponse({'otrosi': [], 'hay_otrosi': False})

@@ -1,0 +1,179 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}{{ titulo }} - Gestión de Contratos{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="display-6">
+                    <i class="fas fa-balance-scale text-warning"></i> {{ titulo }}
+                </h1>
+                <div>
+                    <a href="{% url 'gestion:calcular_salario_minimo' %}?contrato={{ contrato.id }}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Cancelar y volver
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+
+            <!-- Info del contrato y Otro Sí -->
+            <div class="card mb-4 border-info">
+                <div class="card-header bg-info bg-opacity-10">
+                    <h6 class="mb-0 text-info-emphasis">
+                        <i class="fas fa-info-circle me-1"></i> Datos del ajuste a legalizar
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <dl class="row mb-0">
+                                <dt class="col-sm-5">Contrato:</dt>
+                                <dd class="col-sm-7 fw-bold">{{ contrato.num_contrato }}</dd>
+                                <dt class="col-sm-5">Arrendatario/Cliente:</dt>
+                                <dd class="col-sm-7">{{ contrato.arrendatario|default:contrato.proveedor }}</dd>
+                                <dt class="col-sm-5">SMLV aplicado:</dt>
+                                <dd class="col-sm-7">{{ salario_minimo_historico.año }} — Var. {{ variacion_salario_minimo|floatformat:2 }}%</dd>
+                                <dt class="col-sm-5">Puntos adicionales:</dt>
+                                <dd class="col-sm-7">{{ puntos_adicionales }}%</dd>
+                            </dl>
+                        </div>
+                        <div class="col-md-6">
+                            <dl class="row mb-0">
+                                <dt class="col-sm-5">Otro Sí:</dt>
+                                <dd class="col-sm-7 fw-bold">Versión {{ otrosi.version }}</dd>
+                                <dt class="col-sm-5">Vigente desde:</dt>
+                                <dd class="col-sm-7">{{ otrosi.effective_from|date:"d/m/Y" }}</dd>
+                                <dt class="col-sm-5">Canon base:</dt>
+                                <dd class="col-sm-7">${{ canon_anterior|intcomma }}</dd>
+                                <dt class="col-sm-5">Fuente:</dt>
+                                <dd class="col-sm-7"><small class="text-muted">{{ fuente_canon }}</small></dd>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Comparativa de valores -->
+            <div class="card mb-4 shadow-sm">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-table me-1"></i> Comparativa de valores
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-bordered mb-0 text-center">
+                            <thead>
+                                <tr>
+                                    <th class="text-start" style="width:30%;">Concepto</th>
+                                    <th class="table-success">
+                                        <i class="fas fa-calculator me-1"></i>
+                                        Ajuste calculado por SMLV
+                                    </th>
+                                    <th class="table-warning">
+                                        <i class="fas fa-file-signature me-1"></i>
+                                        Valor del Otro Sí v.{{ otrosi.version }}
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td class="text-start fw-semibold">Canon anterior</td>
+                                    <td>${{ canon_anterior|intcomma }}</td>
+                                    <td>${{ canon_anterior|intcomma }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="text-start fw-semibold">Porcentaje aplicado</td>
+                                    <td class="text-success fw-bold">{{ porcentaje_smlv|floatformat:2 }}%
+                                        <br><small class="text-muted fw-normal">Var. SMLV {{ variacion_salario_minimo|floatformat:2 }}% + {{ puntos_adicionales }}pts</small>
+                                    </td>
+                                    <td class="text-warning-emphasis fw-bold">{{ porcentaje_real|floatformat:2 }}%
+                                        <br><small class="text-muted fw-normal">Variación real del Otro Sí</small>
+                                    </td>
+                                </tr>
+                                <tr class="table-light">
+                                    <td class="text-start fw-bold">Canon resultante</td>
+                                    <td class="table-success fw-bold fs-5">${{ nuevo_canon_smlv|floatformat:0|intcomma }}</td>
+                                    <td class="table-warning fw-bold fs-5">${{ canon_otrosi|floatformat:0|intcomma }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Selección y confirmación -->
+            <div class="card shadow-sm border-success">
+                <div class="card-header bg-success bg-opacity-10">
+                    <h5 class="mb-0 text-success-emphasis">
+                        <i class="fas fa-check-circle me-1"></i> Selecciona el valor a registrar
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted mb-4">
+                        Elige cuál de los dos valores quedará registrado como el ajuste oficial por Salario Mínimo.
+                        El registro se creará con estado <strong>APLICADO</strong> y quedará vinculado al
+                        Otro Sí seleccionado.
+                    </p>
+                    <form method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="accion" value="confirmar_legalizacion">
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-6">
+                                <div class="form-check card p-3 border-success h-100">
+                                    <input class="form-check-input me-2" type="radio" name="valor_elegido"
+                                           value="smlv" id="val_smlv">
+                                    <label class="form-check-label w-100" for="val_smlv">
+                                        <div class="fw-bold text-success mb-1">
+                                            <i class="fas fa-calculator me-1"></i>
+                                            Valor calculado por SMLV
+                                        </div>
+                                        <div class="fs-5 fw-bold">${{ nuevo_canon_smlv|floatformat:0|intcomma }}</div>
+                                        <div class="text-muted small">{{ porcentaje_smlv|floatformat:2 }}% de incremento</div>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check card p-3 border-warning h-100">
+                                    <input class="form-check-input me-2" type="radio" name="valor_elegido"
+                                           value="otrosi" id="val_otrosi" checked>
+                                    <label class="form-check-label w-100" for="val_otrosi">
+                                        <div class="fw-bold text-warning-emphasis mb-1">
+                                            <i class="fas fa-file-signature me-1"></i>
+                                            Valor del Otro Sí v.{{ otrosi.version }}
+                                        </div>
+                                        <div class="fs-5 fw-bold">${{ canon_otrosi|floatformat:0|intcomma }}</div>
+                                        <div class="text-muted small">{{ porcentaje_real|floatformat:2 }}% de variación real</div>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="alert alert-info small mb-4">
+                            <i class="fas fa-info-circle me-1"></i>
+                            El cálculo quedará registrado con <strong>fecha {{ otrosi.effective_from|date:"d/m/Y" }}</strong>
+                            (fecha de vigencia del Otro Sí) y estado <strong>APLICADO</strong>.
+                        </div>
+                        <div class="d-flex gap-3">
+                            <button type="submit" class="btn btn-success btn-lg">
+                                <i class="fas fa-check me-1"></i> Confirmar legalización
+                            </button>
+                            <a href="{% url 'gestion:calcular_salario_minimo' %}?contrato={{ contrato.id }}"
+                               class="btn btn-outline-secondary btn-lg">
+                                <i class="fas fa-times me-1"></i> Cancelar
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+{% endblock %}

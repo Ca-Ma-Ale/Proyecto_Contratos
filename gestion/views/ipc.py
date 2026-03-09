@@ -12,6 +12,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from gestion.decorators import admin_required, login_required_custom
+from gestion.services.chain_validation import auditar_cambio as _auditar_cambio
 from gestion.forms import IPCHistoricoForm, CalculoIPCForm, EditarCalculoIPCForm
 from gestion.models import IPCHistorico, CalculoIPC, Contrato
 from gestion.utils_otrosi import get_ultimo_otrosi_que_modifico_campo_hasta_fecha
@@ -26,6 +27,7 @@ from gestion.utils_ipc import (
     obtener_ultimo_calculo_ajuste,
     verificar_otrosi_vigente_para_fecha,
     verificar_calculo_existente_para_fecha,
+    obtener_otrosi_para_legalizar,
 )
 from gestion.utils_formateo import limpiar_valor_numerico
 
@@ -201,6 +203,160 @@ def calcular_ipc(request):
         form = CalculoIPCForm(request.POST, user=request.user)
         accion = request.POST.get('accion', 'calcular')  # 'calcular' o 'guardar'
         
+        # Manejar confirmación de legalización (lee desde sesión, no requiere form válido)
+        if accion == 'confirmar_legalizacion':
+            datos = request.session.get('legalizacion_ipc_pendiente')
+            if not datos:
+                messages.error(request, 'No hay legalización pendiente de confirmación.')
+                return redirect('gestion:calcular_ipc')
+
+            valor_elegido = request.POST.get('valor_elegido')
+            if valor_elegido not in ('otrosi', 'ipc'):
+                messages.error(request, 'Debe seleccionar qué valor registrar.')
+                return redirect('gestion:calcular_ipc')
+
+            contrato = get_object_or_404(Contrato, id=datos['contrato_id'])
+            ipc_historico = get_object_or_404(IPCHistorico, id=datos['ipc_historico_id'])
+            otrosi = get_object_or_404(
+                __import__('gestion.models', fromlist=['OtroSi']).OtroSi,
+                id=datos['otrosi_id'],
+                contrato=contrato,
+                estado='APROBADO'
+            )
+
+            canon_anterior = Decimal(datos['canon_anterior'])
+            canon_otrosi = Decimal(datos['canon_otrosi'])
+            nuevo_canon_ipc = Decimal(datos['nuevo_canon_ipc'])
+            puntos_adicionales = Decimal(datos['puntos_adicionales'])
+            fuente_canon_anterior = datos['fuente_canon_anterior']
+
+            if valor_elegido == 'otrosi':
+                nuevo_canon_final = canon_otrosi
+            else:
+                nuevo_canon_final = nuevo_canon_ipc
+
+            valor_incremento = nuevo_canon_final - canon_anterior
+            if canon_anterior > 0:
+                porcentaje_total = ((nuevo_canon_final / canon_anterior) - Decimal('1')) * Decimal('100')
+            else:
+                porcentaje_total = Decimal('0')
+
+            otrosi_effective_from = date.fromisoformat(datos['otrosi_effective_from'])
+            label_valor = 'Otro Sí' if valor_elegido == 'otrosi' else 'Cálculo IPC'
+            observaciones_legalizacion = (
+                f'Legalizado vía Otro Sí versión {otrosi.version} '
+                f'(effective_from: {otrosi_effective_from.strftime("%d/%m/%Y")}). '
+                f'Valor registrado: {label_valor}.'
+            )
+
+            from gestion.models import OtroSi
+            calculo = CalculoIPC.objects.create(
+                contrato=contrato,
+                año_aplicacion=otrosi_effective_from.year,
+                fecha_aplicacion=otrosi_effective_from,
+                ipc_historico=ipc_historico,
+                canon_anterior=canon_anterior,
+                canon_anterior_manual=False,
+                fuente_canon_anterior=fuente_canon_anterior,
+                puntos_adicionales=puntos_adicionales,
+                porcentaje_total_aplicar=porcentaje_total.quantize(Decimal('0.0001')),
+                valor_incremento=valor_incremento.quantize(Decimal('0.01')),
+                nuevo_canon=nuevo_canon_final.quantize(Decimal('0.01')),
+                periodicidad_contrato=contrato.periodicidad_ipc,
+                fecha_aumento_contrato=contrato.fecha_aumento_ipc,
+                observaciones=observaciones_legalizacion,
+                estado='APLICADO',
+                otrosi_referencia=otrosi,
+                legalizado_via_otrosi=True,
+                calculado_por=request.user.get_full_name() or request.user.username,
+                aplicado_por=request.user.get_full_name() or request.user.username,
+                fecha_aplicacion_real=timezone.now(),
+            )
+
+            del request.session['legalizacion_ipc_pendiente']
+            messages.success(
+                request,
+                f'Ajuste por IPC legalizado exitosamente mediante el Otro Sí versión {otrosi.version}. '
+                f'Nuevo canon registrado: ${nuevo_canon_final:,.2f}'
+            )
+            return redirect('gestion:detalle_calculo_ipc', calculo_id=calculo.id)
+
+        # Mostrar comparativa de valores antes de confirmar legalización
+        if accion == 'ver_comparativa':
+            from gestion.models import OtroSi
+            contrato_id_post = request.POST.get('contrato')
+            ipc_historico_id_post = request.POST.get('ipc_historico')
+            otrosi_id = request.POST.get('otrosi_id')
+
+            if not otrosi_id:
+                messages.error(request, 'Debe seleccionar un Otro Sí para legalizar.')
+                return redirect(
+                    f"{reverse('gestion:calcular_ipc')}?contrato={contrato_id_post or ''}"
+                )
+
+            contrato_leg = get_object_or_404(Contrato, id=contrato_id_post)
+            ipc_historico_leg = get_object_or_404(IPCHistorico, id=ipc_historico_id_post)
+
+            try:
+                otrosi_sel = OtroSi.objects.get(id=otrosi_id, contrato=contrato_leg, estado='APROBADO')
+            except OtroSi.DoesNotExist:
+                messages.error(request, 'El Otro Sí seleccionado no es válido.')
+                return redirect('gestion:calcular_ipc')
+
+            # Canon base calculado para la fecha del Otro Sí
+            canon_info_leg = obtener_canon_base_para_ipc(contrato_leg, otrosi_sel.effective_from)
+            canon_base = canon_info_leg['canon']
+            fuente_canon = canon_info_leg.get('fuente', 'Automático')
+
+            # Puntos adicionales vigentes para esa fecha
+            fuente_puntos_leg = obtener_fuente_puntos_adicionales(contrato_leg, otrosi_sel.effective_from)
+            puntos_adicionales_leg = fuente_puntos_leg['puntos']
+
+            # Canon del Otro Sí
+            canon_otrosi = otrosi_sel.nuevo_valor_canon or otrosi_sel.nuevo_canon_minimo_garantizado
+
+            if canon_base and canon_base > 0:
+                porcentaje_real = ((canon_otrosi / canon_base) - Decimal('1')) * Decimal('100')
+            else:
+                porcentaje_real = Decimal('0')
+
+            # Cálculo teórico por IPC
+            resultado_ipc_leg = calcular_ajuste_ipc(
+                canon_base, ipc_historico_leg.valor_ipc, puntos_adicionales_leg
+            )
+            nuevo_canon_ipc = resultado_ipc_leg['nuevo_canon']
+            porcentaje_ipc = resultado_ipc_leg['porcentaje_total']
+
+            request.session['legalizacion_ipc_pendiente'] = {
+                'contrato_id': contrato_leg.id,
+                'ipc_historico_id': ipc_historico_leg.id,
+                'otrosi_id': otrosi_sel.id,
+                'otrosi_effective_from': otrosi_sel.effective_from.isoformat(),
+                'canon_anterior': str(canon_base),
+                'canon_otrosi': str(canon_otrosi),
+                'nuevo_canon_ipc': str(nuevo_canon_ipc),
+                'puntos_adicionales': str(puntos_adicionales_leg),
+                'fuente_canon_anterior': fuente_canon,
+                'porcentaje_real': str(porcentaje_real.quantize(Decimal('0.0001'))),
+                'porcentaje_ipc': str(porcentaje_ipc),
+            }
+
+            context = {
+                'titulo': 'Legalizar Ajuste IPC vía Otro Sí',
+                'contrato': contrato_leg,
+                'otrosi': otrosi_sel,
+                'ipc_historico': ipc_historico_leg,
+                'canon_anterior': canon_base,
+                'fuente_canon': fuente_canon,
+                'canon_otrosi': canon_otrosi,
+                'porcentaje_real': porcentaje_real,
+                'nuevo_canon_ipc': nuevo_canon_ipc,
+                'porcentaje_ipc': porcentaje_ipc,
+                'puntos_adicionales': puntos_adicionales_leg,
+                'user': request.user,
+            }
+            return render(request, 'gestion/ipc/comparativa_legalizacion.html', context)
+
         if form.is_valid():
             contrato = form.cleaned_data['contrato']
             fecha_aplicacion = form.cleaned_data['fecha_aplicacion']
@@ -208,7 +364,7 @@ def calcular_ipc(request):
             canon_anterior_manual = form.cleaned_data.get('canon_anterior_manual', False)
             canon_anterior = form.cleaned_data.get('canon_anterior')
             observaciones = form.cleaned_data.get('observaciones', '')
-            
+
             # Si no es manual y no hay canon, obtenerlo automáticamente
             if not canon_anterior_manual and not canon_anterior:
                 canon_info = obtener_canon_base_para_ipc(contrato, fecha_aplicacion)
@@ -551,10 +707,25 @@ def calcular_ipc(request):
                     f'Por favor, agregue el IPC histórico del año {año_ipc_requerido} primero.'
                 )
     
+    # Detectar OtroSís disponibles para legalizar (solo cuando hay contrato)
+    otrosi_legalizables = None
+    hay_otrosi_para_legalizar = False
+    if contrato_id:
+        try:
+            contrato_obj = Contrato.objects.get(id=contrato_id)
+            año_buscar = int(año)
+            otrosi_legalizables = obtener_otrosi_para_legalizar(contrato_obj, año_buscar)
+            hay_otrosi_para_legalizar = otrosi_legalizables.exists()
+        except (Contrato.DoesNotExist, ValueError):
+            pass
+
     context = {
         'form': form,
         'titulo': 'Calcular Ajuste por IPC',
         'user': request.user,
+        'otrosi_legalizables': otrosi_legalizables,
+        'hay_otrosi_para_legalizar': hay_otrosi_para_legalizar,
+        'año_aplicacion': año,
     }
     return render(request, 'gestion/ipc/calcular_form.html', context)
 
@@ -712,19 +883,47 @@ def detalle_calculo_ipc(request, calculo_id):
 @admin_required
 def eliminar_calculo_ipc(request, calculo_id):
     """Vista para eliminar un cálculo de IPC"""
+    from gestion.models import DependenciaDocumento
     calculo = get_object_or_404(CalculoIPC, id=calculo_id)
-    
+
+    # ── Efecto Cadena: informar qué bloqueos se liberarán ────────────────────
+    bloqueos_a_liberar = list(
+        DependenciaDocumento.objects.filter(
+            bloqueador_tipo='CALCULO_IPC',
+            bloqueador_id=calculo.pk,
+        ).values('campo_bloqueado', 'label_campo', 'bloqueado_tipo', 'bloqueado_id')
+    )
+
     if request.method == 'POST':
         contrato_num = calculo.contrato.num_contrato
-        fecha = calculo.fecha_aplicacion.strftime("%d/%m/%Y")
+        fecha = calculo.fecha_aplicacion.strftime('%d/%m/%Y')
+
+        # Auditar eliminación
+        _auditar_cambio(
+            tipo_documento='CONTRATO',
+            documento_id=calculo.contrato_id,
+            documento_descripcion=f"Contrato {contrato_num}",
+            nombre_campo='calculo_ipc_eliminado',
+            valor_anterior=f'CalculoIPC #{calculo.pk} — {fecha} — ${calculo.nuevo_canon:,.0f}',
+            valor_nuevo=None,
+            modificado_por=request.user.get_username(),
+            causa_tipo='ELIMINACION_OTROSI',  # reutilizamos causa más cercana
+            causa_descripcion=f'Cálculo IPC eliminado. Liberados {len(bloqueos_a_liberar)} bloqueo(s).',
+            ip_origen=request.META.get('REMOTE_ADDR'),
+        )
+
+        # post_delete signal libera automáticamente las DependenciaDocumento
         calculo.delete()
-        messages.success(request, f'Cálculo de IPC para el contrato {contrato_num} de la fecha {fecha} eliminado exitosamente!')
-        # Redirigir a la vista de gestión de IPC para que se actualice la información
+        msg = f'Cálculo de IPC para el contrato {contrato_num} de la fecha {fecha} eliminado exitosamente!'
+        if bloqueos_a_liberar:
+            msg += f' Se liberaron {len(bloqueos_a_liberar)} bloqueo(s) de campos.'
+        messages.success(request, msg)
         return redirect('gestion:lista_ipc_historico')
-    
+
     context = {
         'calculo': calculo,
         'titulo': f'Eliminar Cálculo IPC {calculo.fecha_aplicacion.strftime("%d/%m/%Y")} - {calculo.contrato.num_contrato}',
+        'bloqueos_a_liberar': bloqueos_a_liberar,
     }
     return render(request, 'gestion/ipc/eliminar_calculo.html', context)
 
@@ -839,3 +1038,31 @@ def obtener_canon_anterior_ajax(request):
             return JsonResponse({'error': 'Error procesando la solicitud. Por favor, intente nuevamente.'}, status=500)
     
     return JsonResponse({'error': 'Método no permitido'}, status=405)
+
+
+@login_required_custom
+def otrosi_legalizables_ipc_ajax(request):
+    """Retorna JSON con los OtroSí legalizables para un contrato y año dados (para IPC)."""
+    contrato_id = request.GET.get('contrato_id')
+    fecha_str = request.GET.get('fecha')
+
+    if not contrato_id or not fecha_str:
+        return JsonResponse({'otrosi': [], 'hay_otrosi': False})
+
+    try:
+        contrato = Contrato.objects.get(id=contrato_id)
+        año = date.fromisoformat(fecha_str).year
+        otrosi_qs = obtener_otrosi_para_legalizar(contrato, año)
+        otrosi_list = [
+            {
+                'pk': os.pk,
+                'version': os.version,
+                'effective_from': os.effective_from.strftime('%d/%m/%Y'),
+                'nuevo_valor_canon': str(os.nuevo_valor_canon) if os.nuevo_valor_canon else None,
+                'nuevo_canon_minimo_garantizado': str(os.nuevo_canon_minimo_garantizado) if os.nuevo_canon_minimo_garantizado else None,
+            }
+            for os in otrosi_qs
+        ]
+        return JsonResponse({'otrosi': otrosi_list, 'hay_otrosi': bool(otrosi_list), 'año': año})
+    except (Contrato.DoesNotExist, ValueError):
+        return JsonResponse({'otrosi': [], 'hay_otrosi': False})

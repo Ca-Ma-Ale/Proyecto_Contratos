@@ -50,6 +50,34 @@ def admin_required(function):
     return wrap
 
 
+def admin_general_required(function):
+    """
+    Decorador que requiere que el usuario sea el Admin General del sistema.
+    El Admin General se identifica por tener PerfilUsuario.es_admin_general = True.
+    """
+    @wraps(function)
+    def wrap(request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            messages.warning(request, 'Debe iniciar sesión para acceder a esta página.')
+            login_url = '/login/'
+            next_url = request.get_full_path()
+            if next_url != login_url:
+                return redirect(f'{login_url}?{urlencode({"next": next_url})}')
+            return redirect(login_url)
+        try:
+            es_admin = request.user.perfil.es_admin_general
+        except Exception:
+            es_admin = False
+        if not es_admin:
+            messages.error(
+                request,
+                'Acceso restringido. Esta sección es exclusiva del Admin General.'
+            )
+            return redirect('gestion:dashboard')
+        return function(request, *args, **kwargs)
+    return wrap
+
+
 def license_required(function):
     """
     Decorador que requiere que la licencia esté activa y vigente.

@@ -30,6 +30,17 @@
 
     <div class="row">
         <div class="col-md-10 offset-md-1">
+            {% if calculo.legalizado_via_otrosi and calculo.otrosi_referencia %}
+            <div class="alert alert-info d-flex align-items-center mb-3 shadow-sm">
+                <i class="fas fa-link fa-lg me-3 text-info"></i>
+                <div>
+                    <strong>Ajuste legalizado vía Otro Sí</strong><br>
+                    Este ajuste fue legalizado mediante el <strong>Otro Sí versión {{ calculo.otrosi_referencia.version }}</strong>
+                    (vigente desde {{ calculo.otrosi_referencia.effective_from|date:"d/m/Y" }}).
+                    El canon registrado refleja el aumento ya aplicado en ese documento.
+                </div>
+            </div>
+            {% endif %}
             <div class="card mb-4">
                 <div class="card-header">
                     <h5 class="mb-0">

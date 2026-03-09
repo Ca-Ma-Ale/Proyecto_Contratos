@@ -2138,6 +2138,25 @@ class CalculoFacturacionVentas(models.Model):
         verbose_name='Fecha de Cálculo'
     )
 
+    # ── Confirmación (bloqueo de efecto cadena) ───────────────────────────────
+    confirmado = models.BooleanField(
+        default=False,
+        verbose_name='Confirmado',
+        help_text='Cuando está confirmado, los campos de % ventas y canon mínimo '
+                  'quedan bloqueados en el contrato.'
+    )
+    confirmado_por = models.CharField(
+        max_length=150,
+        blank=True,
+        null=True,
+        verbose_name='Confirmado Por'
+    )
+    fecha_confirmacion = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name='Fecha de Confirmación'
+    )
+
     class Meta:
         verbose_name = 'Cálculo de Facturación por Ventas'
         verbose_name_plural = 'Cálculos de Facturación por Ventas'
@@ -2390,6 +2409,20 @@ class CalculoIPC(models.Model):
         null=True,
         verbose_name='Fecha de Aplicación Real',
         help_text='Fecha y hora en que se aplicó el cálculo'
+    )
+    otrosi_referencia = models.ForeignKey(
+        'OtroSi',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='calculos_ipc_referencia',
+        verbose_name='Otro Sí referenciado',
+        help_text='Otro Sí que sirvió como evidencia del ajuste por IPC'
+    )
+    legalizado_via_otrosi = models.BooleanField(
+        default=False,
+        verbose_name='Legalizado vía Otro Sí',
+        help_text='Indica que el ajuste fue legalizado usando un Otro Sí existente'
     )
 
     class Meta:
@@ -2798,6 +2831,20 @@ class CalculoSalarioMinimo(models.Model):
         null=True,
         verbose_name='Fecha de Aplicación Real',
         help_text='Fecha y hora en que se aplicó el cálculo'
+    )
+    otrosi_referencia = models.ForeignKey(
+        'OtroSi',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='calculos_smlv_referencia',
+        verbose_name='Otro Sí referenciado',
+        help_text='Otro Sí que sirvió como evidencia del ajuste por Salario Mínimo'
+    )
+    legalizado_via_otrosi = models.BooleanField(
+        default=False,
+        verbose_name='Legalizado vía Otro Sí',
+        help_text='Indica que el ajuste fue legalizado usando un Otro Sí existente'
     )
 
     class Meta:
@@ -3389,3 +3436,246 @@ class ClausulaContrato(AuditoriaMixin):
     def __str__(self):
         return f"{self.contrato.num_contrato} - {self.clausula.titulo}"
 
+
+# ─────────────────────────────────────────────────────────────────────────────
+# SISTEMA DE EFECTO CADENA: AUDITORÍA Y DEPENDENCIAS
+# ─────────────────────────────────────────────────────────────────────────────
+
+class PerfilUsuario(models.Model):
+    """
+    Perfil extendido del usuario de Django.
+    Permite identificar al Admin General del sistema.
+    Solo puede existir UN usuario con es_admin_general=True activo.
+    """
+    from django.contrib.auth.models import User as AuthUser
+
+    usuario = models.OneToOneField(
+        'auth.User',
+        on_delete=models.CASCADE,
+        related_name='perfil',
+        verbose_name='Usuario'
+    )
+    es_admin_general = models.BooleanField(
+        default=False,
+        verbose_name='Es Admin General',
+        help_text='Marca al usuario como Admin General. Solo puede haber uno activo.'
+    )
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_modificacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Perfil de Usuario'
+        verbose_name_plural = 'Perfiles de Usuario'
+
+    def __str__(self):
+        rol = 'Admin General' if self.es_admin_general else 'Usuario'
+        return f"{self.usuario.username} ({rol})"
+
+    def clean(self):
+        if self.es_admin_general:
+            qs = PerfilUsuario.objects.filter(es_admin_general=True)
+            if self.pk:
+                qs = qs.exclude(pk=self.pk)
+            if qs.exists():
+                raise ValidationError(
+                    'Ya existe un Admin General. Desactive el anterior antes de asignar uno nuevo.'
+                )
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+
+class HistorialCampoContrato(models.Model):
+    """
+    Registro inmutable de cada cambio realizado sobre campos relevantes de
+    Contrato, OtroSi y RenovacionAutomatica.
+
+    Solo el Admin General puede visualizar este historial.
+    NUNCA se actualiza ni elimina desde la aplicación.
+    """
+    CAUSA_CHOICES = [
+        ('EDICION_DIRECTA',          'Edición directa'),
+        ('APROBACION_OTROSI',        'Aprobación de Otro Sí'),
+        ('ELIMINACION_OTROSI',       'Eliminación de Otro Sí'),
+        ('APROBACION_RENOVACION',    'Aprobación de Renovación Automática'),
+        ('ELIMINACION_RENOVACION',   'Eliminación de Renovación Automática'),
+        ('APLICACION_CALCULO_IPC',   'Aplicación de Cálculo IPC'),
+        ('APLICACION_CALCULO_SMLV',  'Aplicación de Cálculo SMLV'),
+        ('CONFIRMACION_CALCULO_VENTAS', 'Confirmación de Cálculo de Ventas'),
+    ]
+
+    # Qué objeto fue modificado (Contrato, OtroSi, RenovacionAutomatica)
+    tipo_documento = models.CharField(
+        max_length=30,
+        verbose_name='Tipo de Documento',
+        help_text='CONTRATO | OTROSI | RENOVACION'
+    )
+    documento_id = models.PositiveIntegerField(
+        verbose_name='ID del Documento'
+    )
+    documento_descripcion = models.CharField(
+        max_length=300,
+        blank=True,
+        verbose_name='Descripción del Documento',
+        help_text='Texto legible: número de contrato, número de OtroSí, etc.'
+    )
+
+    # Qué campo cambió
+    nombre_campo = models.CharField(
+        max_length=100,
+        verbose_name='Campo Modificado',
+        help_text='Nombre interno del campo (ej: valor_canon_fijo)'
+    )
+    label_campo = models.CharField(
+        max_length=200,
+        blank=True,
+        verbose_name='Etiqueta del Campo',
+        help_text='Nombre legible del campo (ej: Valor Canon Fijo)'
+    )
+
+    # Valores
+    valor_anterior = models.JSONField(
+        null=True,
+        blank=True,
+        verbose_name='Valor Anterior'
+    )
+    valor_nuevo = models.JSONField(
+        null=True,
+        blank=True,
+        verbose_name='Valor Nuevo'
+    )
+
+    # Quién y cuándo
+    modificado_por = models.CharField(
+        max_length=150,
+        verbose_name='Modificado Por'
+    )
+    fecha_modificacion = models.DateTimeField(
+        default=timezone.now,
+        verbose_name='Fecha de Modificación'
+    )
+    ip_origen = models.GenericIPAddressField(
+        null=True,
+        blank=True,
+        verbose_name='IP de Origen'
+    )
+
+    # Por qué (qué documento causó el cambio)
+    causa_tipo = models.CharField(
+        max_length=40,
+        choices=CAUSA_CHOICES,
+        verbose_name='Causa del Cambio'
+    )
+    causa_descripcion = models.CharField(
+        max_length=300,
+        blank=True,
+        verbose_name='Descripción de la Causa',
+        help_text='Texto legible de qué causó el cambio'
+    )
+
+    class Meta:
+        verbose_name = 'Historial de Campo'
+        verbose_name_plural = 'Historial de Campos'
+        ordering = ['-fecha_modificacion']
+        indexes = [
+            models.Index(fields=['tipo_documento', 'documento_id']),
+            models.Index(fields=['nombre_campo']),
+            models.Index(fields=['modificado_por']),
+            models.Index(fields=['-fecha_modificacion']),
+        ]
+
+    def __str__(self):
+        return (
+            f"{self.documento_descripcion} | {self.label_campo or self.nombre_campo} | "
+            f"{self.modificado_por} | {self.fecha_modificacion.strftime('%d/%m/%Y %H:%M')}"
+        )
+
+
+class DependenciaDocumento(models.Model):
+    """
+    Registro de bloqueos activos entre documentos.
+
+    Cuando un documento posterior (OtroSí, RenovaciónAut., Cálculo) modifica
+    un campo, se crea un registro aquí bloqueando la edición de ese campo en
+    el documento anterior.
+
+    Se elimina (vía signal post_delete) cuando el documento bloqueador
+    es eliminado del sistema.
+    """
+    BLOQUEADOR_TIPO_CHOICES = [
+        ('OTROSI',           'Otro Sí'),
+        ('RENOVACION',       'Renovación Automática'),
+        ('CALCULO_IPC',      'Cálculo IPC'),
+        ('CALCULO_SMLV',     'Cálculo SMLV'),
+        ('CALCULO_VENTAS',   'Cálculo de Facturación por Ventas'),
+    ]
+    BLOQUEADO_TIPO_CHOICES = [
+        ('CONTRATO', 'Contrato'),
+        ('OTROSI',   'Otro Sí'),
+    ]
+
+    # Documento que genera el bloqueo
+    bloqueador_tipo = models.CharField(
+        max_length=20,
+        choices=BLOQUEADOR_TIPO_CHOICES,
+        verbose_name='Tipo Bloqueador'
+    )
+    bloqueador_id = models.PositiveIntegerField(
+        verbose_name='ID Bloqueador'
+    )
+    bloqueador_descripcion = models.CharField(
+        max_length=300,
+        verbose_name='Descripción del Bloqueador',
+        help_text='Texto legible: "OtroSí #2 — Canon $5.200.000 — Aprobado 15/01/2025"'
+    )
+    bloqueador_url = models.CharField(
+        max_length=300,
+        blank=True,
+        verbose_name='URL del Bloqueador',
+        help_text='URL relativa para ir directamente al documento bloqueador'
+    )
+
+    # Documento que queda bloqueado
+    bloqueado_tipo = models.CharField(
+        max_length=20,
+        choices=BLOQUEADO_TIPO_CHOICES,
+        verbose_name='Tipo Bloqueado'
+    )
+    bloqueado_id = models.PositiveIntegerField(
+        verbose_name='ID Bloqueado'
+    )
+
+    # Campo específico que está bloqueado
+    campo_bloqueado = models.CharField(
+        max_length=100,
+        verbose_name='Campo Bloqueado',
+        help_text='Nombre interno del campo (ej: valor_canon_fijo)'
+    )
+    label_campo = models.CharField(
+        max_length=200,
+        blank=True,
+        verbose_name='Etiqueta del Campo'
+    )
+
+    fecha_registro = models.DateTimeField(
+        default=timezone.now,
+        verbose_name='Fecha de Registro'
+    )
+
+    class Meta:
+        verbose_name = 'Dependencia de Documento'
+        verbose_name_plural = 'Dependencias de Documentos'
+        ordering = ['-fecha_registro']
+        indexes = [
+            models.Index(fields=['bloqueado_tipo', 'bloqueado_id']),
+            models.Index(fields=['bloqueador_tipo', 'bloqueador_id']),
+            models.Index(fields=['campo_bloqueado']),
+        ]
+
+    def __str__(self):
+        return (
+            f"{self.get_bloqueador_tipo_display()} #{self.bloqueador_id} bloquea "
+            f"{self.get_bloqueado_tipo_display()} #{self.bloqueado_id} "
+            f"[{self.label_campo or self.campo_bloqueado}]"
+        )

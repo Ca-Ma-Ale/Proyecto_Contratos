@@ -4,9 +4,17 @@ from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
+import json as _json
+
 from gestion.decorators import admin_required, login_required_custom
 from gestion.models import Contrato
 from gestion.utils_auditoria import guardar_con_auditoria, registrar_eliminacion
+from gestion.constants import CAMPOS_BLOQUEABLES_OTROSI
+from gestion.services.chain_validation import (
+    auditar_cambio as _auditar_cambio,
+    puede_eliminar as _puede_eliminar,
+    verificar_bloqueos as _verificar_bloqueos,
+)
 
 from gestion.utils_otrosi import (
     get_otrosi_vigente,
@@ -354,7 +362,11 @@ def nuevo_otrosi(request, contrato_id):
         'fuente_condiciones': fuente_condiciones,
         'valores_iniciales_polizas': json.dumps(valores_iniciales_polizas),
         'modalidad_actual': modalidad_actual,
-        'titulo': f'Nuevo Otro Sí - Contrato {contrato.num_contrato}'
+        'titulo': f'Nuevo Otro Sí - Contrato {contrato.num_contrato}',
+        'campos_bloqueados_json': '[]',
+        'canon_bloqueado_por_cadena': False,
+        'canon_minimo_bloqueado_por_cadena': False,
+        'modalidad_bloqueada_por_cadena': False,
     }
     return render(request, 'gestion/otrosi/form.html', context)
 
@@ -493,9 +505,47 @@ def editar_otrosi(request, otrosi_id):
                         }
                         return render(request, 'gestion/otrosi/advertencia_calculo_existente.html', context)
             
+            # ── Efecto Cadena: restaurar campos bloqueados desde la BD ────────
+            _bloqueos_post = _verificar_bloqueos('OTROSI', otrosi.pk, CAMPOS_BLOQUEABLES_OTROSI)
+            _campos_bloqueados_post = {c for c, lista in _bloqueos_post.items() if lista}
+            # Si nuevo_plazo_meses está bloqueado, también restaurar las fechas de vigencia
+            if 'nuevo_plazo_meses' in _campos_bloqueados_post:
+                _campos_bloqueados_post.update({'effective_from', 'effective_to'})
+            if _campos_bloqueados_post:
+                from gestion.models import OtroSi as _OtroSiDB
+                try:
+                    _otrosi_db = _OtroSiDB.objects.get(pk=otrosi.pk)
+                    for _campo_bloq in _campos_bloqueados_post:
+                        setattr(otrosi, _campo_bloq, getattr(_otrosi_db, _campo_bloq, None))
+                except Exception:
+                    pass
+
+            # ── Auditoría campo a campo antes de guardar ─────────────────────
+            from gestion.models import OtroSi as _OtroSi
+            try:
+                _otrosi_anterior = _OtroSi.objects.get(pk=otrosi.pk)
+                for campo in CAMPOS_BLOQUEABLES_OTROSI:
+                    val_ant = getattr(_otrosi_anterior, campo, None)
+                    val_nuevo = getattr(otrosi, campo, None)
+                    if val_ant != val_nuevo:
+                        _auditar_cambio(
+                            tipo_documento='OTROSI',
+                            documento_id=otrosi.pk,
+                            documento_descripcion=f"OtroSí {otrosi.numero_otrosi} — {otrosi.contrato.num_contrato}",
+                            nombre_campo=campo,
+                            valor_anterior=val_ant,
+                            valor_nuevo=val_nuevo,
+                            modificado_por=request.user.get_username(),
+                            causa_tipo='EDICION_DIRECTA',
+                            causa_descripcion='Edición directa desde formulario',
+                            ip_origen=request.META.get('REMOTE_ADDR'),
+                        )
+            except Exception:
+                pass
+
             guardar_con_auditoria(otrosi, request.user, es_nuevo=False)
             otrosi.save()
-            
+
             # Si el Otro Sí modifica el canon, actualizar cálculos existentes inmediatamente
             # Esto asegura que la base de datos se actualice cuando se detecta el cálculo existente
             if otrosi.nuevo_valor_canon or otrosi.nuevo_canon_minimo_garantizado:
@@ -641,6 +691,17 @@ def editar_otrosi(request, otrosi_id):
     else:
         modalidad_actual = contrato.modalidad_pago or ''
     
+    # ── Efecto Cadena: verificar qué campos del OtroSí están bloqueados ──────
+    bloqueos_otrosi = _verificar_bloqueos('OTROSI', otrosi.pk, CAMPOS_BLOQUEABLES_OTROSI)
+    campos_bloqueados_otrosi = {c for c, lista in bloqueos_otrosi.items() if lista}
+    # Si nuevo_plazo_meses está bloqueado, también bloquear las fechas de vigencia
+    if 'nuevo_plazo_meses' in campos_bloqueados_otrosi:
+        campos_bloqueados_otrosi.update({'effective_from', 'effective_to'})
+
+    for campo in campos_bloqueados_otrosi:
+        if campo in form.fields:
+            form.fields[campo].disabled = True
+
     context = {
         'form': form,
         'otrosi': otrosi,
@@ -650,7 +711,14 @@ def editar_otrosi(request, otrosi_id):
         'fuente_condiciones': fuente_condiciones,
         'valores_iniciales_polizas': json.dumps(valores_iniciales_polizas),
         'modalidad_actual': modalidad_actual,
-        'titulo': f'Editar Otro Sí - {otrosi.numero_otrosi}'
+        'titulo': f'Editar Otro Sí - {otrosi.numero_otrosi}',
+        # ── Efecto Cadena ─────────────────────────────────────────────────────
+        'bloqueos_cadena': bloqueos_otrosi,
+        'campos_bloqueados': campos_bloqueados_otrosi,
+        'campos_bloqueados_json': _json.dumps(list(campos_bloqueados_otrosi)),
+        'canon_bloqueado_por_cadena': 'nuevo_valor_canon' in campos_bloqueados_otrosi,
+        'canon_minimo_bloqueado_por_cadena': 'nuevo_canon_minimo_garantizado' in campos_bloqueados_otrosi,
+        'modalidad_bloqueada_por_cadena': 'nueva_modalidad_pago' in campos_bloqueados_otrosi,
     }
     return render(request, 'gestion/otrosi/form.html', context)
 
@@ -786,35 +854,51 @@ def enviar_a_revision_otrosi(request, otrosi_id):
 def eliminar_otrosi(request, otrosi_id):
     """Elimina un Otro Sí (solo admin, cualquier estado)"""
     from gestion.models import OtroSi
-    from gestion.utils_otrosi import tiene_otrosi_posteriores
-    
+
     otrosi = get_object_or_404(OtroSi, id=otrosi_id)
     contrato = otrosi.contrato
-    
-    # Validar si hay Otros Sí posteriores
-    tiene_posteriores = tiene_otrosi_posteriores(otrosi)
-    
+
+    # ── Efecto Cadena: verificar si este OtroSí puede eliminarse ─────────────
+    puede, bloqueadores_eliminacion = _puede_eliminar('OTROSI', otrosi.pk)
+
     # Verificar si tiene pólizas asociadas
     polizas_count = otrosi.polizas.count()
     polizas = otrosi.polizas.all() if polizas_count > 0 else []
-    
+
     if request.method == 'POST':
         accion = request.POST.get('accion')
         if accion == 'confirmar':
-            # Validar nuevamente antes de eliminar (por si acaso se intenta forzar)
-            if tiene_otrosi_posteriores(otrosi):
+            # Re-verificar en el POST (seguridad ante manipulación del form)
+            puede_post, bloqueadores_post = _puede_eliminar('OTROSI', otrosi.pk)
+            if not puede_post:
+                descripciones = '; '.join(b['descripcion'][:60] for b in bloqueadores_post[:3])
                 messages.error(
-                    request, 
-                    f'❌ No se puede eliminar el Otro Sí {otrosi.numero_otrosi} porque existen Otros Sí posteriores. '
-                    'Solo se puede eliminar el último Otro Sí del contrato. Se permite editar, pero no eliminar.'
+                    request,
+                    f'No se puede eliminar el Otro Sí {otrosi.numero_otrosi}. '
+                    f'Existen documentos posteriores que dependen de él: {descripciones}. '
+                    'Elimínelos primero en el orden indicado.'
                 )
                 return redirect('gestion:detalle_otrosi', otrosi_id=otrosi.id)
-            
+
+            # Registrar en auditoría que se eliminó
+            _auditar_cambio(
+                tipo_documento='OTROSI',
+                documento_id=otrosi.pk,
+                documento_descripcion=f"OtroSí {otrosi.numero_otrosi} — {contrato.num_contrato}",
+                nombre_campo='estado',
+                valor_anterior=otrosi.estado,
+                valor_nuevo='ELIMINADO',
+                modificado_por=request.user.get_username(),
+                causa_tipo='ELIMINACION_OTROSI',
+                causa_descripcion=f'OtroSí {otrosi.numero_otrosi} eliminado por {request.user.get_username()}',
+                ip_origen=request.META.get('REMOTE_ADDR'),
+            )
+
             registrar_eliminacion(otrosi, request.user)
             numero = otrosi.numero_otrosi
-            # Las pólizas se eliminarán automáticamente por la señal pre_delete
+            # Las pólizas y las DependenciaDocumento se eliminan por signals pre_delete / post_delete
             otrosi.delete()
-            
+
             mensaje = f'✅ Otro Sí {numero} eliminado exitosamente'
             if polizas_count > 0:
                 mensaje += f' junto con {polizas_count} póliza(s) asociada(s)'
@@ -822,14 +906,15 @@ def eliminar_otrosi(request, otrosi_id):
             return redirect('gestion:lista_otrosi', contrato_id=contrato.id)
         elif accion == 'cancelar':
             return redirect('gestion:detalle_otrosi', otrosi_id=otrosi.id)
-    
+
     context = {
         'otrosi': otrosi,
         'contrato': contrato,
-        'tiene_posteriores': tiene_posteriores,
+        'puede_eliminar': puede,
+        'bloqueadores_eliminacion': bloqueadores_eliminacion,
         'polizas_count': polizas_count,
         'polizas': polizas,
-        'titulo': f'Eliminar Otro Sí - {otrosi.numero_otrosi}'
+        'titulo': f'Eliminar Otro Sí - {otrosi.numero_otrosi}',
     }
     return render(request, 'gestion/otrosi/eliminar.html', context)
 

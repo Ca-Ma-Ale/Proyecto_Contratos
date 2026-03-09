@@ -308,6 +308,36 @@
                             </ul>
                         </div>
                         {% endif %}
+                        {% if es_admin_general %}
+                        <div class="nav-item dropdown me-1">
+                            <a class="nav-link dropdown-toggle" href="#" id="auditDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Panel Admin General" style="border: 1px solid rgba(220,53,69,0.5); border-radius: 5px; background: rgba(220,53,69,0.15);">
+                                <i class="fas fa-shield-alt text-danger"></i> Admin General
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="auditDropdown">
+                                <li>
+                                    <h6 class="dropdown-header">
+                                        <i class="fas fa-history"></i> Auditoría Efecto Cadena
+                                    </h6>
+                                </li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <a class="dropdown-item" href="{% url 'gestion:auditoria_historial_campos' %}">
+                                        <i class="fas fa-list-alt me-2"></i> Historial de Cambios
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item" href="{% url 'gestion:auditoria_dependencias_activas' %}">
+                                        <i class="fas fa-project-diagram me-2"></i> Bloqueos Activos
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item" href="{% url 'gestion:exportar_historial_campos_csv' %}">
+                                        <i class="fas fa-file-csv me-2"></i> Exportar CSV
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
+                        {% endif %}
                         {% if user.is_staff %}
                             <a class="nav-link" href="{% url 'gestion:configuracion_empresa' %}">
                                 <i class="fas fa-building"></i> Configuración

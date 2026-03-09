@@ -235,11 +235,11 @@
                         {% endif %}
                         {% if ultimo_calculo_ipc_aplicado %}
                         <tr>
-                            <th>Último Canon por Aumento del IPC:</th>
+                            <th>Último Ajuste Aplicado ({% if ultimo_calculo_ipc_aplicado.ipc_historico %}IPC{% else %}Salario Mínimo{% endif %}):</th>
                             <td>
                                 ${{ ultimo_calculo_ipc_aplicado.nuevo_canon|formato_moneda }}
-                                <span class="badge bg-success ms-2" title="Ajuste por IPC aplicado el {{ ultimo_calculo_ipc_aplicado.fecha_aplicacion|date:'d/m/Y' }}">
-                                    <i class="fas fa-calculator"></i> IPC {{ ultimo_calculo_ipc_aplicado.fecha_aplicacion|date:"d/m/Y" }}
+                                <span class="badge bg-success ms-2" title="Ajuste aplicado el {{ ultimo_calculo_ipc_aplicado.fecha_aplicacion|date:'d/m/Y' }}">
+                                    <i class="fas fa-calculator"></i> {% if ultimo_calculo_ipc_aplicado.ipc_historico %}IPC{% else %}SM{% endif %} {{ ultimo_calculo_ipc_aplicado.fecha_aplicacion|date:"d/m/Y" }}
                                 </span>
                             </td>
                         </tr>

@@ -66,6 +66,18 @@
                         </div>
                     </div>
 
+                    {% if bloqueos_a_liberar %}
+                    <div class="alert alert-info border-start border-info border-4 mb-3">
+                        <i class="fas fa-unlock me-2"></i>
+                        <strong>Al eliminar este cálculo se liberarán {{ bloqueos_a_liberar|length }} bloqueo(s):</strong>
+                        <ul class="mb-0 mt-1 small">
+                        {% for b in bloqueos_a_liberar %}
+                            <li>{{ b.label_campo|default:b.campo_bloqueado }} en {{ b.bloqueado_tipo }} #{{ b.bloqueado_id }}</li>
+                        {% endfor %}
+                        </ul>
+                    </div>
+                    {% endif %}
+
                     <form method="post">
                         {% csrf_token %}
                         <div class="d-flex justify-content-between">

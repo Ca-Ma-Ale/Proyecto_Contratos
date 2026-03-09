@@ -12,6 +12,11 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+
+    // Bloqueo por cadena (viene del servidor, evita problemas de timing/JSON)
+    const canonBloqueadoPorCadena = {{ canon_bloqueado_por_cadena|yesno:"true,false" }};
+    const canonMinimoBloqueadoPorCadena = {{ canon_minimo_bloqueado_por_cadena|yesno:"true,false" }};
+    const modalidadBloqueadaPorCadena = {{ modalidad_bloqueada_por_cadena|yesno:"true,false" }};
     
     // Configurar formateo automático para campos de dinero
     const moneyInputs = document.querySelectorAll('.money-input');
@@ -68,6 +73,57 @@ document.addEventListener('DOMContentLoaded', function() {
         const nuevoValorCanonInput = document.getElementById('{{ form.nuevo_valor_canon.id_for_label }}');
         const nuevoCanonMinimoInput = document.getElementById('{{ form.nuevo_canon_minimo_garantizado.id_for_label }}');
         const modificarCondicionesCheckbox = document.getElementById('modificar_condiciones_financieras');
+
+        // Prioridad absoluta: bloqueo por efecto cadena (usa lista del servidor, no depende de timing)
+        const canonBloqueado = canonBloqueadoPorCadena || (nuevoValorCanonInput && nuevoValorCanonInput.getAttribute('data-chain-locked') === 'true');
+        const canonMinimoBloqueado = canonMinimoBloqueadoPorCadena || (nuevoCanonMinimoInput && nuevoCanonMinimoInput.getAttribute('data-chain-locked') === 'true');
+        const modalidadBloqueada = modalidadBloqueadaPorCadena || (modalidadSelect && modalidadSelect.getAttribute('data-chain-locked') === 'true');
+
+        // PRIMERO: Si modalidad de pago está bloqueada, ambos campos (Nuevo Valor Canon y Valor mensual) deben estar inactivos
+        if (modalidadBloqueada) {
+            if (nuevoValorCanonInput) {
+                nuevoValorCanonInput.disabled = true;
+                nuevoValorCanonInput.setAttribute('disabled', '');
+                nuevoValorCanonInput.classList.add('campo-bloqueado-cadena');
+                nuevoValorCanonInput.style.backgroundColor = '#fff3cd';
+                nuevoValorCanonInput.style.cursor = 'not-allowed';
+                nuevoValorCanonInput.title = 'Campo bloqueado — la modalidad de pago fue modificada por un documento posterior';
+                const labelCanon = document.querySelector('label[for="' + nuevoValorCanonInput.id + '"]');
+                if (labelCanon && !labelCanon.querySelector('.fa-lock-cadena')) {
+                    labelCanon.insertAdjacentHTML('afterbegin', '<i class="fas fa-lock text-warning me-1 fa-lock-cadena"></i>');
+                }
+            }
+            if (nuevoCanonMinimoInput) {
+                nuevoCanonMinimoInput.disabled = true;
+                nuevoCanonMinimoInput.setAttribute('disabled', '');
+                nuevoCanonMinimoInput.classList.add('campo-bloqueado-cadena');
+                nuevoCanonMinimoInput.style.backgroundColor = '#fff3cd';
+                nuevoCanonMinimoInput.style.cursor = 'not-allowed';
+                nuevoCanonMinimoInput.title = 'Campo bloqueado — la modalidad de pago fue modificada por un documento posterior';
+                const labelMin = document.querySelector('label[for="' + nuevoCanonMinimoInput.id + '"]');
+                if (labelMin && !labelMin.querySelector('.fa-lock-cadena')) {
+                    labelMin.insertAdjacentHTML('afterbegin', '<i class="fas fa-lock text-warning me-1 fa-lock-cadena"></i>');
+                }
+            }
+            return;
+        }
+
+        // Si canon está bloqueado por cadena, forzar disabled y salir
+        if (canonBloqueado && nuevoValorCanonInput) {
+            nuevoValorCanonInput.disabled = true;
+            nuevoValorCanonInput.setAttribute('disabled', '');
+            nuevoValorCanonInput.style.backgroundColor = '#fff3cd';
+            nuevoValorCanonInput.style.cursor = 'not-allowed';
+            return;
+        }
+
+        // Si canon mínimo (Valor mensual) está bloqueado por cadena, forzar disabled
+        if (canonMinimoBloqueado && nuevoCanonMinimoInput) {
+            nuevoCanonMinimoInput.disabled = true;
+            nuevoCanonMinimoInput.setAttribute('disabled', '');
+            nuevoCanonMinimoInput.style.backgroundColor = '#fff3cd';
+            nuevoCanonMinimoInput.style.cursor = 'not-allowed';
+        }
         
         if (!modalidadSelect || !modificarCondicionesCheckbox || !modificarCondicionesCheckbox.checked) {
             return;
@@ -75,12 +131,12 @@ document.addEventListener('DOMContentLoaded', function() {
         
         const modalidadSeleccionada = modalidadSelect.value;
         const modalidadActual = '{{ modalidad_actual|default:"" }}';
-        
+
         // Si no hay modalidad seleccionada, habilitar campos según la modalidad actual del contrato
         if (!modalidadSeleccionada || modalidadSeleccionada === '') {
             const modalidadRef = modalidadActual;
             if (modalidadRef === 'Fijo') {
-                if (nuevoValorCanonInput) {
+                if (nuevoValorCanonInput && !canonBloqueado) {
                     nuevoValorCanonInput.disabled = false;
                     nuevoValorCanonInput.readOnly = false;
                     nuevoValorCanonInput.removeAttribute('readonly');
@@ -99,7 +155,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     nuevoValorCanonInput.style.backgroundColor = '#e9ecef';
                     nuevoValorCanonInput.style.cursor = 'not-allowed';
                 }
-                if (nuevoCanonMinimoInput) {
+                if (nuevoCanonMinimoInput && !canonMinimoBloqueado && !modalidadBloqueadaPorCadena) {
                     nuevoCanonMinimoInput.disabled = false;
                     nuevoCanonMinimoInput.readOnly = false;
                     nuevoCanonMinimoInput.removeAttribute('readonly');
@@ -130,7 +186,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (modalidadOtroSi && modalidadOtroSi !== modalidadActual && modalidadSeleccionada === modalidadOtroSi) {
             // Permitir editar según la modalidad del otro sí
             if (modalidadSeleccionada === 'Fijo') {
-                if (nuevoValorCanonInput) {
+                if (nuevoValorCanonInput && !canonBloqueado) {
                     nuevoValorCanonInput.disabled = false;
                     nuevoValorCanonInput.removeAttribute('readonly');
                     nuevoValorCanonInput.style.backgroundColor = '';
@@ -148,7 +204,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     nuevoValorCanonInput.style.backgroundColor = '#e9ecef';
                     nuevoValorCanonInput.style.cursor = 'not-allowed';
                 }
-                if (nuevoCanonMinimoInput) {
+                if (nuevoCanonMinimoInput && !canonMinimoBloqueado && !modalidadBloqueadaPorCadena) {
                     nuevoCanonMinimoInput.disabled = false;
                     nuevoCanonMinimoInput.removeAttribute('readonly');
                     nuevoCanonMinimoInput.style.backgroundColor = '';
@@ -165,7 +221,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         if (modalidadSeleccionada === 'Fijo') {
             // Siempre habilitar Nuevo Valor Canon cuando se selecciona Fijo
-            if (nuevoValorCanonInput) {
+            if (nuevoValorCanonInput && !canonBloqueado) {
                 nuevoValorCanonInput.disabled = false;
                 nuevoValorCanonInput.readOnly = false;
                 nuevoValorCanonInput.removeAttribute('readonly');
@@ -205,7 +261,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             // Siempre habilitar Nuevo Canon Mínimo Garantizado cuando la modalidad es Híbrido
             // (independientemente de si es igual o diferente a la actual)
-            if (nuevoCanonMinimoInput) {
+            if (nuevoCanonMinimoInput && !canonMinimoBloqueado) {
                 nuevoCanonMinimoInput.disabled = false;
                 nuevoCanonMinimoInput.readOnly = false;
                 nuevoCanonMinimoInput.removeAttribute('readonly');
@@ -227,8 +283,19 @@ document.addEventListener('DOMContentLoaded', function() {
                 nuevoCanonMinimoInput.style.cursor = 'not-allowed';
             }
         }
+        // Efecto cadena tiene prioridad absoluta sobre cualquier estilo de modalidad
+        if (canonBloqueado && nuevoValorCanonInput) {
+            nuevoValorCanonInput.disabled = true;
+            nuevoValorCanonInput.style.backgroundColor = '#fff3cd';
+            nuevoValorCanonInput.style.cursor = 'not-allowed';
+        }
+        if (canonMinimoBloqueado && nuevoCanonMinimoInput) {
+            nuevoCanonMinimoInput.disabled = true;
+            nuevoCanonMinimoInput.style.backgroundColor = '#fff3cd';
+            nuevoCanonMinimoInput.style.cursor = 'not-allowed';
+        }
     }
-    
+
     // Configurar eventos para validación de modalidad
     const modalidadSelect = document.querySelector('select[name="nueva_modalidad_pago"]');
     const modificarCondicionesCheckbox = document.getElementById('modificar_condiciones_financieras');
@@ -246,7 +313,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (modalidadActual === 'Fijo') {
                     setTimeout(function() {
                         const nuevoValorCanonInput = document.getElementById('{{ form.nuevo_valor_canon.id_for_label }}');
-                        if (nuevoValorCanonInput) {
+                        if (nuevoValorCanonInput && !canonBloqueadoPorCadena) {
                             nuevoValorCanonInput.disabled = false;
                             nuevoValorCanonInput.readOnly = false;
                             nuevoValorCanonInput.removeAttribute('readonly');
@@ -260,7 +327,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (modalidadActual === 'Hibrido (Min Garantizado)') {
                     setTimeout(function() {
                         const nuevoCanonMinimoInput = document.getElementById('{{ form.nuevo_canon_minimo_garantizado.id_for_label }}');
-                        if (nuevoCanonMinimoInput) {
+                        if (nuevoCanonMinimoInput && !canonMinimoBloqueadoPorCadena && !modalidadBloqueadaPorCadena) {
                             nuevoCanonMinimoInput.disabled = false;
                             nuevoCanonMinimoInput.readOnly = false;
                             nuevoCanonMinimoInput.removeAttribute('readonly');
@@ -271,15 +338,15 @@ document.addEventListener('DOMContentLoaded', function() {
                     }, 150);
                 }
             } else {
-                // Si se desmarca, restaurar campos
+                // Si se desmarca, restaurar campos (excepto si están bloqueados por cadena)
                 const nuevoValorCanonInput = document.getElementById('{{ form.nuevo_valor_canon.id_for_label }}');
                 const nuevoCanonMinimoInput = document.getElementById('{{ form.nuevo_canon_minimo_garantizado.id_for_label }}');
-                if (nuevoValorCanonInput) {
+                if (nuevoValorCanonInput && !canonBloqueadoPorCadena) {
                     nuevoValorCanonInput.disabled = false;
                     nuevoValorCanonInput.style.backgroundColor = '';
                     nuevoValorCanonInput.style.cursor = '';
                 }
-                if (nuevoCanonMinimoInput) {
+                if (nuevoCanonMinimoInput && !canonMinimoBloqueadoPorCadena && !modalidadBloqueadaPorCadena) {
                     nuevoCanonMinimoInput.disabled = false;
                     nuevoCanonMinimoInput.style.backgroundColor = '';
                     nuevoCanonMinimoInput.style.cursor = '';
@@ -299,7 +366,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (modalidadActualInicial === 'Fijo') {
             setTimeout(function() {
                 const nuevoValorCanonInput = document.getElementById('{{ form.nuevo_valor_canon.id_for_label }}');
-                if (nuevoValorCanonInput) {
+                if (nuevoValorCanonInput && !canonBloqueadoPorCadena) {
                     nuevoValorCanonInput.disabled = false;
                     nuevoValorCanonInput.readOnly = false;
                     nuevoValorCanonInput.removeAttribute('readonly');
@@ -311,7 +378,7 @@ document.addEventListener('DOMContentLoaded', function() {
         } else if (modalidadActualInicial === 'Hibrido (Min Garantizado)') {
             setTimeout(function() {
                 const nuevoCanonMinimoInput = document.getElementById('{{ form.nuevo_canon_minimo_garantizado.id_for_label }}');
-                if (nuevoCanonMinimoInput) {
+                if (nuevoCanonMinimoInput && !canonMinimoBloqueadoPorCadena && !modalidadBloqueadaPorCadena) {
                     nuevoCanonMinimoInput.disabled = false;
                     nuevoCanonMinimoInput.readOnly = false;
                     nuevoCanonMinimoInput.removeAttribute('readonly');
@@ -323,6 +390,15 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    // Sincronizar hidden modificar_plazos antes de enviar (para validación en backend)
+    window.syncModificarPlazos = function() {
+        const cb = document.getElementById('modificar_plazos');
+        const hidden = document.getElementById('modificar_plazos_hidden');
+        if (cb && hidden && !cb.disabled) {
+            hidden.value = cb.checked ? '1' : '0';
+        }
+    };
+    
     // Configurar toggles para mostrar/ocultar campos modificables
     const configuracionesToggle = [
         { checkbox: 'modificar_condiciones_financieras', detalles: 'condiciones-financieras-details' },
@@ -374,8 +450,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
             
-            checkbox.addEventListener('change', toggleDetalles);
+            checkbox.addEventListener('change', function() {
+                if (config.checkbox === 'modificar_plazos') syncModificarPlazos();
+                toggleDetalles();
+            });
             toggleDetalles(); // Estado inicial
+            if (config.checkbox === 'modificar_plazos') syncModificarPlazos();
             
             // Si se marcó automáticamente en edición, ejecutar validaciones después de un pequeño delay
             {% if otrosi %}
@@ -385,9 +465,9 @@ document.addEventListener('DOMContentLoaded', function() {
                         validarCamposFinancierosPorModalidad();
                         // Si la modalidad actual es "Fijo", habilitar el campo inmediatamente
                         const modalidadActual = '{{ modalidad_actual|default:"" }}';
-                        if (modalidadActual === 'Fijo') {
-                            const nuevoValorCanonInput = document.getElementById('{{ form.nuevo_valor_canon.id_for_label }}');
-                            if (nuevoValorCanonInput) {
+                if (modalidadActual === 'Fijo') {
+                    const nuevoValorCanonInput = document.getElementById('{{ form.nuevo_valor_canon.id_for_label }}');
+                    if (nuevoValorCanonInput && !canonBloqueadoPorCadena) {
                                 nuevoValorCanonInput.disabled = false;
                                 nuevoValorCanonInput.readOnly = false;
                                 nuevoValorCanonInput.removeAttribute('readonly');
@@ -924,9 +1004,75 @@ document.addEventListener('DOMContentLoaded', function() {
         </div>
     </div>
 
-    <form method="post" action="" onsubmit="if(typeof cleanFormValues === 'function') cleanFormValues(); return true;">
+    {% if campos_bloqueados %}
+    <!-- Panel de Efecto Cadena (igual que editar contrato) -->
+    <div class="alert alert-warning border-start border-warning border-4 mb-4" id="panel-cadena-bloqueo">
+        <div class="d-flex align-items-start">
+            <div class="me-3 mt-1">
+                <i class="fas fa-lock fa-lg text-warning"></i>
+            </div>
+            <div class="flex-grow-1">
+                <h6 class="fw-bold mb-2 text-warning-emphasis">
+                    Campos bloqueados por documentos posteriores
+                </h6>
+                <p class="mb-2 small text-muted">
+                    Los siguientes campos no pueden editarse porque existen documentos posteriores que los modificaron.
+                    Para editarlos, primero elimine los documentos bloqueadores en el orden indicado.
+                </p>
+                <div class="accordion accordion-flush" id="acordeon-bloqueos-otrosi">
+                    {% for campo, bloqueadores in bloqueos_cadena.items %}
+                    {% if bloqueadores %}
+                    <div class="accordion-item border-0 bg-transparent">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed py-1 px-2 bg-transparent text-dark small fw-semibold"
+                                    type="button"
+                                    data-bs-toggle="collapse"
+                                    data-bs-target="#bloqueo-otrosi-{{ forloop.counter }}"
+                                    aria-expanded="false">
+                                <i class="fas fa-lock text-danger me-2 small"></i>
+                                {{ bloqueadores.0.label|default:campo }}
+                                <span class="badge bg-danger ms-2">{{ bloqueadores|length }} bloqueador{{ bloqueadores|length|pluralize:"es" }}</span>
+                            </button>
+                        </h2>
+                        <div id="bloqueo-otrosi-{{ forloop.counter }}" class="accordion-collapse collapse">
+                            <div class="accordion-body py-1 px-4">
+                                <ul class="list-unstyled mb-0">
+                                {% for b in bloqueadores %}
+                                <li class="small mb-1">
+                                    <i class="fas fa-circle text-danger me-1" style="font-size:6px;vertical-align:middle;"></i>
+                                    {% if b.url %}
+                                    <a href="{{ b.url }}" target="_blank" class="text-decoration-none">
+                                        {{ b.descripcion }}
+                                        <i class="fas fa-external-link-alt ms-1" style="font-size:10px;"></i>
+                                    </a>
+                                    {% else %}
+                                    {{ b.descripcion }}
+                                    {% endif %}
+                                </li>
+                                {% endfor %}
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <style>
+        .campo-bloqueado-cadena {
+            background-color: #fff3cd !important;
+            cursor: not-allowed !important;
+            opacity: 0.8;
+        }
+    </style>
+
+    <form method="post" action="" id="form-otrosi" onsubmit="if(typeof syncModificarPlazos === 'function') syncModificarPlazos(); if(typeof cleanFormValues === 'function') cleanFormValues(); return true;">
         {% csrf_token %}
-        
+
         <!-- Advertencia si se edita Otro Sí APROBADO -->
         {% if otrosi and otrosi.estado == 'APROBADO' %}
         <div class="row mb-4">
@@ -1166,6 +1312,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <div class="card-header">
                         <div class="form-check">
                             <input type="checkbox" class="form-check-input" id="modificar_plazos" {% if contrato.prorroga_automatica %}disabled{% endif %}>
+                            <input type="hidden" name="modificar_plazos" id="modificar_plazos_hidden" value="0">
                             <label class="form-check-label {% if contrato.prorroga_automatica %}text-muted{% endif %}" for="modificar_plazos">
                                 <i class="fas fa-clock text-warning"></i> <strong>Modificar Plazos y Vigencia</strong>
                                 {% if contrato.prorroga_automatica %}
@@ -2340,6 +2487,55 @@ document.addEventListener('DOMContentLoaded', function() {
         
         nuevaPeriodicidadIpc.addEventListener('change', toggleFechaAumentoOtroSi);
         toggleFechaAumentoOtroSi(); // Estado inicial
+    }
+
+    // ── Efecto Cadena: aplicar bloqueo visual y MutationObserver ───────────
+    let camposBloqueadosOtrosi = {{ campos_bloqueados_json|default:"[]"|safe }};
+    if (!Array.isArray(camposBloqueadosOtrosi)) camposBloqueadosOtrosi = [];
+    if (camposBloqueadosOtrosi.includes('nuevo_plazo_meses')) {
+        if (!camposBloqueadosOtrosi.includes('effective_from')) camposBloqueadosOtrosi.push('effective_from');
+        if (!camposBloqueadosOtrosi.includes('effective_to')) camposBloqueadosOtrosi.push('effective_to');
+    }
+    function bloquearCampoPermanente(el) {
+        if (!el || el.getAttribute('data-chain-locked') === 'true') return;
+        el.setAttribute('data-chain-locked', 'true');
+        el.disabled = true;
+        el.setAttribute('disabled', '');
+        const observer = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+                if (mutation.attributeName === 'disabled' && !el.hasAttribute('disabled')) {
+                    el.setAttribute('disabled', '');
+                    el.disabled = true;
+                }
+            });
+        });
+        observer.observe(el, { attributes: true, attributeFilter: ['disabled'] });
+        el.classList.add('campo-bloqueado-cadena');
+        el.style.backgroundColor = '#fff3cd';
+        el.style.cursor = 'not-allowed';
+        el.title = 'Campo bloqueado por efecto cadena — elimine el documento posterior para editar';
+        if (el.id) {
+            const label = document.querySelector('label[for="' + el.id + '"]');
+            if (label && !label.querySelector('.fa-lock-cadena')) {
+                label.insertAdjacentHTML('afterbegin', '<i class="fas fa-lock text-warning me-1 fa-lock-cadena"></i>');
+            }
+        }
+    }
+    if (Array.isArray(camposBloqueadosOtrosi) && camposBloqueadosOtrosi.length > 0) {
+        camposBloqueadosOtrosi.forEach(function(campo) {
+            const el = document.querySelector('[name="' + campo + '"]');
+            bloquearCampoPermanente(el);
+        });
+        setTimeout(function() {
+            camposBloqueadosOtrosi.forEach(function(campo) {
+                const el = document.querySelector('[name="' + campo + '"]');
+                if (!el) return;
+                if (el.getAttribute('data-chain-locked') === 'true' && !el.hasAttribute('disabled')) {
+                    el.setAttribute('disabled', '');
+                    el.disabled = true;
+                }
+            });
+        }, 500);
     }
 });
 </script>

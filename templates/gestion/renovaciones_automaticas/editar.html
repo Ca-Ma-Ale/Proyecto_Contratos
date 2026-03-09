@@ -109,15 +109,14 @@ document.addEventListener('DOMContentLoaded', function() {
         const check = document.getElementById(config.checkId);
         const details = document.getElementById(config.detailsId);
         
-        if (fechaInicio && meses && fechaFin) {
+        if (fechaInicio && meses && fechaFin && typeof calcularFechaVencimiento === 'function' && typeof formatearFechaInput === 'function') {
             function calcularFechaFin() {
                 if (fechaInicio.value && meses.value) {
-                    const fecha = new Date(fechaInicio.value);
-                    fecha.setMonth(fecha.getMonth() + parseInt(meses.value));
-                    fechaFin.value = fecha.toISOString().split('T')[0];
+                    const fechaFinCalculada = calcularFechaVencimiento(fechaInicio.value, parseInt(meses.value));
+                    if (fechaFinCalculada) fechaFin.value = formatearFechaInput(fechaFinCalculada);
                 }
             }
-            
+
             fechaInicio.addEventListener('change', calcularFechaFin);
             meses.addEventListener('change', calcularFechaFin);
         }

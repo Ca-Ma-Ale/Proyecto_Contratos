@@ -1,11 +1,12 @@
 from django.contrib import admin
 from .models import (
-    Tercero, Arrendatario, Local, TipoContrato, TipoServicio, Contrato, Poliza, OtroSi, 
+    Tercero, Arrendatario, Local, TipoContrato, TipoServicio, Contrato, Poliza, OtroSi,
     InformeVentas, CalculoFacturacionVentas, IPCHistorico, CalculoIPC,
     SalarioMinimoHistorico, CalculoSalarioMinimo,
     TipoCondicionIPC, PeriodicidadIPC, ClienteLicense,
     ConfiguracionEmail, ConfiguracionAlerta, DestinatarioAlerta, HistorialEnvioEmail,
-    Clausula, ClausulaObligatoria, ClausulaContrato
+    Clausula, ClausulaObligatoria, ClausulaContrato,
+    PerfilUsuario, HistorialCampoContrato, DependenciaDocumento,
 )
 from .forms import ConfiguracionEmailForm
 
@@ -169,3 +170,60 @@ class HistorialEnvioEmailAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
     )
+
+
+# ─── Efecto Cadena: Admin General ────────────────────────────────────────────
+
+@admin.register(PerfilUsuario)
+class PerfilUsuarioAdmin(admin.ModelAdmin):
+    list_display = ('usuario', 'es_admin_general', 'fecha_creacion')
+    list_filter = ('es_admin_general',)
+    search_fields = ('usuario__username', 'usuario__first_name', 'usuario__last_name', 'usuario__email')
+    readonly_fields = ('fecha_creacion', 'fecha_modificacion')
+    fieldsets = (
+        ('Usuario', {
+            'fields': ('usuario',)
+        }),
+        ('Permisos de Auditoría', {
+            'fields': ('es_admin_general',),
+            'description': 'Marcar como Admin General permite ver el panel de auditoría del efecto cadena.',
+        }),
+        ('Auditoría', {
+            'fields': ('fecha_creacion', 'fecha_modificacion'),
+            'classes': ('collapse',)
+        }),
+    )
+
+
+@admin.register(HistorialCampoContrato)
+class HistorialCampoContratoAdmin(admin.ModelAdmin):
+    list_display = ('fecha_modificacion', 'tipo_documento', 'documento_id', 'nombre_campo', 'modificado_por', 'causa_tipo')
+    list_filter = ('tipo_documento', 'causa_tipo')
+    search_fields = ('documento_descripcion', 'nombre_campo', 'modificado_por', 'causa_descripcion')
+    readonly_fields = (
+        'tipo_documento', 'documento_id', 'documento_descripcion',
+        'nombre_campo', 'label_campo', 'valor_anterior', 'valor_nuevo',
+        'modificado_por', 'fecha_modificacion', 'ip_origen', 'causa_tipo', 'causa_descripcion',
+    )
+    ordering = ('-fecha_modificacion',)
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(DependenciaDocumento)
+class DependenciaDocumentoAdmin(admin.ModelAdmin):
+    list_display = ('bloqueador_tipo', 'bloqueador_id', 'bloqueado_tipo', 'bloqueado_id', 'campo_bloqueado', 'fecha_registro')
+    list_filter = ('bloqueador_tipo', 'bloqueado_tipo')
+    search_fields = ('bloqueador_descripcion', 'campo_bloqueado', 'label_campo')
+    readonly_fields = (
+        'bloqueador_tipo', 'bloqueador_id', 'bloqueador_descripcion', 'bloqueador_url',
+        'bloqueado_tipo', 'bloqueado_id', 'campo_bloqueado', 'label_campo', 'fecha_registro',
+    )
+    ordering = ('-fecha_registro',)

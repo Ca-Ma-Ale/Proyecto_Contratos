@@ -34,9 +34,15 @@ except NameError:
 # SECURITY WARNING: don't run with debug turned on in production!
 # El default es False: si DEBUG no está en el entorno, el sistema arranca seguro.
 # Para desarrollo local, agrega DEBUG=True a tu archivo .env
-DEBUG = os.environ.get('DEBUG', 'False') == 'True'
+try:
+    DEBUG = config('DEBUG', default=False, cast=bool)
+except NameError:
+    DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+try:
+    ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1').split(',')
+except NameError:
+    ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -78,6 +84,7 @@ TEMPLATES = [
                 'django.contrib.messages.context_processors.messages',
                 'gestion.context_processors.empresa_config',
                 'gestion.context_processors.license_status',
+                'gestion.context_processors.admin_general_status',
             ],
         },
     },

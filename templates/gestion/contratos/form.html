@@ -7,7 +7,49 @@
 <script src="{% static 'js/auto_format_new.js' %}"></script>
 <script src="{% static 'js/format_view_only.js' %}"></script>
 <script src="{% static 'js/format_edit_view.js' %}"></script>
-<script src="{% static 'js/utils_fechas.js' %}"></script>
+<script src="{% static 'js/utils_fechas.js' %}?v=2"></script>
+{% if campos_bloqueados %}
+<script>
+// ── Efecto Cadena: deshabilitar campos bloqueados ─────────────────────────
+document.addEventListener('DOMContentLoaded', function () {
+    const bloqueados = {{ campos_bloqueados_json }};
+
+    bloqueados.forEach(function (campo) {
+        // Busca input, select o textarea con name=campo
+        const selectores = [
+            '[name="' + campo + '"]',
+            '[id="id_' + campo + '"]',
+        ];
+        selectores.forEach(function (sel) {
+            document.querySelectorAll(sel).forEach(function (el) {
+                el.disabled = true;
+                el.classList.add('campo-bloqueado-cadena');
+                // Tooltip visible
+                el.title = 'Bloqueado por documentos posteriores. Ver panel de bloqueos.';
+                // Icono candado junto al input
+                const wrapper = el.closest('.form-group-enhanced') || el.parentNode;
+                if (wrapper && !wrapper.querySelector('.icono-cadena-lock')) {
+                    const icono = document.createElement('span');
+                    icono.className = 'icono-cadena-lock text-danger ms-1';
+                    icono.innerHTML = '<i class="fas fa-lock" title="Campo bloqueado por efecto cadena"></i>';
+                    icono.style.fontSize = '0.85rem';
+                    const label = wrapper.querySelector('label');
+                    if (label) label.appendChild(icono);
+                }
+            });
+        });
+    });
+});
+</script>
+<style>
+.campo-bloqueado-cadena {
+    background-color: #fff3cd !important;
+    border-color: #ffc107 !important;
+    cursor: not-allowed !important;
+    opacity: 0.85 !important;
+}
+</style>
+{% endif %}
 {% endblock %}
 
 {% block title %}{{ titulo }}{% endblock %}
@@ -487,7 +529,66 @@
                 <div class="card-body" style="padding: 2rem;">
                     <form method="post" id="contrato-form">
                         {% csrf_token %}
-                        
+
+                        {% if campos_bloqueados %}
+                        <!-- ══ PANEL DE EFECTO CADENA ══════════════════════════════════════════ -->
+                        <div class="alert alert-warning border-start border-warning border-4 mb-4" id="panel-cadena-bloqueo">
+                            <div class="d-flex align-items-start">
+                                <div class="me-3 mt-1">
+                                    <i class="fas fa-lock fa-lg text-warning"></i>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <h6 class="fw-bold mb-2 text-warning-emphasis">
+                                        Campos bloqueados por documentos posteriores
+                                    </h6>
+                                    <p class="mb-2 small text-muted">
+                                        Los siguientes campos no pueden editarse porque existen documentos posteriores que los modificaron.
+                                        Para editarlos, primero elimine los documentos bloqueadores en el orden indicado.
+                                    </p>
+                                    <div class="accordion accordion-flush" id="acordeon-bloqueos">
+                                    {% for campo, bloqueadores in bloqueos_cadena.items %}
+                                    {% if bloqueadores %}
+                                    <div class="accordion-item border-0 bg-transparent">
+                                        <h2 class="accordion-header">
+                                            <button class="accordion-button collapsed py-1 px-2 bg-transparent text-dark small fw-semibold"
+                                                    type="button"
+                                                    data-bs-toggle="collapse"
+                                                    data-bs-target="#bloqueo-{{ forloop.counter }}"
+                                                    aria-expanded="false">
+                                                <i class="fas fa-lock text-danger me-2 small"></i>
+                                                {{ bloqueadores.0.label }}
+                                                <span class="badge bg-danger ms-2">{{ bloqueadores|length }} bloqueador{{ bloqueadores|length|pluralize:"es" }}</span>
+                                            </button>
+                                        </h2>
+                                        <div id="bloqueo-{{ forloop.counter }}" class="accordion-collapse collapse">
+                                            <div class="accordion-body py-1 px-4">
+                                                <ul class="list-unstyled mb-0">
+                                                {% for b in bloqueadores %}
+                                                <li class="small mb-1">
+                                                    <i class="fas fa-circle text-danger me-1" style="font-size:6px;vertical-align:middle;"></i>
+                                                    {% if b.url %}
+                                                    <a href="{{ b.url }}" target="_blank" class="text-decoration-none">
+                                                        {{ b.descripcion }}
+                                                        <i class="fas fa-external-link-alt ms-1" style="font-size:10px;"></i>
+                                                    </a>
+                                                    {% else %}
+                                                    {{ b.descripcion }}
+                                                    {% endif %}
+                                                </li>
+                                                {% endfor %}
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                    {% endfor %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- ═══════════════════════════════════════════════════════════════════ -->
+                        {% endif %}
+
                         <!-- 1. Datos Generales del Contrato -->
                         <div class="form-section">
                             <div class="form-section-header">

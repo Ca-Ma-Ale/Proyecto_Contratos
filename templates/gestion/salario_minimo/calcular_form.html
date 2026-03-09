@@ -29,16 +29,20 @@
 
     <div class="row">
         <div class="col-md-10 offset-md-1">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">
-                        <i class="fas fa-file-alt"></i> Datos para el Cálculo
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <form method="post" id="calculo-salario-minimo-form">
-                        {% csrf_token %}
-                        
+
+            {# ── Formulario principal (un único <form> que envuelve todo) ──────── #}
+            <form method="post" id="calculo-salario-minimo-form">
+                {% csrf_token %}
+
+                {# ── PASO 1: Contrato + Fecha ──────────────────────────────────── #}
+                <div class="card mb-3">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0">
+                            <i class="fas fa-search"></i>
+                            Paso 1 — Selecciona el contrato y la fecha de ajuste
+                        </h5>
+                    </div>
+                    <div class="card-body">
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="{{ form.contrato.id_for_label }}" class="form-label fw-bold">
@@ -76,6 +80,20 @@
                                 {% endif %}
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                {# ── Panel dinámico de OtroSí (se llena via AJAX) ─────────────── #}
+                <div id="panel-otrosi-dinamico" class="mb-3"></div>
+
+                {# ── PASO 2: Datos del cálculo ─────────────────────────────────── #}
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-file-alt"></i> Paso 2 — Datos del Cálculo
+                        </h5>
+                    </div>
+                    <div class="card-body">
 
                         <div class="mb-3">
                             <label for="{{ form.salario_minimo_historico.id_for_label }}" class="form-label fw-bold">
@@ -195,10 +213,11 @@
                                 <i class="fas fa-calculator"></i> Calcular
                             </button>
                         </div>
-                    </form>
+                    </div>
                 </div>
-            </div>
-            
+
+            </form>{# ── fin form principal ────────────────────────────────────────── #}
+
             {% if mostrar_resultado %}
             <div class="card mt-4">
                 <div class="card-header bg-success text-white">
@@ -214,7 +233,7 @@
                                     <h6>Canon Anterior</h6>
                                     <h4>${{ canon_anterior|floatformat:2|intcomma }}</h4>
                                     <small class="text-muted">
-                                        Fuente: 
+                                        Fuente:
                                         <span class="badge bg-info ms-1" title="Fuente del canon anterior">
                                             {{ fuente_canon }}
                                         </span>
@@ -228,7 +247,7 @@
                                     <h6>Porcentaje Total a Aplicar</h6>
                                     <h4>{{ resultado.porcentaje_total }}%</h4>
                                     <small class="text-muted">
-                                        Variación SMLV: {{ variacion_salario_minimo }}% + 
+                                        Variación SMLV: {{ variacion_salario_minimo }}% +
                                         Puntos: {{ puntos_adicionales }}%
                                         <span class="badge bg-info ms-2" title="Fuente de los puntos adicionales">
                                             {{ fuente_puntos.fuente }}
@@ -267,7 +286,7 @@
                             <input type="hidden" name="canon_anterior_manual" value="{% if canon_anterior_manual %}on{% endif %}">
                             <input type="hidden" name="observaciones" value="{{ observaciones }}">
                             <input type="hidden" name="accion" value="guardar">
-                            
+
                             <div class="card border-warning mb-3">
                                 <div class="card-header bg-warning text-dark">
                                     <i class="fas fa-exclamation-triangle"></i> <strong>Aplicar Cálculo</strong>
@@ -288,7 +307,7 @@
                                     </div>
                                 </div>
                             </div>
-                            
+
                             <button type="submit" class="btn btn-primary">
                                 <i class="fas fa-save"></i> Guardar Cálculo
                             </button>
@@ -312,8 +331,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const lockIcon = document.getElementById('lock-icon');
     const salarioMinimoSelect = document.getElementById('{{ form.salario_minimo_historico.id_for_label }}');
     const porcentajeInput = document.getElementById('{{ form.porcentaje_salario_minimo.id_for_label }}');
+    const panelOtrosi = document.getElementById('panel-otrosi-dinamico');
     const isStaff = {% if user.is_staff %}true{% else %}false{% endif %};
-    
+
     let formateadorInicializado = false;
     setTimeout(function() {
         if (typeof initMoneyFormatter === 'function') {
@@ -324,11 +344,124 @@ document.addEventListener('DOMContentLoaded', function() {
             initPercentageFormatter('.percentage-input');
         }
     }, 100);
-    
+
+    // ── Panel dinámico de OtroSí ──────────────────────────────────────────
+    const btnCalcular = document.querySelector('button[name="accion"][value="calcular"]');
+
+    function setCalcularHabilitado(habilitado) {
+        if (!btnCalcular) return;
+        btnCalcular.disabled = !habilitado;
+        if (habilitado) {
+            btnCalcular.classList.remove('btn-secondary');
+            btnCalcular.classList.add('btn-primary');
+            btnCalcular.title = '';
+        } else {
+            btnCalcular.classList.remove('btn-primary');
+            btnCalcular.classList.add('btn-secondary');
+            btnCalcular.title = 'Primero resuelve el Otro Sí detectado en el período';
+        }
+    }
+
+    function actualizarPanelOtrosi() {
+        const contratoId = contratoSelect.value;
+        const fecha = fechaAplicacionInput ? fechaAplicacionInput.value : '';
+
+        if (!contratoId || !fecha) {
+            panelOtrosi.innerHTML = '';
+            setCalcularHabilitado(true);
+            return;
+        }
+
+        const url = `{% url 'gestion:otrosi_legalizables_smlv_ajax' %}?contrato_id=${contratoId}&fecha=${fecha}`;
+
+        fetch(url)
+            .then(r => r.json())
+            .then(data => {
+                if (!data.hay_otrosi) {
+                    panelOtrosi.innerHTML = '';
+                    setCalcularHabilitado(true);
+                    return;
+                }
+                setCalcularHabilitado(false);
+                const año = data.año;
+                let filas = '';
+                data.otrosi.forEach(function(os) {
+                    const canon = os.nuevo_valor_canon || os.nuevo_canon_minimo_garantizado;
+                    const tipo = os.nuevo_valor_canon ? 'Canon fijo' : 'Canon mínimo garantizado';
+                    const canonNum = parseFloat(canon).toLocaleString('es-CO');
+                    filas += `
+                        <tr>
+                            <td class="text-center">
+                                <input class="form-check-input" type="radio" name="otrosi_id"
+                                       value="${os.pk}" id="otrosi_smlv_${os.pk}" required>
+                            </td>
+                            <td>
+                                <label for="otrosi_smlv_${os.pk}" class="fw-semibold mb-0">
+                                    Versión ${os.version}
+                                </label>
+                            </td>
+                            <td>${os.effective_from}</td>
+                            <td class="text-end fw-bold text-success">$${canonNum}</td>
+                            <td><small class="text-muted">${tipo}</small></td>
+                        </tr>`;
+                });
+                panelOtrosi.innerHTML = `
+                    <div class="card border-warning shadow-sm">
+                        <div class="card-header bg-warning bg-opacity-25 border-warning">
+                            <h5 class="mb-0 text-warning-emphasis">
+                                <i class="fas fa-exclamation-triangle text-warning me-2"></i>
+                                Aumentos de canon detectados en ${año} — ¿Ya se realizó el ajuste por Salario Mínimo?
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <p class="mb-3">
+                                Los siguientes <strong>Otro Sí aprobados</strong> modificaron el canon durante el período
+                                correspondiente al ajuste por Salario Mínimo (<strong>${año}</strong>).
+                                Puedes seleccionar uno y legalizarlo como el ajuste oficial de SMLV, o continuar
+                                calculando de forma independiente más abajo.
+                            </p>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-bordered table-hover align-middle mb-3">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th style="width:50px;">Sel.</th>
+                                            <th>Otro Sí</th>
+                                            <th>Vigente desde</th>
+                                            <th>Canon nuevo</th>
+                                            <th>Descripción</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>${filas}</tbody>
+                                </table>
+                            </div>
+                            <div class="d-flex gap-2 align-items-center">
+                                <button type="submit" name="accion" value="ver_comparativa" class="btn btn-warning">
+                                    <i class="fas fa-check-circle me-1"></i> Ver comparativa y legalizar
+                                </button>
+                                <span class="text-muted small">
+                                    <i class="fas fa-info-circle"></i>
+                                    Selecciona un Otro Sí y haz clic para comparar valores antes de confirmar.
+                                </span>
+                            </div>
+                            <hr class="my-3">
+                            <p class="text-muted small mb-0">
+                                <i class="fas fa-arrow-down me-1"></i>
+                                O bien, desplázate hacia abajo para calcular el Salario Mínimo de forma independiente.
+                            </p>
+                        </div>
+                    </div>`;
+            })
+            .catch(function() {
+                panelOtrosi.innerHTML = '';
+                setCalcularHabilitado(true);
+            });
+    }
+
+    // ── Canon anterior ────────────────────────────────────────────────────
     function actualizarEstadoCanon(esManual) {
         const canonInputGroup = document.getElementById('canon-input-group');
         const lockText = document.getElementById('lock-text');
-        
+
         if (esManual) {
             canonInput.readOnly = false;
             canonInput.classList.remove('bg-light', 'border-secondary', 'border-2');
@@ -370,28 +503,28 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
     }
-    
+
     function obtenerCanonAnterior() {
         const contratoId = contratoSelect.value;
         const fechaAplicacion = fechaAplicacionInput ? fechaAplicacionInput.value : '';
-        
+
         if (!contratoId || !fechaAplicacion) {
             canonInput.value = '';
             canonFuente.textContent = '';
             return;
         }
-        
+
         if (canonManualCheck && canonManualCheck.checked) {
             actualizarEstadoCanon(true);
             return;
         }
-        
+
         canonFuente.innerHTML = '<div class="alert alert-info mb-0" role="alert">' +
             '<i class="fas fa-spinner fa-spin"></i> Obteniendo canon anterior...' +
             '</div>';
-        
+
         const url = `{% url 'gestion:obtener_canon_anterior_salario_minimo_ajax' %}?contrato_id=${contratoId}&fecha_aplicacion=${fechaAplicacion}`;
-        
+
         fetch(url)
             .then(response => response.json())
             .then(data => {
@@ -401,7 +534,6 @@ document.addEventListener('DOMContentLoaded', function() {
                         const valorEntero = Math.round(valorNumerico);
                         canonInput.value = '';
                         canonInput.value = valorEntero.toString();
-                        
                         const formatearValor = function() {
                             if (formateadorInicializado && canonInput.value) {
                                 const blurEvent = new Event('blur', { bubbles: true, cancelable: true });
@@ -411,7 +543,6 @@ document.addEventListener('DOMContentLoaded', function() {
                             }
                         };
                         setTimeout(formatearValor, 150);
-                        
                         canonFuente.innerHTML = `<div class="alert alert-success alert-dismissible fade show mb-0" role="alert">` +
                             `<i class="fas fa-check-circle"></i> <strong>Fuente:</strong> ${data.fuente}` +
                             `<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>` +
@@ -434,7 +565,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             })
             .catch(error => {
-                console.error('Error:', error);
                 canonFuente.innerHTML = '<div class="alert alert-danger alert-dismissible fade show mb-0" role="alert">' +
                     '<i class="fas fa-exclamation-circle"></i> <strong>Error:</strong> No se pudo obtener el canon anterior. Por favor, ingréselo manualmente.' +
                     '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>' +
@@ -442,19 +572,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 actualizarEstadoCanon(true);
             });
     }
-    
-    contratoSelect.addEventListener('change', function() {
+
+    // ── Listeners ─────────────────────────────────────────────────────────
+    function onContratoOFechaChange() {
+        actualizarPanelOtrosi();
         obtenerCanonAnterior();
-    });
-    if (fechaAplicacionInput) {
-        fechaAplicacionInput.addEventListener('change', function() {
-            obtenerCanonAnterior();
-        });
-        fechaAplicacionInput.addEventListener('input', function() {
-            obtenerCanonAnterior();
-        });
     }
-    
+
+    contratoSelect.addEventListener('change', onContratoOFechaChange);
+
+    if (fechaAplicacionInput) {
+        fechaAplicacionInput.addEventListener('change', onContratoOFechaChange);
+        fechaAplicacionInput.addEventListener('input', onContratoOFechaChange);
+    }
+
     if (canonManualCheck) {
         canonManualCheck.addEventListener('change', function() {
             actualizarEstadoCanon(this.checked);
@@ -463,10 +594,39 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
-    
+
+    // ── Variación SMLV ────────────────────────────────────────────────────
+    function actualizarPorcentajeSalarioMinimo() {
+        if (salarioMinimoSelect && salarioMinimoSelect.value && porcentajeInput) {
+            const salarioMinimoId = salarioMinimoSelect.value;
+            const url = `{% url 'gestion:obtener_variacion_salario_minimo_ajax' %}?salario_minimo_id=${salarioMinimoId}`;
+
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.variacion_porcentual !== null && data.variacion_porcentual !== undefined) {
+                        porcentajeInput.value = parseFloat(data.variacion_porcentual).toFixed(2);
+                    } else {
+                        porcentajeInput.value = '';
+                    }
+                })
+                .catch(error => {
+                    porcentajeInput.value = '';
+                });
+        }
+    }
+
+    if (salarioMinimoSelect) {
+        salarioMinimoSelect.addEventListener('change', actualizarPorcentajeSalarioMinimo);
+        if (salarioMinimoSelect.value) {
+            actualizarPorcentajeSalarioMinimo();
+        }
+    }
+
+    // ── Limpiar valores antes de enviar ───────────────────────────────────
     const form = document.getElementById('calculo-salario-minimo-form');
     const formGuardar = document.getElementById('guardar-calculo-form');
-    
+
     if (form) {
         form.addEventListener('submit', function(e) {
             if (typeof cleanFormValues === 'function') {
@@ -478,7 +638,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
-    
+
     if (formGuardar) {
         formGuardar.addEventListener('submit', function(e) {
             if (typeof cleanFormValues === 'function') {
@@ -486,40 +646,11 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
-    
-    // Función para actualizar el porcentaje cuando cambia el salario mínimo histórico
-    function actualizarPorcentajeSalarioMinimo() {
-        if (salarioMinimoSelect && salarioMinimoSelect.value && porcentajeInput) {
-            const salarioMinimoId = salarioMinimoSelect.value;
-            const url = `{% url 'gestion:obtener_variacion_salario_minimo_ajax' %}?salario_minimo_id=${salarioMinimoId}`;
-            
-            fetch(url)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.variacion_porcentual !== null && data.variacion_porcentual !== undefined) {
-                        porcentajeInput.value = parseFloat(data.variacion_porcentual).toFixed(2);
-                    } else {
-                        porcentajeInput.value = '';
-                    }
-                })
-                .catch(error => {
-                    console.error('Error al obtener variación:', error);
-                    porcentajeInput.value = '';
-                });
-        }
-    }
-    
-    // Escuchar cambios en el salario mínimo histórico
-    if (salarioMinimoSelect) {
-        salarioMinimoSelect.addEventListener('change', actualizarPorcentajeSalarioMinimo);
-        // Actualizar al cargar si ya hay un valor
-        if (salarioMinimoSelect.value) {
-            actualizarPorcentajeSalarioMinimo();
-        }
-    }
-    
+
+    // ── Inicialización ────────────────────────────────────────────────────
     setTimeout(function() {
         if (contratoSelect.value && fechaAplicacionInput && fechaAplicacionInput.value) {
+            actualizarPanelOtrosi();
             obtenerCanonAnterior();
         } else {
             actualizarEstadoCanon(canonManualCheck ? canonManualCheck.checked : false);
@@ -528,4 +659,3 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 {% endblock %}
-

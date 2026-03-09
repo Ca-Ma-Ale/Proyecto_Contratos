@@ -78,6 +78,7 @@ from gestion.views.informes_ventas import (
     eliminar_informe_ventas,
     calcular_facturacion,
     resultado_calculo_facturacion,
+    confirmar_calculo_facturacion,
     finalizar_informe_ventas,
     lista_informes_entregados,
     exportar_informes_excel,
@@ -99,6 +100,7 @@ from gestion.views.ipc import (
     lista_calculos_ipc,
     contratos_pendientes_ipc,
     obtener_canon_anterior_ajax,
+    otrosi_legalizables_ipc_ajax,
 )
 from gestion.views.configuracion_ipc import (
     lista_tipos_condicion_ipc,
@@ -125,6 +127,7 @@ from gestion.views.salario_minimo import (
     contratos_pendientes_salario_minimo,
     obtener_canon_anterior_salario_minimo_ajax,
     obtener_variacion_salario_minimo_ajax,
+    otrosi_legalizables_smlv_ajax,
 )
 from gestion.views.clausulas import (
     parametrizar_clausulas,
@@ -135,6 +138,11 @@ from gestion.views.clausulas import (
     eliminar_clausula,
     auditoria_clausulas_contrato,
     guardar_clausulas_contrato,
+)
+from gestion.views.auditoria import (
+    auditoria_historial_campos,
+    auditoria_dependencias_activas,
+    exportar_historial_campos_csv,
 )
 
 __all__ = [
@@ -200,6 +208,7 @@ __all__ = [
     'eliminar_informe_ventas',
     'calcular_facturacion',
     'resultado_calculo_facturacion',
+    'confirmar_calculo_facturacion',
     'finalizar_informe_ventas',
     'lista_informes_entregados',
     'exportar_informes_excel',
@@ -218,6 +227,7 @@ __all__ = [
     'lista_calculos_ipc',
     'contratos_pendientes_ipc',
     'obtener_canon_anterior_ajax',
+    'otrosi_legalizables_ipc_ajax',
     'lista_tipos_condicion_ipc',
     'nuevo_tipo_condicion_ipc',
     'editar_tipo_condicion_ipc',
@@ -240,6 +250,7 @@ __all__ = [
     'contratos_pendientes_salario_minimo',
     'obtener_canon_anterior_salario_minimo_ajax',
     'obtener_variacion_salario_minimo_ajax',
+    'otrosi_legalizables_smlv_ajax',
     'parametrizar_clausulas',
     'guardar_parametrizacion_clausulas',
     'gestionar_clausulas',

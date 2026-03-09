@@ -1,0 +1,201 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Auditoría — Historial de Cambios{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+
+    <!-- Encabezado -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="fw-bold mb-0">
+                <i class="fas fa-shield-alt text-danger me-2"></i>
+                {{ titulo }}
+            </h3>
+            <small class="text-muted">
+                Solo visible para el Admin General &mdash; {{ total_registros|intcomma }} registro{{ total_registros|pluralize }}
+            </small>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'gestion:auditoria_dependencias_activas' %}" class="btn btn-outline-warning btn-sm">
+                <i class="fas fa-link me-1"></i> Ver Dependencias Activas
+            </a>
+            <a href="{% url 'gestion:exportar_historial_campos_csv' %}?{{ request.GET.urlencode }}"
+               class="btn btn-success btn-sm">
+                <i class="fas fa-file-csv me-1"></i> Exportar CSV
+            </a>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-dark text-white py-2">
+            <i class="fas fa-filter me-2"></i> Filtros
+        </div>
+        <div class="card-body">
+            <form method="get" class="row g-2">
+                <div class="col-md-2">
+                    <input type="text" name="contrato" class="form-control form-control-sm"
+                           placeholder="Contrato / Documento" value="{{ filtro_contrato }}">
+                </div>
+                <div class="col-md-2">
+                    <input type="text" name="campo" class="form-control form-control-sm"
+                           placeholder="Campo" value="{{ filtro_campo }}">
+                </div>
+                <div class="col-md-2">
+                    <input type="text" name="usuario" class="form-control form-control-sm"
+                           placeholder="Usuario" value="{{ filtro_usuario }}">
+                </div>
+                <div class="col-md-2">
+                    <select name="causa" class="form-select form-select-sm">
+                        <option value="">— Causa —</option>
+                        {% for valor, label in causas_choices %}
+                        <option value="{{ valor }}" {% if filtro_causa == valor %}selected{% endif %}>
+                            {{ label }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-1">
+                    <select name="tipo_doc" class="form-select form-select-sm">
+                        <option value="">— Tipo Doc —</option>
+                        {% for valor, label in tipos_doc_choices %}
+                        <option value="{{ valor }}" {% if filtro_tipo_doc == valor %}selected{% endif %}>
+                            {{ label }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-1">
+                    <input type="date" name="fecha_desde" class="form-control form-control-sm"
+                           value="{{ filtro_fecha_desde }}">
+                </div>
+                <div class="col-md-1">
+                    <input type="date" name="fecha_hasta" class="form-control form-control-sm"
+                           value="{{ filtro_fecha_hasta }}">
+                </div>
+                <div class="col-md-1 d-flex gap-1">
+                    <button type="submit" class="btn btn-primary btn-sm flex-grow-1">
+                        <i class="fas fa-search"></i>
+                    </button>
+                    <a href="{% url 'gestion:auditoria_historial_campos' %}" class="btn btn-outline-secondary btn-sm">
+                        <i class="fas fa-times"></i>
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Tabla -->
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-sm table-hover table-striped mb-0" style="font-size:0.82rem;">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Tipo Doc</th>
+                            <th>Documento</th>
+                            <th>Campo</th>
+                            <th>Valor Anterior</th>
+                            <th>Valor Nuevo</th>
+                            <th>Usuario</th>
+                            <th>Causa</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for registro in page_obj %}
+                        <tr>
+                            <td class="text-nowrap">
+                                {{ registro.fecha_modificacion|date:"d/m/Y H:i" }}
+                            </td>
+                            <td>
+                                <span class="badge
+                                    {% if registro.tipo_documento == 'CONTRATO' %}bg-primary
+                                    {% elif registro.tipo_documento == 'OTROSI' %}bg-info text-dark
+                                    {% else %}bg-secondary{% endif %}">
+                                    {{ registro.tipo_documento }}
+                                </span>
+                            </td>
+                            <td class="text-nowrap" title="{{ registro.documento_descripcion }}">
+                                {{ registro.documento_descripcion|truncatechars:40 }}
+                            </td>
+                            <td>
+                                <strong>{{ registro.label_campo|default:registro.nombre_campo }}</strong>
+                            </td>
+                            <td class="text-danger">
+                                {% if registro.valor_anterior is not None %}
+                                    {{ registro.valor_anterior }}
+                                {% else %}
+                                    <em class="text-muted">—</em>
+                                {% endif %}
+                            </td>
+                            <td class="text-success">
+                                {% if registro.valor_nuevo is not None %}
+                                    {{ registro.valor_nuevo }}
+                                {% else %}
+                                    <em class="text-muted">—</em>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <i class="fas fa-user-circle me-1 text-secondary"></i>
+                                {{ registro.modificado_por }}
+                            </td>
+                            <td>
+                                <span class="badge
+                                    {% if registro.causa_tipo == 'EDICION_DIRECTA' %}bg-warning text-dark
+                                    {% elif 'ELIMINACION' in registro.causa_tipo %}bg-danger
+                                    {% elif 'APROBACION' in registro.causa_tipo %}bg-success
+                                    {% elif 'APLICACION' in registro.causa_tipo %}bg-primary
+                                    {% else %}bg-secondary{% endif %}"
+                                      title="{{ registro.causa_descripcion }}">
+                                    {{ registro.get_causa_tipo_display }}
+                                </span>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="8" class="text-center text-muted py-4">
+                                <i class="fas fa-inbox fa-2x mb-2 d-block"></i>
+                                No hay registros con los filtros seleccionados.
+                            </td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Paginación -->
+        {% if page_obj.has_other_pages %}
+        <div class="card-footer d-flex justify-content-center">
+            <nav>
+                <ul class="pagination pagination-sm mb-0">
+                    {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?{{ request.GET.urlencode }}&page={{ page_obj.previous_page_number }}">
+                            &laquo;
+                        </a>
+                    </li>
+                    {% endif %}
+                    <li class="page-item disabled">
+                        <span class="page-link">
+                            Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+                        </span>
+                    </li>
+                    {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?{{ request.GET.urlencode }}&page={{ page_obj.next_page_number }}">
+                            &raquo;
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+{% endblock %}

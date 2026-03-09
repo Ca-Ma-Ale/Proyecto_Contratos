@@ -71,6 +71,7 @@ urlpatterns = [
     path('informes-ventas/<int:informe_id>/eliminar/', views.eliminar_informe_ventas, name='eliminar_informe_ventas'),
     path('informes-ventas/calcular-facturacion/', views.calcular_facturacion, name='calcular_facturacion'),
     path('informes-ventas/calculo/<int:calculo_id>/resultado/', views.resultado_calculo_facturacion, name='resultado_calculo_facturacion'),
+    path('informes-ventas/calculo/<int:calculo_id>/confirmar/', views.confirmar_calculo_facturacion, name='confirmar_calculo_facturacion'),
     path('informes-ventas/<int:informe_id>/finalizar/', views.finalizar_informe_ventas, name='finalizar_informe_ventas'),
     path('informes-ventas/entregados/', views.lista_informes_entregados, name='lista_informes_entregados'),
     path('informes-ventas/exportar-excel/', views.exportar_informes_excel, name='exportar_informes_excel'),
@@ -92,6 +93,7 @@ urlpatterns = [
     path('ipc/calculos/', views.lista_calculos_ipc, name='lista_calculos_ipc'),
     path('ipc/contratos-pendientes/', views.contratos_pendientes_ipc, name='contratos_pendientes_ipc'),
     path('ipc/ajax/obtener-canon-anterior/', views.obtener_canon_anterior_ajax, name='obtener_canon_anterior_ajax'),
+    path('ipc/ajax/otrosi-legalizables/', views.otrosi_legalizables_ipc_ajax, name='otrosi_legalizables_ipc_ajax'),
     # URLs de Configuración IPC
     path('ipc/configuracion/tipos/', views.lista_tipos_condicion_ipc, name='lista_tipos_condicion_ipc'),
     path('ipc/configuracion/tipos/nuevo/', views.nuevo_tipo_condicion_ipc, name='nuevo_tipo_condicion_ipc'),
@@ -117,6 +119,7 @@ urlpatterns = [
     path('salario-minimo/contratos-pendientes/', views.contratos_pendientes_salario_minimo, name='contratos_pendientes_salario_minimo'),
     path('salario-minimo/ajax/obtener-canon-anterior/', views.obtener_canon_anterior_salario_minimo_ajax, name='obtener_canon_anterior_salario_minimo_ajax'),
     path('salario-minimo/ajax/obtener-variacion/', views.obtener_variacion_salario_minimo_ajax, name='obtener_variacion_salario_minimo_ajax'),
+    path('salario-minimo/ajax/otrosi-legalizables/', views.otrosi_legalizables_smlv_ajax, name='otrosi_legalizables_smlv_ajax'),
     
     # URLs de Cláusulas
     path('clausulas/parametrizar/', views.parametrizar_clausulas, name='parametrizar_clausulas'),
@@ -127,5 +130,9 @@ urlpatterns = [
     path('clausulas/<int:clausula_id>/eliminar/', views.eliminar_clausula, name='eliminar_clausula'),
     path('contratos/<int:contrato_id>/auditoria-clausulas/', views.auditoria_clausulas_contrato, name='auditoria_clausulas_contrato'),
     path('contratos/<int:contrato_id>/guardar-clausulas/', views.guardar_clausulas_contrato, name='guardar_clausulas_contrato'),
-    
+
+    # ── Auditoría Efecto Cadena (solo Admin General) ───────────────────────────
+    path('auditoria/historial/', views.auditoria_historial_campos, name='auditoria_historial_campos'),
+    path('auditoria/dependencias/', views.auditoria_dependencias_activas, name='auditoria_dependencias_activas'),
+    path('auditoria/historial/exportar/', views.exportar_historial_campos_csv, name='exportar_historial_campos_csv'),
 ]

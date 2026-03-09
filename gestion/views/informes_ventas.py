@@ -9,6 +9,7 @@ from django.utils import timezone
 from django.http import HttpResponse, JsonResponse
 
 from gestion.decorators import admin_required, login_required_custom
+from gestion.services.chain_validation import auditar_cambio as _auditar_cambio
 from gestion.forms import InformeVentasForm, FiltroContratosVentasForm, FiltroInformesEntregadosForm, CalculoFacturacionVentasForm
 from gestion.models import Contrato, InformeVentas, CalculoFacturacionVentas, TipoContrato
 from gestion.utils_otrosi import (
@@ -581,6 +582,44 @@ def resultado_calculo_facturacion(request, calculo_id):
     }
     
     return render(request, 'gestion/calculos/facturacion_resultado.html', context)
+
+
+@login_required_custom
+def confirmar_calculo_facturacion(request, calculo_id):
+    """Confirma un cálculo de facturación por ventas, bloqueando los campos usados en el contrato."""
+    if request.method != 'POST':
+        return redirect('gestion:resultado_calculo_facturacion', calculo_id=calculo_id)
+
+    calculo = get_object_or_404(CalculoFacturacionVentas, id=calculo_id)
+
+    if calculo.confirmado:
+        messages.warning(request, 'Este cálculo ya estaba confirmado.')
+        return redirect('gestion:resultado_calculo_facturacion', calculo_id=calculo_id)
+
+    calculo.confirmado = True
+    calculo.confirmado_por = request.user.get_full_name() or request.user.username
+    calculo.fecha_confirmacion = timezone.now()
+    calculo.save()
+
+    _auditar_cambio(
+        tipo_documento='CALCULO_VENTAS',
+        documento_id=calculo.id,
+        documento_descripcion=f'Cálculo Ventas #{calculo.id} - {calculo.contrato.num_contrato} {calculo.get_mes_display()}/{calculo.año}',
+        nombre_campo='confirmado',
+        valor_anterior=False,
+        valor_nuevo=True,
+        modificado_por=request.user.get_full_name() or request.user.username,
+        causa_tipo='CONFIRMACION_CALCULO_VENTAS',
+        causa_descripcion=f'Cálculo de facturación por ventas confirmado por {request.user.username}',
+        ip_origen=request.META.get('REMOTE_ADDR'),
+    )
+
+    messages.success(
+        request,
+        f'Cálculo confirmado. Se han bloqueado los campos de porcentaje de ventas y canon mínimo '
+        f'garantizado del contrato {calculo.contrato.num_contrato} para este período.'
+    )
+    return redirect('gestion:resultado_calculo_facturacion', calculo_id=calculo_id)
 
 
 @login_required_custom

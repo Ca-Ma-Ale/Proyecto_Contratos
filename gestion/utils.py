@@ -11,16 +11,17 @@ from django.contrib import messages
 def calcular_fecha_vencimiento(fecha_inicio, meses):
     """
     Calcula fecha de vencimiento usando meses calendario reales.
-    Esta función centraliza el cálculo para mantener consistencia en todo el sistema.
-    
+    La fecha final es el último día del período: inicio 01/01/2025 + 12 meses = 31/12/2025,
+    inicio 23/07/2025 + 12 meses = 22/07/2026.
+
     Args:
         fecha_inicio: Fecha de inicio de la vigencia
         meses: Número de meses de vigencia
-    
+
     Returns:
-        Fecha de vencimiento calculada
+        Fecha de vencimiento calculada (último día del período)
     """
-    return fecha_inicio + relativedelta(months=meses)
+    return fecha_inicio + relativedelta(months=meses) - timedelta(days=1)
 
 
 def calcular_meses_vigencia(fecha_inicio, fecha_fin):

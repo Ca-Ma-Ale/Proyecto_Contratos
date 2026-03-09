@@ -5,7 +5,15 @@ from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
-from gestion.decorators import admin_required, login_required_custom
+import json
+
+from gestion.decorators import admin_general_required, admin_required, login_required_custom
+from gestion.constants import CAMPOS_BLOQUEABLES_CONTRATO, CAMPOS_RELACIONADOS_CONTRATO
+from gestion.services.chain_validation import (
+    auditar_cambio,
+    puede_eliminar,
+    verificar_bloqueos,
+)
 from gestion.forms import ContratoForm, FiltroExportacionContratosForm, FiltroListaContratosForm, FiltroRenovacionesAutomaticasForm
 from gestion.utils_auditoria import guardar_con_auditoria, registrar_eliminacion
 from gestion.models import (
@@ -98,11 +106,33 @@ def editar_contrato(request, contrato_id):
     contrato = get_object_or_404(Contrato, id=contrato_id)
     requerimientos_poliza = contrato.requerimientos_poliza.all()
     polizas = contrato.polizas.all()
-    
+
+    # ── Efecto Cadena: verificar qué campos están bloqueados ──────────────────
+    bloqueos = verificar_bloqueos('CONTRATO', contrato.pk, CAMPOS_BLOQUEABLES_CONTRATO)
+    campos_bloqueados = {campo for campo, lista in bloqueos.items() if lista}
+
+    # Expandir con campos relacionados
+    campos_expandidos = set()
+    for campo in campos_bloqueados:
+        for relacionado in CAMPOS_RELACIONADOS_CONTRATO.get(campo, []):
+            campos_expandidos.add(relacionado)
+    campos_bloqueados |= campos_expandidos
+
     if request.method == 'POST':
-        # Si el usuario no es admin, restaurar valores de campos disabled desde la instancia original
-        # Los campos disabled no se envían en POST, así que debemos agregarlos manualmente
+        # Restaurar valores de campos disabled (no viajan en POST)
         post_data = request.POST.copy()
+
+        # Campos bloqueados por efecto cadena nunca se modifican
+        for campo in campos_bloqueados:
+            if hasattr(contrato, campo):
+                valor = getattr(contrato, campo)
+                if valor is not None:
+                    if hasattr(valor, 'pk'):
+                        post_data[campo] = str(valor.pk)
+                    else:
+                        post_data[campo] = str(valor)
+
+        # Campos protegidos para usuarios no-staff
         if not request.user.is_staff:
             campos_protegidos = [
                 'num_contrato', 'tipo_contrato_cliente_proveedor', 'objeto_destinacion',
@@ -114,35 +144,61 @@ def editar_contrato(request, contrato_id):
                 if campo not in post_data and hasattr(contrato, campo):
                     valor = getattr(contrato, campo)
                     if valor is not None:
-                        if hasattr(valor, 'pk'):  # ForeignKey
+                        if hasattr(valor, 'pk'):
                             post_data[campo] = str(valor.pk)
                         else:
                             post_data[campo] = str(valor)
-        
+
         form = ContratoForm(post_data, instance=contrato, user=request.user)
-        
+
+        for campo in campos_bloqueados:
+            if campo in form.fields:
+                form.fields[campo].disabled = True
+
         if form.is_valid():
-            contrato = form.save(commit=False)
-            guardar_con_auditoria(contrato, request.user, es_nuevo=False)
-            contrato.save()
+            # ── Auditoría: registrar cambios campo a campo ────────────────────
+            contrato_anterior = Contrato.objects.get(pk=contrato.pk)
+            contrato_nuevo = form.save(commit=False)
+
+            campos_auditables = [f for f in form.changed_data if f in CAMPOS_BLOQUEABLES_CONTRATO]
+            for campo in campos_auditables:
+                auditar_cambio(
+                    tipo_documento='CONTRATO',
+                    documento_id=contrato.pk,
+                    documento_descripcion=f"Contrato {contrato.num_contrato}",
+                    nombre_campo=campo,
+                    valor_anterior=getattr(contrato_anterior, campo, None),
+                    valor_nuevo=getattr(contrato_nuevo, campo, None),
+                    modificado_por=request.user.get_username(),
+                    causa_tipo='EDICION_DIRECTA',
+                    causa_descripcion='Edición directa desde formulario',
+                    ip_origen=request.META.get('REMOTE_ADDR'),
+                )
+
+            guardar_con_auditoria(contrato_nuevo, request.user, es_nuevo=False)
+            contrato_nuevo.save()
 
             registrar_seguimientos_contrato_desde_formulario(
                 form,
-                contrato,
+                contrato_nuevo,
                 request.user.get_username() if request.user.is_authenticated else None
             )
-            
+
             skip_auditoria = request.POST.get('skip_auditoria', 'false') == 'true'
             if not skip_auditoria:
-                return redirect('gestion:auditoria_clausulas_contrato', contrato_id=contrato.id)
-            
-            messages.success(request, f'Contrato {contrato.num_contrato} actualizado exitosamente!')
-            return redirect('gestion:detalle_contrato', contrato_id=contrato.id)
+                return redirect('gestion:auditoria_clausulas_contrato', contrato_id=contrato_nuevo.id)
+
+            messages.success(request, f'Contrato {contrato_nuevo.num_contrato} actualizado exitosamente!')
+            return redirect('gestion:detalle_contrato', contrato_id=contrato_nuevo.id)
         else:
             messages.error(request, 'Por favor corrija los errores en el formulario.')
     else:
         form = ContratoForm(instance=contrato, user=request.user)
-    
+
+    for campo in campos_bloqueados:
+        if campo in form.fields:
+            form.fields[campo].disabled = True
+
     seguimientos_poliza_queryset = contrato.seguimientos_poliza.filter(
         poliza__isnull=True
     ).order_by('-fecha_registro')
@@ -160,7 +216,7 @@ def editar_contrato(request, contrato_id):
         clave = mapa_tipos.get(seguimiento.poliza_tipo)
         if clave:
             seguimientos_poliza_por_tipo.setdefault(clave, []).append(seguimiento)
-    
+
     context = {
         'form': form,
         'titulo': f'Editar Contrato {contrato.num_contrato}',
@@ -168,7 +224,11 @@ def editar_contrato(request, contrato_id):
         'requerimientos_poliza': requerimientos_poliza,
         'polizas': polizas,
         'seguimientos_contrato': contrato.seguimientos.all().order_by('-fecha_registro'),
-        'seguimientos_poliza_por_tipo': seguimientos_poliza_por_tipo
+        'seguimientos_poliza_por_tipo': seguimientos_poliza_por_tipo,
+        # ── Efecto Cadena ─────────────────────────────────────────────────────
+        'bloqueos_cadena': bloqueos,                          # dict campo → lista bloqueadores
+        'campos_bloqueados': campos_bloqueados,               # set Python (para lógica en template)
+        'campos_bloqueados_json': json.dumps(list(campos_bloqueados)),  # JSON para JS
     }
     return render(request, 'gestion/contratos/form.html', context)
 
@@ -964,8 +1024,8 @@ def vista_vigente_contrato(request, contrato_id):
         poliza__isnull=True,
     ).order_by('-fecha_registro')
     
-    # Obtener el último cálculo IPC aplicado
-    ultimo_calculo_ipc_aplicado = obtener_ultimo_calculo_ipc_aplicado(contrato)
+    # Obtener el último cálculo IPC/SM aplicado hasta la fecha seleccionada
+    ultimo_calculo_ipc_aplicado = obtener_ultimo_calculo_aplicado_hasta_fecha(contrato, fecha_referencia)
     
     # Exclusividad: determinar el tipo vigente PRIMERO (efecto cadena) y llamar SOLO al servicio correspondiente.
     # Un contrato solo puede tener alerta IPC o Salario Mínimo, nunca ambas.
@@ -1362,9 +1422,9 @@ def autorizar_renovacion_automatica(request, contrato_id):
             
             from gestion.utils import calcular_fecha_vencimiento
             from datetime import timedelta
-            
-            nueva_fecha_final = calcular_fecha_vencimiento(fecha_final_actual, meses_renovacion)
+
             fecha_inicio_renovacion = fecha_final_actual + timedelta(days=1)
+            nueva_fecha_final = calcular_fecha_vencimiento(fecha_inicio_renovacion, meses_renovacion)
             
             renovacion.fecha_inicio_nueva_vigencia = fecha_inicio_renovacion
             renovacion.nueva_fecha_final_actualizada = nueva_fecha_final
@@ -1834,35 +1894,58 @@ def editar_renovacion_automatica(request, renovacion_id):
 @login_required_custom
 def anular_renovacion_automatica(request, renovacion_id):
     """Vista para eliminar una renovación automática"""
-    from gestion.models import RenovacionAutomatica
-    
+    from gestion.models import RenovacionAutomatica, DependenciaDocumento
+
     renovacion = get_object_or_404(RenovacionAutomatica, id=renovacion_id)
     contrato = renovacion.contrato
     numero_renovacion = renovacion.numero_renovacion
-    
+
     # Verificar si tiene pólizas asociadas
     polizas_count = renovacion.polizas.count()
     polizas = renovacion.polizas.all() if polizas_count > 0 else []
-    
+
+    # ── Efecto Cadena: informar qué bloqueos se liberarán al eliminar ─────────
+    bloqueos_activos = list(
+        DependenciaDocumento.objects.filter(
+            bloqueador_tipo='RENOVACION',
+            bloqueador_id=renovacion.pk,
+        ).values('campo_bloqueado', 'label_campo', 'bloqueado_tipo', 'bloqueado_id')
+    )
+
     if request.method == 'POST':
         if request.POST.get('accion') == 'confirmar':
-            # Las pólizas se eliminarán automáticamente por la señal pre_delete
+            auditar_cambio(
+                tipo_documento='RENOVACION',
+                documento_id=renovacion.pk,
+                documento_descripcion=f"Renovación Automática #{numero_renovacion} — {contrato.num_contrato}",
+                nombre_campo='estado',
+                valor_anterior=renovacion.estado,
+                valor_nuevo='ELIMINADA',
+                modificado_por=request.user.get_username(),
+                causa_tipo='ELIMINACION_RENOVACION',
+                causa_descripcion=f'Renovación #{numero_renovacion} eliminada por {request.user.get_username()}',
+                ip_origen=request.META.get('REMOTE_ADDR'),
+            )
+            # Las pólizas y DependenciaDocumento se eliminan por signals pre_delete / post_delete
             renovacion.delete()
             mensaje = f'✅ Renovación Automática {numero_renovacion} eliminada exitosamente'
             if polizas_count > 0:
                 mensaje += f' junto con {polizas_count} póliza(s) asociada(s)'
+            if bloqueos_activos:
+                mensaje += f'. Se liberaron {len(bloqueos_activos)} bloqueo(s) de campos.'
             messages.success(request, mensaje)
             return redirect('gestion:gestion_renovaciones_automaticas')
         else:
             messages.info(request, 'Eliminación de renovación automática cancelada.')
             return redirect('gestion:gestion_renovaciones_automaticas')
-    
+
     context = {
         'renovacion': renovacion,
         'contrato': contrato,
         'polizas_count': polizas_count,
         'polizas': polizas,
         'titulo': f'Eliminar Renovación Automática {numero_renovacion}',
+        'bloqueos_a_liberar': bloqueos_activos,
     }
     return render(request, 'gestion/renovaciones_automaticas/anular.html', context)
 

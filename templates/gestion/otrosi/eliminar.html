@@ -47,24 +47,47 @@
                     </div>
                     {% endif %}
 
-                    {% if tiene_posteriores %}
-                    <div class="alert alert-danger">
-                        <i class="fas fa-lock"></i>
-                        <strong>RESTRICCIÓN:</strong> No se puede eliminar este Otro Sí porque existen Otros Sí posteriores en el contrato. 
-                        Solo se puede eliminar el último Otro Sí del contrato (el de mayor número). 
-                        Se permite <strong>editar</strong> este Otro Sí, pero no eliminarlo.
+                    {% if not puede_eliminar %}
+                    <!-- ── EFECTO CADENA: No se puede eliminar ── -->
+                    <div class="alert alert-danger border-start border-danger border-4">
+                        <div class="d-flex align-items-start">
+                            <i class="fas fa-lock fa-lg me-3 mt-1"></i>
+                            <div>
+                                <strong>NO SE PUEDE ELIMINAR — Efecto Cadena</strong>
+                                <p class="mb-2 mt-1 small">
+                                    Este Otro Sí está siendo referenciado por los siguientes documentos posteriores.
+                                    Debe eliminarlos <strong>en el orden indicado</strong> antes de poder eliminar este Otro Sí:
+                                </p>
+                                <ol class="mb-0 small">
+                                {% for b in bloqueadores_eliminacion %}
+                                    <li class="mb-1">
+                                        {% if b.url %}
+                                        <a href="{{ b.url }}" target="_blank" class="fw-semibold text-decoration-none">
+                                            {{ b.descripcion }}
+                                            <i class="fas fa-external-link-alt ms-1" style="font-size:10px;"></i>
+                                        </a>
+                                        {% else %}
+                                        <span class="fw-semibold">{{ b.descripcion }}</span>
+                                        {% endif %}
+                                        <span class="badge bg-secondary ms-1">{{ b.tipo }}</span>
+                                    </li>
+                                {% endfor %}
+                                </ol>
+                            </div>
+                        </div>
                     </div>
                     {% endif %}
 
                     <form method="post" action="">
                         {% csrf_token %}
                         <div class="d-grid gap-2">
-                            {% if tiene_posteriores %}
+                            {% if not puede_eliminar %}
                                 <button type="button" class="btn btn-danger btn-lg" disabled>
-                                    <i class="fas fa-lock"></i> NO SE PUEDE ELIMINAR (Hay Otros Sí posteriores)
+                                    <i class="fas fa-lock"></i> NO SE PUEDE ELIMINAR (Elimine los documentos bloqueadores primero)
                                 </button>
                             {% else %}
-                                <button type="submit" name="accion" value="confirmar" class="btn btn-danger btn-lg" onclick="return confirm('¿Está ABSOLUTAMENTE seguro de eliminar este Otro Sí?');">
+                                <button type="submit" name="accion" value="confirmar" class="btn btn-danger btn-lg"
+                                        onclick="return confirm('¿Está ABSOLUTAMENTE seguro de eliminar este Otro Sí?');">
                                     <i class="fas fa-trash"></i> SÍ, ELIMINAR PERMANENTEMENTE
                                 </button>
                             {% endif %}

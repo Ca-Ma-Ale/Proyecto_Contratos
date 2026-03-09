@@ -4,15 +4,33 @@
  */
 
 /**
- * Calcula fecha de vencimiento usando meses calendario reales (como relativedelta en Python)
- * @param {Date} fechaInicio - Fecha de inicio de la vigencia
+ * Parsea una fecha YYYY-MM-DD en hora local (evita desfases por UTC)
+ * @param {string} str - Fecha en formato YYYY-MM-DD
+ * @returns {Date} Fecha en hora local
+ */
+function parseFechaLocal(str) {
+    if (!str) return null;
+    const parts = String(str).trim().split('-');
+    if (parts.length !== 3) return new Date(str);
+    const year = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1;
+    const day = parseInt(parts[2], 10);
+    return new Date(year, month, day);
+}
+
+/**
+ * Calcula fecha de vencimiento usando meses calendario reales.
+ * Regla: inicio 01/01/2025 + 12 meses = 31/12/2025 | inicio 23/07/2025 + 12 meses = 22/07/2026
+ * @param {Date|string} fechaInicio - Fecha de inicio (Date o YYYY-MM-DD)
  * @param {number} meses - Número de meses de vigencia
- * @returns {Date} Fecha de vencimiento calculada
+ * @returns {Date} Fecha de vencimiento calculada (último día del período)
  */
 function calcularFechaVencimiento(fechaInicio, meses) {
-    const fechaFin = new Date(fechaInicio);
-    // Usar setMonth para sumar meses reales (como relativedelta en Python)
+    const fecha = typeof fechaInicio === 'string' ? parseFechaLocal(fechaInicio) : new Date(fechaInicio.getTime());
+    if (!fecha || isNaN(fecha.getTime())) return null;
+    const fechaFin = new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate());
     fechaFin.setMonth(fechaFin.getMonth() + meses);
+    fechaFin.setDate(fechaFin.getDate() - 1);
     return fechaFin;
 }
 
@@ -30,12 +48,16 @@ function calcularMesesVigencia(fechaInicio, fechaFin) {
 }
 
 /**
- * Formatea una fecha para input de tipo date (YYYY-MM-DD)
+ * Formatea una fecha para input de tipo date (YYYY-MM-DD) usando componentes locales
  * @param {Date} fecha - Fecha a formatear
  * @returns {string} Fecha formateada
  */
 function formatearFechaInput(fecha) {
-    return fecha.toISOString().split('T')[0];
+    if (!fecha || isNaN(fecha.getTime())) return '';
+    const y = fecha.getFullYear();
+    const m = String(fecha.getMonth() + 1).padStart(2, '0');
+    const d = String(fecha.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
 }
 
 /**
@@ -47,6 +69,7 @@ function formatearFechaInput(fecha) {
  */
 function validarFechaVencimientoPoliza(fechaInicio, fechaVencimiento, mesesRequeridos) {
     const fechaEsperada = calcularFechaVencimiento(fechaInicio, mesesRequeridos);
+    if (!fechaEsperada) return { cumple: false, observaciones: ['Error al calcular fecha esperada'] };
     const cumple = fechaVencimiento >= fechaEsperada;
     
     const observaciones = [];
@@ -81,22 +104,27 @@ function configurarCalculoFechaFinalContrato(fechaInicialId, duracionId, fechaFi
     
     function calcularFechaFinal() {
         if (fechaInicial.value && duracion.value) {
-            const fechaInicio = new Date(fechaInicial.value);
-            const meses = parseInt(duracion.value);
-            const fechaFin = calcularFechaVencimiento(fechaInicio, meses);
-            const fechaFormateada = formatearFechaInput(fechaFin);
-            fechaFinal.value = fechaFormateada;
+            const meses = parseInt(String(duracion.value).replace(/[^\d]/g, ''), 10);
+            if (!isNaN(meses) && meses > 0) {
+                const fechaFin = calcularFechaVencimiento(fechaInicial.value, meses);
+                if (fechaFin) fechaFinal.value = formatearFechaInput(fechaFin);
+            }
         }
     }
     
     // Configurar eventos
     fechaInicial.addEventListener('change', calcularFechaFinal);
     duracion.addEventListener('input', calcularFechaFinal);
+    duracion.addEventListener('change', calcularFechaFinal);
     
-    // Ejecutar cálculo inicial si hay datos
-    if (fechaInicial.value && duracion.value) {
-        calcularFechaFinal();
+    // Ejecutar cálculo inicial si hay datos (y tras breve delay por si el DOM se actualiza)
+    function ejecutarInicial() {
+        if (fechaInicial.value && duracion.value) {
+            calcularFechaFinal();
+        }
     }
+    ejecutarInicial();
+    setTimeout(ejecutarInicial, 100);
 }
 
 /**
@@ -117,20 +145,18 @@ function configurarCalculoFechasPoliza(fechaInicioId, mesesId, fechaVencimientoI
     
     function calcularFechaVencimientoHandler() {
         if (fechaInicio.value && meses.value) {
-            const fechaInicioDate = new Date(fechaInicio.value);
             const mesesNum = parseInt(meses.value);
-            const fechaFin = calcularFechaVencimiento(fechaInicioDate, mesesNum);
-            fechaVencimiento.value = formatearFechaInput(fechaFin);
-            
+            const fechaFin = calcularFechaVencimiento(fechaInicio.value, mesesNum);
+            if (fechaFin) fechaVencimiento.value = formatearFechaInput(fechaFin);
         }
     }
     
     function calcularMesesDesdeFechas() {
         if (fechaInicio.value && fechaVencimiento.value) {
-            const fechaInicioDate = new Date(fechaInicio.value);
-            const fechaFinDate = new Date(fechaVencimiento.value);
+            const fechaInicioDate = parseFechaLocal(fechaInicio.value);
+            const fechaFinDate = parseFechaLocal(fechaVencimiento.value);
+            if (!fechaInicioDate || !fechaFinDate || isNaN(fechaInicioDate.getTime()) || isNaN(fechaFinDate.getTime())) return;
             const mesesCalculados = calcularMesesVigencia(fechaInicioDate, fechaFinDate);
-            
             if (mesesCalculados > 0) {
                 meses.value = mesesCalculados;
             }
@@ -202,12 +228,9 @@ function configurarCalculoFechasPolizasContrato(fechaInicialContratoId) {
         if (meses && fechaInicio && fechaFin) {
             function calcularFechasPoliza() {
                 if (fechaInicialContrato.value && meses.value) {
-                    const fechaInicioDate = new Date(fechaInicialContrato.value);
                     fechaInicio.value = fechaInicialContrato.value;
-                    
-                    const fechaFinDate = calcularFechaVencimiento(fechaInicioDate, parseInt(meses.value));
-                    fechaFin.value = formatearFechaInput(fechaFinDate);
-                    
+                    const fechaFinDate = calcularFechaVencimiento(fechaInicialContrato.value, parseInt(meses.value));
+                    if (fechaFinDate) fechaFin.value = formatearFechaInput(fechaFinDate);
                 }
             }
             

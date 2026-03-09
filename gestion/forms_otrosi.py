@@ -1128,6 +1128,20 @@ class OtroSiForm(BaseModelForm):
         if not contrato:
             contrato = self.contrato
         
+        # Validar que Nuevo Plazo (Meses) esté diligenciado y sea mayor a 0 cuando "Modificar Plazos y Vigencia" está marcado
+        modificar_plazos_marcado = self.data.get('modificar_plazos') in ('1', 'on', True)
+        if modificar_plazos_marcado and not (contrato and contrato.prorroga_automatica):
+            nuevo_plazo_meses = cleaned_data.get('nuevo_plazo_meses')
+            try:
+                plazo_num = int(nuevo_plazo_meses) if nuevo_plazo_meses not in (None, '') else None
+            except (ValueError, TypeError):
+                plazo_num = None
+            if plazo_num is None or plazo_num <= 0:
+                self.add_error(
+                    'nuevo_plazo_meses',
+                    'Debe diligenciar este campo con un valor mayor a 0 cuando tiene marcado "Modificar Plazos y Vigencia".'
+                )
+
         # Validar que no se modifiquen plazos y vigencia si el contrato tiene renovación automática
         if contrato and contrato.prorroga_automatica:
             nueva_fecha_final = cleaned_data.get('nueva_fecha_final_actualizada')
@@ -1159,19 +1173,10 @@ class OtroSiForm(BaseModelForm):
                     'La fecha de vigencia hasta debe ser posterior a la fecha desde.'
                 )
         
-        # Validar solapamiento de vigencias (solo para aprobados)
-        if estado == 'APROBADO' and contrato and effective_from:
-            from .utils_otrosi import validar_solapamiento_vigencias
-            
-            es_valido, mensaje = validar_solapamiento_vigencias(
-                contrato=contrato,
-                effective_from=effective_from,
-                effective_to=effective_to,
-                excluir_otrosi_id=self.instance.pk
-            )
-            
-            if not es_valido:
-                raise forms.ValidationError(f'Solapamiento de vigencias: {mensaje}')
+        # Nota: No se valida solapamiento de vigencias. El efecto cadena permite
+        # múltiples Otros Sí con vigencias solapadas (ej: OS-1 renovación ene-dic,
+        # OS-2 ajuste canon desde feb). Para cada fecha se aplica el último que
+        # modificó cada campo.
         
         # Calcular fechas fin automáticamente si hay fecha inicio y meses pero no fecha fin
         from .utils import calcular_fecha_vencimiento

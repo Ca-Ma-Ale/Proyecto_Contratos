@@ -149,15 +149,39 @@
             </div>
             {% endif %}
 
+            <!-- Estado de Confirmación -->
+            {% if calculo.confirmado %}
+            <div class="alert alert-success border-start border-success border-4 mb-4">
+                <i class="fas fa-lock me-2"></i>
+                <strong>Cálculo Confirmado</strong> — Este cálculo fue confirmado por
+                <strong>{{ calculo.confirmado_por }}</strong> el {{ calculo.fecha_confirmacion|date:"d/m/Y H:i" }}.
+                Los campos de porcentaje de ventas y canon mínimo garantizado del contrato
+                <strong>{{ calculo.contrato.num_contrato }}</strong> están bloqueados por este cálculo.
+            </div>
+            {% endif %}
+
             <!-- Botones de Acción -->
             <div class="card">
-                <div class="card-body text-center">
+                <div class="card-body text-center d-flex flex-wrap gap-2 justify-content-center">
                     <a href="{% url 'gestion:descargar_pdf_calculo' calculo.id %}" class="btn btn-danger">
                         <i class="fas fa-file-pdf"></i> Descargar PDF
                     </a>
                     <a href="{% url 'gestion:descargar_excel_calculo' calculo.id %}" class="btn btn-success">
                         <i class="fas fa-file-excel"></i> Descargar Excel
                     </a>
+                    {% if not calculo.confirmado %}
+                    <form method="post" action="{% url 'gestion:confirmar_calculo_facturacion' calculo.id %}"
+                          onsubmit="return confirm('¿Confirmar este cálculo? Esto bloqueará la edición del porcentaje de ventas y canon mínimo garantizado del contrato.');">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-warning">
+                            <i class="fas fa-check-double"></i> Confirmar Cálculo
+                        </button>
+                    </form>
+                    {% else %}
+                    <span class="btn btn-outline-success disabled">
+                        <i class="fas fa-lock"></i> Cálculo Confirmado
+                    </span>
+                    {% endif %}
                     {% if informe and informe.estado == 'PENDIENTE' %}
                     <a href="{% url 'gestion:finalizar_informe_ventas' informe.id %}" class="btn btn-primary">
                         <i class="fas fa-check-circle"></i> Finalizar Informe
