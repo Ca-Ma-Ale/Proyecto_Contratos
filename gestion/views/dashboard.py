@@ -5,7 +5,7 @@ from django.shortcuts import redirect, render
 from django.utils import timezone
 
 from gestion.decorators import login_required_custom
-from gestion.models import Contrato, Poliza
+from gestion.models import Contrato, Local, Poliza, Tercero
 from gestion.services.alertas import (
     obtener_alertas_expiracion_contratos,
     obtener_alertas_ipc,
@@ -222,7 +222,9 @@ def exportaciones(request):
     alertas_terminacion = obtener_alertas_terminacion_anticipada(fecha_referencia=fecha_actual)
 
     total_contratos = Contrato.objects.count()
-    
+    total_terceros = Tercero.objects.count()
+    total_locales = Local.objects.count()
+
     reportes = [
         {
             'codigo': 'exportar_contratos',
@@ -279,6 +281,20 @@ def exportaciones(request):
             'descripcion': 'Contratos dentro del período de terminación anticipada.',
             'total_registros': len(alertas_terminacion),
             'url_name': 'gestion:exportar_alertas_terminacion',
+        },
+        {
+            'codigo': 'terceros',
+            'nombre': 'Exportar Terceros',
+            'descripcion': 'Listado de todos los terceros registrados (arrendatarios y proveedores) con su información de contacto.',
+            'total_registros': total_terceros,
+            'url_name': 'gestion:exportar_terceros',
+        },
+        {
+            'codigo': 'locales',
+            'nombre': 'Exportar Locales',
+            'descripcion': 'Listado de todos los locales registrados con nombre comercial, ubicación y área.',
+            'total_registros': total_locales,
+            'url_name': 'gestion:exportar_locales',
         },
     ]
 
@@ -893,3 +909,86 @@ def exportar_alertas_terminacion(request):
 
     return _respuesta_archivo_excel(archivo, 'alertas_terminacion_anticipada')
 
+
+@login_required_custom
+def exportar_terceros(request):
+    """
+    Genera el archivo Excel con todos los terceros registrados (arrendatarios y proveedores).
+    Acepta parámetro GET ?tipo=ARRENDATARIO|PROVEEDOR para filtrar por tipo.
+    """
+    tipo = request.GET.get('tipo', '')
+    terceros = Tercero.objects.all().order_by('tipo', 'razon_social')
+    if tipo in ('ARRENDATARIO', 'PROVEEDOR'):
+        terceros = terceros.filter(tipo=tipo)
+
+    tipo_display = {'ARRENDATARIO': 'Arrendatarios', 'PROVEEDOR': 'Proveedores'}
+    nombre_hoja = tipo_display.get(tipo, 'Terceros')
+
+    columnas = [
+        ColumnaExportacion('Tipo', ancho=18, alineacion='center'),
+        ColumnaExportacion('NIT', ancho=22),
+        ColumnaExportacion('Razón Social', ancho=38),
+        ColumnaExportacion('Representante Legal', ancho=32),
+        ColumnaExportacion('Supervisor Operativo', ancho=32),
+        ColumnaExportacion('Email Supervisor', ancho=38),
+    ]
+
+    registros = [
+        (
+            t.get_tipo_display(),
+            t.nit,
+            t.razon_social,
+            t.nombre_rep_legal,
+            t.nombre_supervisor_op or '-',
+            t.email_supervisor_op or '-',
+        )
+        for t in terceros
+    ]
+
+    try:
+        archivo = generar_excel_corporativo(
+            nombre_hoja=nombre_hoja,
+            columnas=columnas,
+            registros=registros,
+        )
+    except ExportacionVaciaError as error:
+        messages.warning(request, str(error))
+        return redirect('gestion:exportaciones')
+
+    sufijo = f'_{tipo.lower()}' if tipo else ''
+    return _respuesta_archivo_excel(archivo, f'terceros{sufijo}')
+
+
+@login_required_custom
+def exportar_locales(request):
+    """
+    Genera el archivo Excel con todos los locales registrados.
+    """
+    locales = Local.objects.all().order_by('nombre_comercial_stand')
+
+    columnas = [
+        ColumnaExportacion('Nombre Comercial / Stand', ancho=38),
+        ColumnaExportacion('Ubicación', ancho=38),
+        ColumnaExportacion('Área Total (m²)', ancho=20, alineacion='right'),
+    ]
+
+    registros = [
+        (
+            local.nombre_comercial_stand,
+            local.ubicacion,
+            str(local.total_area_m2) if local.total_area_m2 is not None else '-',
+        )
+        for local in locales
+    ]
+
+    try:
+        archivo = generar_excel_corporativo(
+            nombre_hoja='Locales',
+            columnas=columnas,
+            registros=registros,
+        )
+    except ExportacionVaciaError as error:
+        messages.warning(request, str(error))
+        return redirect('gestion:exportaciones')
+
+    return _respuesta_archivo_excel(archivo, 'locales')

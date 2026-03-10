@@ -8,6 +8,8 @@ from gestion.views.dashboard import (
     exportar_alertas_preaviso,
     exportar_alertas_polizas_requeridas,
     exportar_alertas_terminacion,
+    exportar_terceros,
+    exportar_locales,
 )
 from gestion.views.contratos import (
     nuevo_contrato,
