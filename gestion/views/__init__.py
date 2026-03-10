@@ -10,6 +10,7 @@ from gestion.views.dashboard import (
     exportar_alertas_terminacion,
     exportar_terceros,
     exportar_locales,
+    exportar_recobro_polizas,
 )
 from gestion.views.contratos import (
     nuevo_contrato,

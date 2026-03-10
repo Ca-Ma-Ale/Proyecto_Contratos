@@ -402,6 +402,7 @@ class Contrato(models.Model):
     
     # Póliza RCE
     exige_poliza_rce = models.BooleanField(default=False, verbose_name="¿Exige Póliza RCE?")
+    recobro_poliza_rce = models.BooleanField(default=False, verbose_name="¿Aplica Recobro Póliza RCE?")
     valor_asegurado_rce = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True, verbose_name="Valor Asegurado RCE")
     valor_propietario_locatario_ocupante_rce = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True, verbose_name="PLO (Propietario, Locatario y Ocupante) Asegurado")
     valor_patronal_rce = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True, verbose_name="Patronal Asegurado")
@@ -431,6 +432,7 @@ class Contrato(models.Model):
     
     # Póliza Cumplimiento
     exige_poliza_cumplimiento = models.BooleanField(default=False, verbose_name="¿Exige Póliza de Cumplimiento?")
+    recobro_poliza_cumplimiento = models.BooleanField(default=False, verbose_name="¿Aplica Recobro Póliza de Cumplimiento?")
     valor_asegurado_cumplimiento = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True, verbose_name="Valor Asegurado Cumplimiento")
     valor_remuneraciones_cumplimiento = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True, verbose_name="Remuneraciones Mensuales Aseguradas (Cumplimiento)")
     valor_servicios_publicos_cumplimiento = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True, verbose_name="Servicios Públicos Asegurados (Cumplimiento)")
@@ -455,6 +457,7 @@ class Contrato(models.Model):
     
     # Póliza de Arrendamiento
     exige_poliza_arrendamiento = models.BooleanField(default=False, verbose_name="¿Exige Póliza de Arrendamiento?")
+    recobro_poliza_arrendamiento = models.BooleanField(default=False, verbose_name="¿Aplica Recobro Póliza de Arrendamiento?")
     valor_asegurado_arrendamiento = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True, verbose_name="Valor Asegurado Póliza de Arrendamiento")
     valor_remuneraciones_arrendamiento = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True, verbose_name="Remuneraciones Mensuales Aseguradas (Arrendamiento)")
     valor_servicios_publicos_arrendamiento = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True, verbose_name="Servicios Públicos Asegurados (Arrendamiento)")
@@ -466,6 +469,7 @@ class Contrato(models.Model):
     
     # Póliza Todo Riesgo
     exige_poliza_todo_riesgo = models.BooleanField(default=False, verbose_name="¿Exige Póliza Todo Riesgo?")
+    recobro_poliza_todo_riesgo = models.BooleanField(default=False, verbose_name="¿Aplica Recobro Póliza Todo Riesgo?")
     valor_asegurado_todo_riesgo = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True, verbose_name="Valor Asegurado Todo Riesgo")
     meses_vigencia_todo_riesgo = models.IntegerField(null=True, blank=True, verbose_name="Meses de Vigencia Todo Riesgo")
     fecha_inicio_vigencia_todo_riesgo = models.DateField(null=True, blank=True, verbose_name="Fecha Inicio Vigencia Todo Riesgo")
@@ -473,6 +477,7 @@ class Contrato(models.Model):
     
     # Otras Pólizas (Opcional)
     exige_poliza_otra_1 = models.BooleanField(default=False, verbose_name="¿Exige Otras Pólizas?")
+    recobro_poliza_otra_1 = models.BooleanField(default=False, verbose_name="¿Aplica Recobro Otras Pólizas?")
     nombre_poliza_otra_1 = models.CharField(max_length=255, null=True, blank=True, verbose_name="Nombre Otras Pólizas")
     valor_asegurado_otra_1 = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True, verbose_name="Valor Asegurado Otras Pólizas")
     meses_vigencia_otra_1 = models.IntegerField(null=True, blank=True, verbose_name="Meses de Vigencia Otras Pólizas")
@@ -1322,6 +1327,7 @@ class RenovacionAutomatica(models.Model):
     
     # Campos de Pólizas - RCE
     nuevo_exige_poliza_rce = models.BooleanField(blank=True, null=True, verbose_name="¿Exige Póliza RCE?")
+    nuevo_recobro_poliza_rce = models.BooleanField(blank=True, null=True, verbose_name="¿Aplica Recobro Póliza RCE?")
     nuevo_valor_asegurado_rce = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True, verbose_name="Nuevo Valor Asegurado RCE")
     nuevo_valor_propietario_locatario_ocupante_rce = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True, verbose_name="Nuevo PLO (Propietario, Locatario y Ocupante) Asegurado")
     nuevo_valor_patronal_rce = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True, verbose_name="Nuevo Patronal Asegurado")
@@ -1350,6 +1356,7 @@ class RenovacionAutomatica(models.Model):
     
     # Póliza Cumplimiento
     nuevo_exige_poliza_cumplimiento = models.BooleanField(blank=True, null=True, verbose_name="¿Exige Póliza de Cumplimiento?")
+    nuevo_recobro_poliza_cumplimiento = models.BooleanField(blank=True, null=True, verbose_name="¿Aplica Recobro Póliza de Cumplimiento?")
     nuevo_valor_asegurado_cumplimiento = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True, verbose_name="Nuevo Valor Asegurado Cumplimiento")
     nuevo_valor_remuneraciones_cumplimiento = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True, verbose_name="Nuevo Remuneraciones Mensuales Aseguradas (Cumplimiento)")
     nuevo_valor_servicios_publicos_cumplimiento = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True, verbose_name="Nuevo Servicios Públicos Asegurados (Cumplimiento)")
@@ -1370,9 +1377,10 @@ class RenovacionAutomatica(models.Model):
     nuevo_meses_vigencia_cumplimiento = models.IntegerField(null=True, blank=True, verbose_name="Nuevos Meses de Vigencia Cumplimiento")
     nuevo_fecha_inicio_vigencia_cumplimiento = models.DateField(null=True, blank=True, verbose_name="Nueva Fecha Inicio Vigencia Cumplimiento")
     nuevo_fecha_fin_vigencia_cumplimiento = models.DateField(null=True, blank=True, verbose_name="Nueva Fecha Fin Vigencia Cumplimiento")
-    
+
     # Póliza de Arrendamiento
     nuevo_exige_poliza_arrendamiento = models.BooleanField(blank=True, null=True, verbose_name="¿Exige Póliza de Arrendamiento?")
+    nuevo_recobro_poliza_arrendamiento = models.BooleanField(blank=True, null=True, verbose_name="¿Aplica Recobro Póliza de Arrendamiento?")
     nuevo_valor_asegurado_arrendamiento = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True, verbose_name="Nuevo Valor Asegurado Póliza de Arrendamiento")
     nuevo_valor_remuneraciones_arrendamiento = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True, verbose_name="Nuevo Remuneraciones Mensuales Aseguradas (Arrendamiento)")
     nuevo_valor_servicios_publicos_arrendamiento = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True, verbose_name="Nuevo Servicios Públicos Asegurados (Arrendamiento)")
@@ -1381,22 +1389,24 @@ class RenovacionAutomatica(models.Model):
     nuevo_meses_vigencia_arrendamiento = models.IntegerField(null=True, blank=True, verbose_name="Nuevos Meses de Vigencia Póliza de Arrendamiento")
     nuevo_fecha_inicio_vigencia_arrendamiento = models.DateField(null=True, blank=True, verbose_name="Nueva Fecha Inicio Vigencia Póliza de Arrendamiento")
     nuevo_fecha_fin_vigencia_arrendamiento = models.DateField(null=True, blank=True, verbose_name="Nueva Fecha Fin Vigencia Póliza de Arrendamiento")
-    
+
     # Póliza Todo Riesgo
     nuevo_exige_poliza_todo_riesgo = models.BooleanField(blank=True, null=True, verbose_name="¿Exige Póliza Todo Riesgo?")
+    nuevo_recobro_poliza_todo_riesgo = models.BooleanField(blank=True, null=True, verbose_name="¿Aplica Recobro Póliza Todo Riesgo?")
     nuevo_valor_asegurado_todo_riesgo = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True, verbose_name="Nuevo Valor Asegurado Todo Riesgo")
     nuevo_meses_vigencia_todo_riesgo = models.IntegerField(null=True, blank=True, verbose_name="Nuevos Meses de Vigencia Todo Riesgo")
     nuevo_fecha_inicio_vigencia_todo_riesgo = models.DateField(null=True, blank=True, verbose_name="Nueva Fecha Inicio Vigencia Todo Riesgo")
     nuevo_fecha_fin_vigencia_todo_riesgo = models.DateField(null=True, blank=True, verbose_name="Nueva Fecha Fin Vigencia Todo Riesgo")
-    
+
     # Otras Pólizas (Opcional)
     nuevo_exige_poliza_otra_1 = models.BooleanField(blank=True, null=True, verbose_name="¿Exige Otras Pólizas?")
+    nuevo_recobro_poliza_otra_1 = models.BooleanField(blank=True, null=True, verbose_name="¿Aplica Recobro Otras Pólizas?")
     nuevo_nombre_poliza_otra_1 = models.CharField(max_length=255, null=True, blank=True, verbose_name="Nuevo Nombre Otras Pólizas")
     nuevo_valor_asegurado_otra_1 = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True, verbose_name="Nuevo Valor Asegurado Otras Pólizas")
     nuevo_meses_vigencia_otra_1 = models.IntegerField(null=True, blank=True, verbose_name="Nuevos Meses de Vigencia Otras Pólizas")
     nuevo_fecha_inicio_vigencia_otra_1 = models.DateField(null=True, blank=True, verbose_name="Nueva Fecha Inicio Vigencia Otras Pólizas")
     nuevo_fecha_fin_vigencia_otra_1 = models.DateField(null=True, blank=True, verbose_name="Nueva Fecha Fin Vigencia Otras Pólizas")
-    
+
     modifica_polizas = models.BooleanField(
         default=False,
         verbose_name='¿Modifica Pólizas?',
@@ -1650,9 +1660,10 @@ class OtroSi(models.Model):
     notas_polizas = models.TextField(blank=True, null=True, verbose_name='Notas sobre Pólizas', help_text='Descripción de las modificaciones en pólizas')
     
     # --- CAMPOS DE PÓLIZAS MODIFICADOS (independientes del contrato base) ---
-    
+
     # Póliza RCE
     nuevo_exige_poliza_rce = models.BooleanField(blank=True, null=True, verbose_name="¿Exige Póliza RCE?")
+    nuevo_recobro_poliza_rce = models.BooleanField(blank=True, null=True, verbose_name="¿Aplica Recobro Póliza RCE?")
     nuevo_valor_asegurado_rce = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True, verbose_name="Nuevo Valor Asegurado RCE")
     nuevo_valor_propietario_locatario_ocupante_rce = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True, verbose_name="Nuevo PLO (Propietario, Locatario y Ocupante) Asegurado")
     nuevo_valor_patronal_rce = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True, verbose_name="Nuevo Patronal Asegurado")
@@ -1678,9 +1689,10 @@ class OtroSi(models.Model):
     nuevo_meses_vigencia_rce = models.IntegerField(null=True, blank=True, verbose_name="Nuevos Meses de Vigencia RCE")
     nuevo_fecha_inicio_vigencia_rce = models.DateField(null=True, blank=True, verbose_name="Nueva Fecha Inicio Vigencia RCE")
     nuevo_fecha_fin_vigencia_rce = models.DateField(null=True, blank=True, verbose_name="Nueva Fecha Fin Vigencia RCE")
-    
+
     # Póliza Cumplimiento
     nuevo_exige_poliza_cumplimiento = models.BooleanField(blank=True, null=True, verbose_name="¿Exige Póliza de Cumplimiento?")
+    nuevo_recobro_poliza_cumplimiento = models.BooleanField(blank=True, null=True, verbose_name="¿Aplica Recobro Póliza de Cumplimiento?")
     nuevo_valor_asegurado_cumplimiento = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True, verbose_name="Nuevo Valor Asegurado Cumplimiento")
     nuevo_valor_remuneraciones_cumplimiento = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True, verbose_name="Nuevo Remuneraciones Mensuales Aseguradas (Cumplimiento)")
     nuevo_valor_servicios_publicos_cumplimiento = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True, verbose_name="Nuevo Servicios Públicos Asegurados (Cumplimiento)")
@@ -1701,9 +1713,10 @@ class OtroSi(models.Model):
     nuevo_meses_vigencia_cumplimiento = models.IntegerField(null=True, blank=True, verbose_name="Nuevos Meses de Vigencia Cumplimiento")
     nuevo_fecha_inicio_vigencia_cumplimiento = models.DateField(null=True, blank=True, verbose_name="Nueva Fecha Inicio Vigencia Cumplimiento")
     nuevo_fecha_fin_vigencia_cumplimiento = models.DateField(null=True, blank=True, verbose_name="Nueva Fecha Fin Vigencia Cumplimiento")
-    
+
     # Póliza de Arrendamiento
     nuevo_exige_poliza_arrendamiento = models.BooleanField(blank=True, null=True, verbose_name="¿Exige Póliza de Arrendamiento?")
+    nuevo_recobro_poliza_arrendamiento = models.BooleanField(blank=True, null=True, verbose_name="¿Aplica Recobro Póliza de Arrendamiento?")
     nuevo_valor_asegurado_arrendamiento = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True, verbose_name="Nuevo Valor Asegurado Póliza de Arrendamiento")
     nuevo_valor_remuneraciones_arrendamiento = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True, verbose_name="Nuevo Remuneraciones Mensuales Aseguradas (Arrendamiento)")
     nuevo_valor_servicios_publicos_arrendamiento = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True, verbose_name="Nuevo Servicios Públicos Asegurados (Arrendamiento)")
@@ -1712,22 +1725,24 @@ class OtroSi(models.Model):
     nuevo_meses_vigencia_arrendamiento = models.IntegerField(null=True, blank=True, verbose_name="Nuevos Meses de Vigencia Póliza de Arrendamiento")
     nuevo_fecha_inicio_vigencia_arrendamiento = models.DateField(null=True, blank=True, verbose_name="Nueva Fecha Inicio Vigencia Póliza de Arrendamiento")
     nuevo_fecha_fin_vigencia_arrendamiento = models.DateField(null=True, blank=True, verbose_name="Nueva Fecha Fin Vigencia Póliza de Arrendamiento")
-    
+
     # Póliza Todo Riesgo
     nuevo_exige_poliza_todo_riesgo = models.BooleanField(blank=True, null=True, verbose_name="¿Exige Póliza Todo Riesgo?")
+    nuevo_recobro_poliza_todo_riesgo = models.BooleanField(blank=True, null=True, verbose_name="¿Aplica Recobro Póliza Todo Riesgo?")
     nuevo_valor_asegurado_todo_riesgo = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True, verbose_name="Nuevo Valor Asegurado Todo Riesgo")
     nuevo_meses_vigencia_todo_riesgo = models.IntegerField(null=True, blank=True, verbose_name="Nuevos Meses de Vigencia Todo Riesgo")
     nuevo_fecha_inicio_vigencia_todo_riesgo = models.DateField(null=True, blank=True, verbose_name="Nueva Fecha Inicio Vigencia Todo Riesgo")
     nuevo_fecha_fin_vigencia_todo_riesgo = models.DateField(null=True, blank=True, verbose_name="Nueva Fecha Fin Vigencia Todo Riesgo")
-    
+
     # Otras Pólizas (Opcional)
     nuevo_exige_poliza_otra_1 = models.BooleanField(blank=True, null=True, verbose_name="¿Exige Otras Pólizas?")
+    nuevo_recobro_poliza_otra_1 = models.BooleanField(blank=True, null=True, verbose_name="¿Aplica Recobro Otras Pólizas?")
     nuevo_nombre_poliza_otra_1 = models.CharField(max_length=255, null=True, blank=True, verbose_name="Nuevo Nombre Otras Pólizas")
     nuevo_valor_asegurado_otra_1 = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True, verbose_name="Nuevo Valor Asegurado Otras Pólizas")
     nuevo_meses_vigencia_otra_1 = models.IntegerField(null=True, blank=True, verbose_name="Nuevos Meses de Vigencia Otras Pólizas")
     nuevo_fecha_inicio_vigencia_otra_1 = models.DateField(null=True, blank=True, verbose_name="Nueva Fecha Inicio Vigencia Otras Pólizas")
     nuevo_fecha_fin_vigencia_otra_1 = models.DateField(null=True, blank=True, verbose_name="Nueva Fecha Fin Vigencia Otras Pólizas")
-    
+
     # Auditoría
     creado_por = models.CharField(max_length=100, blank=True, null=True, verbose_name='Creado Por')
     fecha_creacion = models.DateTimeField(default=timezone.now, verbose_name='Fecha de Creación')

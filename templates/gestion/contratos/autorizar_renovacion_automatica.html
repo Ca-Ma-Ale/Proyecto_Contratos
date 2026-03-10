@@ -140,11 +140,19 @@
                             <!-- Póliza RCE -->
                             <div class="card mb-4 shadow-sm">
                                 <div class="card-header border-0" style="background: linear-gradient(135deg, rgba(255, 152, 0, 0.1) 0%, rgba(255, 152, 0, 0.05) 100%); padding: 1.25rem 1.5rem;">
-                                    <div class="form-check d-flex align-items-center">
-                                        {{ form.nuevo_exige_poliza_rce }}
-                                        <label class="form-check-label ms-3 d-flex align-items-center" for="{{ form.nuevo_exige_poliza_rce.id_for_label }}" style="font-weight: 600; font-size: 1.1rem; color: var(--avenida-orange); cursor: pointer;">
-                                            <i class="fas fa-shield-alt me-2" style="font-size: 1.2rem;"></i> RCE - Responsabilidad Civil
-                                        </label>
+                                    <div class="d-flex align-items-center flex-wrap gap-4">
+                                        <div class="form-check d-flex align-items-center">
+                                            {{ form.nuevo_exige_poliza_rce }}
+                                            <label class="form-check-label ms-3 d-flex align-items-center" for="{{ form.nuevo_exige_poliza_rce.id_for_label }}" style="font-weight: 600; font-size: 1.1rem; color: var(--avenida-orange); cursor: pointer;">
+                                                <i class="fas fa-shield-alt me-2" style="font-size: 1.2rem;"></i> RCE - Responsabilidad Civil
+                                            </label>
+                                        </div>
+                                        <div class="form-check d-flex align-items-center recobro-check" id="recobro-rce-wrap" style="display: none !important;">
+                                            {{ form.nuevo_recobro_poliza_rce }}
+                                            <label class="form-check-label ms-2" for="{{ form.nuevo_recobro_poliza_rce.id_for_label }}" style="font-size: 0.95rem; color: #28a745; cursor: pointer;">
+                                                <i class="fas fa-redo-alt me-1"></i> ¿Aplica Recobro?
+                                            </label>
+                                        </div>
                                     </div>
                                 </div>
                                 <div class="card-body" id="poliza-rce-details" style="display: none; padding: 1.5rem;">
@@ -420,11 +428,19 @@
                             <!-- Póliza Cumplimiento -->
                             <div class="card mb-4 shadow-sm">
                                 <div class="card-header border-0" style="background: linear-gradient(135deg, rgba(255, 152, 0, 0.1) 0%, rgba(255, 152, 0, 0.05) 100%); padding: 1.25rem 1.5rem;">
-                                    <div class="form-check d-flex align-items-center">
-                                        {{ form.nuevo_exige_poliza_cumplimiento }}
-                                        <label class="form-check-label ms-3 d-flex align-items-center" for="{{ form.nuevo_exige_poliza_cumplimiento.id_for_label }}" style="font-weight: 600; font-size: 1.1rem; color: var(--avenida-orange); cursor: pointer;">
-                                            <i class="fas fa-shield-alt me-2" style="font-size: 1.2rem;"></i> Cumplimiento
-                                        </label>
+                                    <div class="d-flex align-items-center flex-wrap gap-4">
+                                        <div class="form-check d-flex align-items-center">
+                                            {{ form.nuevo_exige_poliza_cumplimiento }}
+                                            <label class="form-check-label ms-3 d-flex align-items-center" for="{{ form.nuevo_exige_poliza_cumplimiento.id_for_label }}" style="font-weight: 600; font-size: 1.1rem; color: var(--avenida-orange); cursor: pointer;">
+                                                <i class="fas fa-shield-alt me-2" style="font-size: 1.2rem;"></i> Cumplimiento
+                                            </label>
+                                        </div>
+                                        <div class="form-check d-flex align-items-center recobro-check" id="recobro-cumplimiento-wrap" style="display: none !important;">
+                                            {{ form.nuevo_recobro_poliza_cumplimiento }}
+                                            <label class="form-check-label ms-2" for="{{ form.nuevo_recobro_poliza_cumplimiento.id_for_label }}" style="font-size: 0.95rem; color: #28a745; cursor: pointer;">
+                                                <i class="fas fa-redo-alt me-1"></i> ¿Aplica Recobro?
+                                            </label>
+                                        </div>
                                     </div>
                                 </div>
                                 <div class="card-body" id="poliza-cumplimiento-details" style="display: none; padding: 1.5rem;">
@@ -648,11 +664,19 @@
                             <!-- Póliza Arrendamiento -->
                             <div class="card mb-4 shadow-sm">
                                 <div class="card-header border-0" style="background: linear-gradient(135deg, rgba(255, 152, 0, 0.1) 0%, rgba(255, 152, 0, 0.05) 100%); padding: 1.25rem 1.5rem;">
-                                    <div class="form-check d-flex align-items-center">
-                                        {{ form.nuevo_exige_poliza_arrendamiento }}
-                                        <label class="form-check-label ms-3 d-flex align-items-center" for="{{ form.nuevo_exige_poliza_arrendamiento.id_for_label }}" style="font-weight: 600; font-size: 1.1rem; color: var(--avenida-orange); cursor: pointer;">
-                                            <i class="fas fa-shield-alt me-2" style="font-size: 1.2rem;"></i> Póliza de Arrendamiento
-                                        </label>
+                                    <div class="d-flex align-items-center flex-wrap gap-4">
+                                        <div class="form-check d-flex align-items-center">
+                                            {{ form.nuevo_exige_poliza_arrendamiento }}
+                                            <label class="form-check-label ms-3 d-flex align-items-center" for="{{ form.nuevo_exige_poliza_arrendamiento.id_for_label }}" style="font-weight: 600; font-size: 1.1rem; color: var(--avenida-orange); cursor: pointer;">
+                                                <i class="fas fa-shield-alt me-2" style="font-size: 1.2rem;"></i> Póliza de Arrendamiento
+                                            </label>
+                                        </div>
+                                        <div class="form-check d-flex align-items-center recobro-check" id="recobro-arrendamiento-wrap" style="display: none !important;">
+                                            {{ form.nuevo_recobro_poliza_arrendamiento }}
+                                            <label class="form-check-label ms-2" for="{{ form.nuevo_recobro_poliza_arrendamiento.id_for_label }}" style="font-size: 0.95rem; color: #28a745; cursor: pointer;">
+                                                <i class="fas fa-redo-alt me-1"></i> ¿Aplica Recobro?
+                                            </label>
+                                        </div>
                                     </div>
                                 </div>
                                 <div class="card-body" id="poliza-arrendamiento-details" style="display: none; padding: 1.5rem;">
@@ -755,11 +779,19 @@
                             <!-- Póliza Todo Riesgo -->
                             <div class="card mb-4 shadow-sm">
                                 <div class="card-header border-0" style="background: linear-gradient(135deg, rgba(255, 152, 0, 0.1) 0%, rgba(255, 152, 0, 0.05) 100%); padding: 1.25rem 1.5rem;">
-                                    <div class="form-check d-flex align-items-center">
-                                        {{ form.nuevo_exige_poliza_todo_riesgo }}
-                                        <label class="form-check-label ms-3 d-flex align-items-center" for="{{ form.nuevo_exige_poliza_todo_riesgo.id_for_label }}" style="font-weight: 600; font-size: 1.1rem; color: var(--avenida-orange); cursor: pointer;">
-                                            <i class="fas fa-shield-alt me-2" style="font-size: 1.2rem;"></i> Todo Riesgo para Equipos
-                                        </label>
+                                    <div class="d-flex align-items-center flex-wrap gap-4">
+                                        <div class="form-check d-flex align-items-center">
+                                            {{ form.nuevo_exige_poliza_todo_riesgo }}
+                                            <label class="form-check-label ms-3 d-flex align-items-center" for="{{ form.nuevo_exige_poliza_todo_riesgo.id_for_label }}" style="font-weight: 600; font-size: 1.1rem; color: var(--avenida-orange); cursor: pointer;">
+                                                <i class="fas fa-shield-alt me-2" style="font-size: 1.2rem;"></i> Todo Riesgo para Equipos
+                                            </label>
+                                        </div>
+                                        <div class="form-check d-flex align-items-center recobro-check" id="recobro-todo-riesgo-wrap" style="display: none !important;">
+                                            {{ form.nuevo_recobro_poliza_todo_riesgo }}
+                                            <label class="form-check-label ms-2" for="{{ form.nuevo_recobro_poliza_todo_riesgo.id_for_label }}" style="font-size: 0.95rem; color: #28a745; cursor: pointer;">
+                                                <i class="fas fa-redo-alt me-1"></i> ¿Aplica Recobro?
+                                            </label>
+                                        </div>
                                     </div>
                                 </div>
                                 <div class="card-body" id="poliza-todo-riesgo-details" style="display: none; padding: 1.5rem;">
@@ -814,11 +846,19 @@
                             <!-- Otras Pólizas -->
                             <div class="card mb-4 shadow-sm">
                                 <div class="card-header border-0" style="background: linear-gradient(135deg, rgba(255, 152, 0, 0.1) 0%, rgba(255, 152, 0, 0.05) 100%); padding: 1.25rem 1.5rem;">
-                                    <div class="form-check d-flex align-items-center">
-                                        {{ form.nuevo_exige_poliza_otra_1 }}
-                                        <label class="form-check-label ms-3 d-flex align-items-center" for="{{ form.nuevo_exige_poliza_otra_1.id_for_label }}" style="font-weight: 600; font-size: 1.1rem; color: var(--avenida-orange); cursor: pointer;">
-                                            <i class="fas fa-shield-alt me-2" style="font-size: 1.2rem;"></i> Otras Pólizas
-                                        </label>
+                                    <div class="d-flex align-items-center flex-wrap gap-4">
+                                        <div class="form-check d-flex align-items-center">
+                                            {{ form.nuevo_exige_poliza_otra_1 }}
+                                            <label class="form-check-label ms-3 d-flex align-items-center" for="{{ form.nuevo_exige_poliza_otra_1.id_for_label }}" style="font-weight: 600; font-size: 1.1rem; color: var(--avenida-orange); cursor: pointer;">
+                                                <i class="fas fa-shield-alt me-2" style="font-size: 1.2rem;"></i> Otras Pólizas
+                                            </label>
+                                        </div>
+                                        <div class="form-check d-flex align-items-center recobro-check" id="recobro-otra-wrap" style="display: none !important;">
+                                            {{ form.nuevo_recobro_poliza_otra_1 }}
+                                            <label class="form-check-label ms-2" for="{{ form.nuevo_recobro_poliza_otra_1.id_for_label }}" style="font-size: 0.95rem; color: #28a745; cursor: pointer;">
+                                                <i class="fas fa-redo-alt me-1"></i> ¿Aplica Recobro?
+                                            </label>
+                                        </div>
                                     </div>
                                 </div>
                                 <div class="card-body" id="poliza-otra-details" style="display: none; padding: 1.5rem;">
@@ -1438,6 +1478,29 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+
+    // Toggle recobro visibility based on exige checkbox
+    const recobroMappingsRenov = [
+        { exigeId: '{{ form.nuevo_exige_poliza_rce.id_for_label }}', recobroWrap: 'recobro-rce-wrap' },
+        { exigeId: '{{ form.nuevo_exige_poliza_cumplimiento.id_for_label }}', recobroWrap: 'recobro-cumplimiento-wrap' },
+        { exigeId: '{{ form.nuevo_exige_poliza_arrendamiento.id_for_label }}', recobroWrap: 'recobro-arrendamiento-wrap' },
+        { exigeId: '{{ form.nuevo_exige_poliza_todo_riesgo.id_for_label }}', recobroWrap: 'recobro-todo-riesgo-wrap' },
+        { exigeId: '{{ form.nuevo_exige_poliza_otra_1.id_for_label }}', recobroWrap: 'recobro-otra-wrap' },
+    ];
+    recobroMappingsRenov.forEach(({ exigeId, recobroWrap }) => {
+        const exigeChk = document.getElementById(exigeId);
+        const wrap = document.getElementById(recobroWrap);
+        if (!exigeChk || !wrap) return;
+        const toggleRecobro = () => {
+            if (exigeChk.checked) {
+                wrap.style.removeProperty('display');
+            } else {
+                wrap.style.setProperty('display', 'none', 'important');
+            }
+        };
+        toggleRecobro();
+        exigeChk.addEventListener('change', toggleRecobro);
+    });
 });
 </script>
 {% endblock %}

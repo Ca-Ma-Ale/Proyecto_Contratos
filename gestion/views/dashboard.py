@@ -296,6 +296,13 @@ def exportaciones(request):
             'total_registros': total_locales,
             'url_name': 'gestion:exportar_locales',
         },
+        {
+            'codigo': 'recobro_polizas',
+            'nombre': 'Recobro de Pólizas',
+            'descripcion': 'Contratos con pólizas requeridas y su estado de recobro, con filtros por tipo de póliza y recobro.',
+            'total_registros': total_contratos,
+            'url_name': 'gestion:exportar_recobro_polizas',
+        },
     ]
 
     context = {
@@ -992,3 +999,134 @@ def exportar_locales(request):
         return redirect('gestion:exportaciones')
 
     return _respuesta_archivo_excel(archivo, 'locales')
+
+
+@login_required_custom
+def exportar_recobro_polizas(request):
+    """
+    Genera el archivo Excel con el estado de recobro de pólizas por contrato.
+    Solo incluye contratos que exigen al menos una póliza.
+    Filtros GET: tipo_contrato (CLIENTE/PROVEEDOR), tipo_poliza (rce/cumplimiento/arrendamiento/todo_riesgo/otra), recobro (si/no)
+    """
+    from django.db.models import Q
+    from gestion.models import OtroSi, RenovacionAutomatica
+
+    tipo_contrato = request.GET.get('tipo_contrato', '')
+    tipo_poliza = request.GET.get('tipo_poliza', '')
+    filtro_recobro = request.GET.get('recobro', '')
+
+    # Si es GET sin filtros, mostrar formulario
+    if request.method == 'GET' and not any([tipo_contrato, tipo_poliza, filtro_recobro]):
+        context = {
+            'titulo': 'Exportar Recobro de Pólizas',
+            'descripcion': 'Reporte de contratos con pólizas requeridas y estado de recobro.',
+        }
+        return render(request, 'gestion/exportaciones/recobro_polizas.html', context)
+
+    contratos = Contrato.objects.all().order_by('num_contrato')
+    if tipo_contrato in ('CLIENTE', 'PROVEEDOR'):
+        contratos = contratos.filter(tipo_contrato_cliente_proveedor=tipo_contrato)
+
+    TIPOS_POLIZA = [
+        ('rce', 'exige_poliza_rce', 'recobro_poliza_rce', 'RCE - Responsabilidad Civil',
+         'nuevo_exige_poliza_rce', 'nuevo_recobro_poliza_rce'),
+        ('cumplimiento', 'exige_poliza_cumplimiento', 'recobro_poliza_cumplimiento', 'Cumplimiento',
+         'nuevo_exige_poliza_cumplimiento', 'nuevo_recobro_poliza_cumplimiento'),
+        ('arrendamiento', 'exige_poliza_arrendamiento', 'recobro_poliza_arrendamiento', 'Póliza de Arrendamiento',
+         'nuevo_exige_poliza_arrendamiento', 'nuevo_recobro_poliza_arrendamiento'),
+        ('todo_riesgo', 'exige_poliza_todo_riesgo', 'recobro_poliza_todo_riesgo', 'Todo Riesgo',
+         'nuevo_exige_poliza_todo_riesgo', 'nuevo_recobro_poliza_todo_riesgo'),
+        ('otra', 'exige_poliza_otra_1', 'recobro_poliza_otra_1', 'Otras Pólizas',
+         'nuevo_exige_poliza_otra_1', 'nuevo_recobro_poliza_otra_1'),
+    ]
+
+    if tipo_poliza:
+        TIPOS_POLIZA = [t for t in TIPOS_POLIZA if t[0] == tipo_poliza]
+
+    columnas = [
+        ColumnaExportacion('N° Contrato', ancho=20),
+        ColumnaExportacion('Tipo Contrato', ancho=16, alineacion='center'),
+        ColumnaExportacion('Tercero', ancho=35),
+        ColumnaExportacion('Local', ancho=28),
+        ColumnaExportacion('Tipo Póliza', ancho=28),
+        ColumnaExportacion('¿Exige Póliza?', ancho=16, alineacion='center'),
+        ColumnaExportacion('¿Aplica Recobro?', ancho=18, alineacion='center'),
+        ColumnaExportacion('Documento que lo define', ancho=28),
+    ]
+
+    registros = []
+    for contrato in contratos:
+        tercero = contrato.obtener_tercero()
+        nombre_tercero = tercero.razon_social if tercero else 'Sin tercero'
+        local_nombre = contrato.local.nombre_comercial_stand if contrato.local else '-'
+        tipo_c_display = 'Cliente' if contrato.tipo_contrato_cliente_proveedor == 'CLIENTE' else 'Proveedor'
+
+        for codigo, campo_exige, campo_recobro, label_tipo, campo_exige_doc, campo_recobro_doc in TIPOS_POLIZA:
+            exige_efectivo = getattr(contrato, campo_exige, False) or False
+            recobro_efectivo = getattr(contrato, campo_recobro, False) or False
+            doc_origen = 'Contrato Base'
+
+            # Check OtroSis (APROBADO) that modified this policy
+            otrosi_mod = OtroSi.objects.filter(
+                contrato=contrato,
+                estado='APROBADO',
+                modifica_polizas=True,
+            ).exclude(**{campo_exige_doc: None}).order_by('fecha_aprobacion').last()
+
+            if otrosi_mod:
+                val_exige = getattr(otrosi_mod, campo_exige_doc, None)
+                if val_exige is not None:
+                    exige_efectivo = val_exige
+                    recobro_efectivo = getattr(otrosi_mod, campo_recobro_doc, None) or False
+                    doc_origen = f'Otro Sí #{otrosi_mod.numero_otrosi}'
+
+            # Check RenovacionAutomatica (APROBADO) that modified this policy
+            renov_mod = RenovacionAutomatica.objects.filter(
+                contrato=contrato,
+                estado='APROBADO',
+                modifica_polizas=True,
+            ).exclude(**{campo_exige_doc: None}).order_by('fecha_aprobacion').last()
+
+            if renov_mod:
+                val_exige = getattr(renov_mod, campo_exige_doc, None)
+                if val_exige is not None:
+                    use_renov = True
+                    if otrosi_mod and otrosi_mod.fecha_aprobacion and renov_mod.fecha_aprobacion:
+                        use_renov = renov_mod.fecha_aprobacion >= otrosi_mod.fecha_aprobacion
+                    if use_renov:
+                        exige_efectivo = val_exige
+                        recobro_efectivo = getattr(renov_mod, campo_recobro_doc, None) or False
+                        doc_origen = f'Renovación #{renov_mod.numero_renovacion}'
+
+            if not exige_efectivo:
+                continue
+
+            aplica_recobro_str = 'Sí' if recobro_efectivo else 'No'
+
+            if filtro_recobro == 'si' and not recobro_efectivo:
+                continue
+            if filtro_recobro == 'no' and recobro_efectivo:
+                continue
+
+            registros.append((
+                contrato.num_contrato,
+                tipo_c_display,
+                nombre_tercero,
+                local_nombre,
+                label_tipo,
+                'Sí',
+                aplica_recobro_str,
+                doc_origen,
+            ))
+
+    try:
+        archivo = generar_excel_corporativo(
+            nombre_hoja='Recobro Pólizas',
+            columnas=columnas,
+            registros=registros,
+        )
+    except ExportacionVaciaError as error:
+        messages.warning(request, str(error))
+        return redirect('gestion:exportaciones')
+
+    return _respuesta_archivo_excel(archivo, 'recobro_polizas')

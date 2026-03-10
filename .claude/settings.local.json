@@ -3,7 +3,14 @@
     "allow": [
       "Bash(venv/Scripts/python.exe:)",
       "Bash(venv/Scripts/python.exe:*)",
-      "Bash(source:)"
+      "Bash(source:)",
+      "Bash(find \"C:/Users/DELL/OneDrive - GLOBAL ANALITICS SAS/Proyecto_Contratos/templates/gestion/\" -name \"*.html\" | xargs grep -l \"nuevo_exige_poliza\" 2>/dev/null)",
+      "Bash(grep -n \"togglePolizaFunctions\\\\[config.tipo\\\\]\\\\|}\\); // end forEach\\\\|^}\\);$\\\\|^    }\\);$\\\\|^}\\);\" \"C:/Users/DELL/OneDrive - GLOBAL ANALITICS SAS/Proyecto_Contratos/templates/gestion/contratos/autorizar_renovacion_automatica.html\" | tail -20)",
+      "Bash(cd \"C:/Users/DELL/OneDrive - GLOBAL ANALITICS SAS/Proyecto_Contratos\" && venv/Scripts/python manage.py check 2>&1)",
+      "Bash(cd \"C:/Users/DELL/OneDrive - GLOBAL ANALITICS SAS/Proyecto_Contratos\" && venv/Scripts/python manage.py migrate --run-syncdb 2>&1)",
+      "Bash(cd \"C:/Users/DELL/OneDrive - GLOBAL ANALITICS SAS/Proyecto_Contratos\" && venv/Scripts/python manage.py check --deploy 2>&1 | head -20)",
+      "Bash(cd \"C:/Users/DELL/OneDrive - GLOBAL ANALITICS SAS/Proyecto_Contratos\" && venv/Scripts/python manage.py migrate 2>&1)",
+      "Bash(cd \"C:/Users/DELL/OneDrive - GLOBAL ANALITICS SAS/Proyecto_Contratos\" && venv/Scripts/python manage.py showmigrations gestion 2>&1 | tail -8)"
     ]
   }
 }

@@ -16,6 +16,7 @@ urlpatterns = [
     path('exportaciones/alertas-terminacion/', views.exportar_alertas_terminacion, name='exportar_alertas_terminacion'),
     path('exportaciones/terceros/', views.exportar_terceros, name='exportar_terceros'),
     path('exportaciones/locales/', views.exportar_locales, name='exportar_locales'),
+    path('exportaciones/recobro-polizas/', views.exportar_recobro_polizas, name='exportar_recobro_polizas'),
     path('contratos/', views.lista_contratos, name='lista_contratos'),
     path('contratos/nuevo/', views.nuevo_contrato, name='nuevo_contrato'),
     path('contratos/<int:contrato_id>/', views.detalle_contrato, name='detalle_contrato'),

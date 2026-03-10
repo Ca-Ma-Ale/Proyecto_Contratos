@@ -91,6 +91,7 @@ class OtroSiForm(BaseModelForm):
     
     # Campos de Pólizas - RCE
     nuevo_exige_poliza_rce = forms.BooleanField(required=False, label='¿Exige Póliza RCE?')
+    nuevo_recobro_poliza_rce = forms.BooleanField(required=False, label='¿Aplica Recobro?')
     nuevo_valor_asegurado_rce = forms.CharField(
         required=False,
         widget=forms.TextInput(attrs={'class': 'money-input form-control'}),
@@ -211,6 +212,7 @@ class OtroSiForm(BaseModelForm):
     
     # Campos de Pólizas - Cumplimiento
     nuevo_exige_poliza_cumplimiento = forms.BooleanField(required=False, label='¿Exige Póliza de Cumplimiento?')
+    nuevo_recobro_poliza_cumplimiento = forms.BooleanField(required=False, label='¿Aplica Recobro?')
     nuevo_valor_asegurado_cumplimiento = forms.CharField(
         required=False,
         widget=forms.TextInput(attrs={'class': 'money-input form-control'}),
@@ -306,6 +308,7 @@ class OtroSiForm(BaseModelForm):
     
     # Campos de Pólizas - Arrendamiento
     nuevo_exige_poliza_arrendamiento = forms.BooleanField(required=False, label='¿Exige Póliza de Arrendamiento?')
+    nuevo_recobro_poliza_arrendamiento = forms.BooleanField(required=False, label='¿Aplica Recobro?')
     nuevo_valor_asegurado_arrendamiento = forms.CharField(
         required=False,
         widget=forms.TextInput(attrs={'class': 'money-input form-control'}),
@@ -345,6 +348,7 @@ class OtroSiForm(BaseModelForm):
     
     # Campos de Pólizas - Todo Riesgo
     nuevo_exige_poliza_todo_riesgo = forms.BooleanField(required=False, label='¿Exige Póliza Todo Riesgo?')
+    nuevo_recobro_poliza_todo_riesgo = forms.BooleanField(required=False, label='¿Aplica Recobro?')
     nuevo_valor_asegurado_todo_riesgo = forms.CharField(
         required=False,
         widget=forms.TextInput(attrs={'class': 'money-input form-control'}),
@@ -364,6 +368,7 @@ class OtroSiForm(BaseModelForm):
     
     # Campos de Pólizas - Otras
     nuevo_exige_poliza_otra_1 = forms.BooleanField(required=False, label='¿Exige Otras Pólizas?')
+    nuevo_recobro_poliza_otra_1 = forms.BooleanField(required=False, label='¿Aplica Recobro?')
     nuevo_nombre_poliza_otra_1 = forms.CharField(required=False, label='Nombre Otras Pólizas')
     nuevo_valor_asegurado_otra_1 = forms.CharField(
         required=False,
@@ -1204,15 +1209,15 @@ class OtroSiForm(BaseModelForm):
             'nuevo_porcentaje_ventas', 'nuevo_tipo_condicion_ipc', 'nuevos_puntos_adicionales_ipc',
             'nueva_periodicidad_ipc', 'nueva_fecha_aumento_ipc',
             # Campos de pólizas
-            'nuevo_exige_poliza_rce', 'nuevo_valor_asegurado_rce', 'nuevo_meses_vigencia_rce',
+            'nuevo_exige_poliza_rce', 'nuevo_recobro_poliza_rce', 'nuevo_valor_asegurado_rce', 'nuevo_meses_vigencia_rce',
             'nuevo_fecha_inicio_vigencia_rce', 'nuevo_fecha_fin_vigencia_rce',
-            'nuevo_exige_poliza_cumplimiento', 'nuevo_valor_asegurado_cumplimiento', 'nuevo_meses_vigencia_cumplimiento',
+            'nuevo_exige_poliza_cumplimiento', 'nuevo_recobro_poliza_cumplimiento', 'nuevo_valor_asegurado_cumplimiento', 'nuevo_meses_vigencia_cumplimiento',
             'nuevo_fecha_inicio_vigencia_cumplimiento', 'nuevo_fecha_fin_vigencia_cumplimiento',
-            'nuevo_exige_poliza_arrendamiento', 'nuevo_valor_asegurado_arrendamiento', 'nuevo_meses_vigencia_arrendamiento',
+            'nuevo_exige_poliza_arrendamiento', 'nuevo_recobro_poliza_arrendamiento', 'nuevo_valor_asegurado_arrendamiento', 'nuevo_meses_vigencia_arrendamiento',
             'nuevo_fecha_inicio_vigencia_arrendamiento', 'nuevo_fecha_fin_vigencia_arrendamiento',
-            'nuevo_exige_poliza_todo_riesgo', 'nuevo_valor_asegurado_todo_riesgo', 'nuevo_meses_vigencia_todo_riesgo',
+            'nuevo_exige_poliza_todo_riesgo', 'nuevo_recobro_poliza_todo_riesgo', 'nuevo_valor_asegurado_todo_riesgo', 'nuevo_meses_vigencia_todo_riesgo',
             'nuevo_fecha_inicio_vigencia_todo_riesgo', 'nuevo_fecha_fin_vigencia_todo_riesgo',
-            'nuevo_exige_poliza_otra_1', 'nuevo_nombre_poliza_otra_1', 'nuevo_valor_asegurado_otra_1', 'nuevo_meses_vigencia_otra_1',
+            'nuevo_exige_poliza_otra_1', 'nuevo_recobro_poliza_otra_1', 'nuevo_nombre_poliza_otra_1', 'nuevo_valor_asegurado_otra_1', 'nuevo_meses_vigencia_otra_1',
             'nuevo_fecha_inicio_vigencia_otra_1', 'nuevo_fecha_fin_vigencia_otra_1'
         ]
         
