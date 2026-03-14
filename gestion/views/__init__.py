@@ -18,6 +18,7 @@ from gestion.views.contratos import (
     lista_contratos,
     detalle_contrato,
     eliminar_contrato,
+    finalizar_contrato,
     vista_vigente_contrato,
     exportar_contratos,
     autorizar_renovacion_automatica,

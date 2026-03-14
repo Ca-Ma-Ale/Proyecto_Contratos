@@ -179,7 +179,15 @@
                                             {% endif %}
                                         </td>
                                         <td>
-                                            {% if item.estado_vigente %}
+                                            {% if item.es_terminado %}
+                                                <span class="badge bg-danger">
+                                                    <i class="fas fa-stop-circle me-1"></i>Terminado
+                                                </span>
+                                            {% elif item.es_terminado_futuro %}
+                                                <span class="badge bg-warning text-dark">
+                                                    <i class="fas fa-clock me-1"></i>Term. Programada
+                                                </span>
+                                            {% elif item.estado_vigente %}
                                                 <span class="badge bg-success">Vigente</span>
                                             {% else %}
                                                 <span class="badge bg-secondary">No Vigente</span>

@@ -14,10 +14,11 @@ from gestion.services.chain_validation import (
     puede_eliminar,
     verificar_bloqueos,
 )
-from gestion.forms import ContratoForm, FiltroExportacionContratosForm, FiltroListaContratosForm, FiltroRenovacionesAutomaticasForm
+from gestion.forms import ContratoForm, FiltroExportacionContratosForm, FiltroListaContratosForm, FiltroRenovacionesAutomaticasForm, FinalizacionContratoForm
 from gestion.utils_auditoria import guardar_con_auditoria, registrar_eliminacion
 from gestion.models import (
     Contrato,
+    FinalizacionContrato,
     SeguimientoContrato,
     SeguimientoPoliza,
     obtener_nombre_tipo_condicion_ipc,
@@ -320,34 +321,51 @@ def lista_contratos(request):
         
         estado_vigente = False
         es_vencido = _es_contrato_vencido(contrato, fecha_actual)
-        
-        # Si hay un Otro Sí vigente, verificar su effective_to
-        if otrosi_vigente_actual:
-            if otrosi_vigente_actual.effective_to:
-                # Si tiene effective_to, verificar que la fecha actual esté dentro del rango
-                estado_vigente = otrosi_vigente_actual.effective_from <= fecha_actual <= otrosi_vigente_actual.effective_to
-            else:
-                # Si no tiene effective_to pero tiene nueva_fecha_final_actualizada, usar esa
-                if otrosi_vigente_actual.nueva_fecha_final_actualizada:
-                    estado_vigente = otrosi_vigente_actual.nueva_fecha_final_actualizada >= fecha_actual
+
+        # ── Contratos finalizados: tienen precedencia sobre cualquier otra lógica ──
+        es_terminado = False
+        es_terminado_futuro = False
+        if contrato.finalizado:
+            try:
+                fin = contrato.finalizacion
+                if fin.fecha_finalizacion <= fecha_actual:
+                    es_terminado = True
+                    estado_vigente = False
+                    fecha_final_vigente = fin.fecha_finalizacion  # mostrar la fecha real de terminación
                 else:
-                    # Si no tiene ninguna fecha, considerar vigente si está dentro del rango effective_from
-                    estado_vigente = otrosi_vigente_actual.effective_from <= fecha_actual
-        elif contrato.vigente:
-            # Si no hay Otro Sí vigente pero el contrato está marcado como vigente
-            if fecha_final_vigente:
-                estado_vigente = fecha_final_vigente >= fecha_actual
-            else:
-                estado_vigente = True
-        
+                    # Fecha de terminación es futura: aún puede estar vigente hasta ese día
+                    es_terminado_futuro = True
+                    estado_vigente = True
+                    fecha_final_vigente = fin.fecha_finalizacion
+            except Exception:
+                es_terminado = True
+                estado_vigente = False
+        else:
+            # Lógica normal de vigencia
+            if otrosi_vigente_actual:
+                if otrosi_vigente_actual.effective_to:
+                    estado_vigente = otrosi_vigente_actual.effective_from <= fecha_actual <= otrosi_vigente_actual.effective_to
+                else:
+                    if otrosi_vigente_actual.nueva_fecha_final_actualizada:
+                        estado_vigente = otrosi_vigente_actual.nueva_fecha_final_actualizada >= fecha_actual
+                    else:
+                        estado_vigente = otrosi_vigente_actual.effective_from <= fecha_actual
+            elif contrato.vigente:
+                if fecha_final_vigente:
+                    estado_vigente = fecha_final_vigente >= fecha_actual
+                else:
+                    estado_vigente = True
+
         if estado_vigencia == 'vigentes' and not estado_vigente:
             continue
         if estado_vigencia == 'vencidos' and estado_vigente:
             continue
-        
+
         contratos_con_estado.append({
             'contrato': contrato,
             'estado_vigente': estado_vigente,
+            'es_terminado': es_terminado,
+            'es_terminado_futuro': es_terminado_futuro,
             'es_vencido': es_vencido,
             'fecha_final_vigente': fecha_final_vigente,
             'evento_fecha_final': evento_fecha_final_info,
@@ -925,7 +943,18 @@ def detalle_contrato(request, contrato_id):
         'fecha_aumento_anual_display': fecha_aumento_anual_display,
         'estado_vigente': estado_vigente,
         'otrosi_modificadores': otrosi_modificadores,
-        'ultimo_calculo_ipc_aplicado': ultimo_calculo_ipc_aplicado
+        'ultimo_calculo_ipc_aplicado': ultimo_calculo_ipc_aplicado,
+        # Finalización
+        'es_terminado_activo': (
+            contrato.finalizado
+            and hasattr(contrato, 'finalizacion')
+            and contrato.finalizacion.fecha_finalizacion <= fecha_actual
+        ),
+        'es_terminado_futuro': (
+            contrato.finalizado
+            and hasattr(contrato, 'finalizacion')
+            and contrato.finalizacion.fecha_finalizacion > fecha_actual
+        ),
     }
     return render(request, 'gestion/contratos/detalle.html', context)
 
@@ -979,6 +1008,63 @@ def eliminar_contrato(request, contrato_id):
         'titulo': f'Eliminar Contrato {contrato.num_contrato}'
     }
     return render(request, 'gestion/contratos/eliminar.html', context)
+
+
+@admin_general_required
+def finalizar_contrato(request, contrato_id):
+    """
+    Registra la terminación formal de un contrato.
+    Solo disponible para el Administrador General.
+    A partir de la fecha_finalizacion seleccionada, el contrato se muestra como 'Terminado'.
+    """
+    contrato = get_object_or_404(Contrato, id=contrato_id)
+
+    # Si ya fue finalizado, mostrar solo la ficha de terminación (sin formulario)
+    if contrato.finalizado:
+        try:
+            finalizacion = contrato.finalizacion
+        except FinalizacionContrato.DoesNotExist:
+            finalizacion = None
+        return render(request, 'gestion/contratos/finalizacion_detalle.html', {
+            'contrato': contrato,
+            'finalizacion': finalizacion,
+            'titulo': f'Terminación — Contrato {contrato.num_contrato}',
+        })
+
+    if request.method == 'POST':
+        form = FinalizacionContratoForm(request.POST)
+        if form.is_valid():
+            finalizacion = form.save(commit=False)
+            finalizacion.contrato = contrato
+            finalizacion.registrado_por = request.user
+            finalizacion.save()
+
+            # Marcar contrato como finalizado y no vigente
+            contrato.finalizado = True
+            contrato.vigente = False
+            contrato.save(update_fields=['finalizado', 'vigente'])
+
+            messages.success(
+                request,
+                f'El contrato {contrato.num_contrato} ha sido registrado como TERMINADO '
+                f'con fecha {finalizacion.fecha_finalizacion.strftime("%d/%m/%Y")}.'
+            )
+            return redirect('gestion:detalle_contrato', contrato_id=contrato.id)
+        else:
+            messages.error(request, 'Por favor corrija los errores en el formulario.')
+    else:
+        form = FinalizacionContratoForm()
+        # Sugerir fecha_finalizacion = fecha_final_actualizada o fecha_final_inicial del contrato
+        fecha_sugerida = contrato.fecha_final_actualizada or contrato.fecha_final_inicial
+        if fecha_sugerida:
+            form.fields['fecha_finalizacion'].initial = fecha_sugerida
+
+    context = {
+        'contrato': contrato,
+        'form': form,
+        'titulo': f'Finalizar Contrato {contrato.num_contrato}',
+    }
+    return render(request, 'gestion/contratos/finalizar.html', context)
 
 
 # ============================================================================

@@ -331,7 +331,8 @@ class Contrato(models.Model):
         verbose_name='Terminación Anticipada (Días)'
     )
     vigente = models.BooleanField(default=True, verbose_name='Vigente')
-    
+    finalizado = models.BooleanField(default=False, verbose_name='Finalizado', help_text='Indica que el contrato fue terminado formalmente mediante acto administrativo.')
+
     # Campos para renovación automática
     ultima_renovacion_automatica_por = models.CharField(
         max_length=150,
@@ -3718,3 +3719,119 @@ class DependenciaDocumento(models.Model):
             f"{self.get_bloqueado_tipo_display()} #{self.bloqueado_id} "
             f"[{self.label_campo or self.campo_bloqueado}]"
         )
+
+
+class FinalizacionContrato(models.Model):
+    """
+    Registro formal de la terminación de un contrato.
+    Solo puede ser creado por el Administrador General.
+    Una vez registrado, el contrato queda marcado como finalizado a partir
+    de la fecha_finalizacion seleccionada.
+    """
+
+    MOTIVO_CHOICES = [
+        ('CUMPLIMIENTO_PLAZO', 'Cumplimiento del Plazo Contractual'),
+        ('MUTUO_ACUERDO', 'Mutuo Acuerdo entre las Partes'),
+        ('INCUMPLIMIENTO', 'Incumplimiento Contractual'),
+        ('LIQUIDACION', 'Liquidación del Contrato'),
+        ('RESCISION', 'Rescisión Unilateral'),
+        ('CESION', 'Cesión o Subrogación del Contrato'),
+        ('FUERZA_MAYOR', 'Fuerza Mayor o Caso Fortuito'),
+        ('OTRO', 'Otro Motivo'),
+    ]
+
+    contrato = models.OneToOneField(
+        'Contrato',
+        on_delete=models.PROTECT,
+        related_name='finalizacion',
+        verbose_name='Contrato',
+    )
+
+    # Motivo y fecha oficial
+    motivo = models.CharField(
+        max_length=30,
+        choices=MOTIVO_CHOICES,
+        verbose_name='Motivo de Terminación',
+    )
+    fecha_finalizacion = models.DateField(
+        verbose_name='Fecha de Terminación',
+        help_text='Fecha oficial en la que el contrato queda terminado. El contrato aparecerá como "Terminado" a partir de este día.',
+    )
+    numero_acta = models.CharField(
+        max_length=100,
+        blank=True,
+        verbose_name='N.° de Acta / Documento de Soporte',
+        help_text='Número del acta de liquidación, comunicado u otro documento que formaliza la terminación.',
+    )
+
+    # Acuerdo y aprobaciones
+    acuerdo_partes = models.BooleanField(
+        default=False,
+        verbose_name='Acuerdo entre las Partes',
+        help_text='Indica que ambas partes manifestaron su conformidad con la terminación.',
+    )
+    visto_bueno_gerencia = models.BooleanField(
+        default=False,
+        verbose_name='Visto Bueno de Gerencia',
+    )
+    nombre_gerente = models.CharField(
+        max_length=200,
+        blank=True,
+        verbose_name='Nombre del Gerente que aprueba',
+    )
+    fecha_vb_gerencia = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name='Fecha Visto Bueno Gerencia',
+    )
+    visto_bueno_juridica = models.BooleanField(
+        default=False,
+        verbose_name='Visto Bueno de Jurídica',
+    )
+    nombre_juridica = models.CharField(
+        max_length=200,
+        blank=True,
+        verbose_name='Nombre del Responsable Jurídico que aprueba',
+    )
+    fecha_vb_juridica = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name='Fecha Visto Bueno Jurídica',
+    )
+
+    # Descripción y observaciones
+    detalles = models.TextField(
+        verbose_name='Detalles de la Terminación',
+        help_text='Descripción detallada de las circunstancias, acuerdos y condiciones bajo las cuales se termina el contrato.',
+    )
+    observaciones_legales = models.TextField(
+        blank=True,
+        verbose_name='Observaciones Legales / Compromisos Post-Terminación',
+        help_text='Obligaciones residuales, compromisos de confidencialidad, devolución de activos u otras notas legales relevantes.',
+    )
+    url_documento_soporte = models.URLField(
+        blank=True,
+        null=True,
+        verbose_name='URL Documento de Soporte',
+        help_text='Enlace al acta, comunicado u otro documento digital que soporta la terminación.',
+    )
+
+    # Auditoría
+    registrado_por = models.ForeignKey(
+        'auth.User',
+        on_delete=models.PROTECT,
+        related_name='finalizaciones_registradas',
+        verbose_name='Registrado por',
+    )
+    fecha_registro = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name='Fecha de Registro',
+    )
+
+    class Meta:
+        verbose_name = 'Finalización de Contrato'
+        verbose_name_plural = 'Finalizaciones de Contratos'
+        ordering = ['-fecha_registro']
+
+    def __str__(self):
+        return f"Terminación de {self.contrato.num_contrato} — {self.get_motivo_display()} ({self.fecha_finalizacion})"

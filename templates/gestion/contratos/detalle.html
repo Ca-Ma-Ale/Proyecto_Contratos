@@ -16,20 +16,35 @@
                     <i class="fas fa-file-contract text-primary"></i> Contrato {{ contrato.num_contrato }}
                 </h1>
                 <div class="d-flex gap-2 flex-wrap">
+                    {% if not contrato.finalizado %}
                     <a href="{% url 'gestion:lista_otrosi' contrato.id %}" class="btn btn-success">
                         <i class="fas fa-file-signature"></i> Otro Sí
                     </a>
+                    {% endif %}
                     <a href="{% url 'gestion:vista_vigente_contrato' contrato.id %}" class="btn btn-primary">
                         <i class="fas fa-eye"></i> Vista Vigente
                     </a>
                     <a href="{% url 'gestion:gestionar_polizas' contrato.id %}" class="btn btn-info">
                         <i class="fas fa-shield-alt"></i> Gestionar Pólizas
                     </a>
+                    {% if not contrato.finalizado %}
                     <a href="{% url 'gestion:editar_contrato' contrato.id %}" class="btn btn-warning">
                         <i class="fas fa-edit"></i> Editar
                     </a>
-                    {% if user.is_staff %}
-                    <a href="{% url 'gestion:eliminar_contrato' contrato.id %}" class="btn btn-danger">
+                    {% endif %}
+                    {% if es_admin_general %}
+                        {% if contrato.finalizado %}
+                        <a href="{% url 'gestion:finalizar_contrato' contrato.id %}" class="btn btn-outline-danger">
+                            <i class="fas fa-stop-circle"></i> Ver Terminación
+                        </a>
+                        {% else %}
+                        <a href="{% url 'gestion:finalizar_contrato' contrato.id %}" class="btn btn-danger">
+                            <i class="fas fa-stop-circle"></i> Terminar Contrato
+                        </a>
+                        {% endif %}
+                    {% endif %}
+                    {% if user.is_staff and not contrato.finalizado %}
+                    <a href="{% url 'gestion:eliminar_contrato' contrato.id %}" class="btn btn-outline-danger">
                         <i class="fas fa-trash-alt"></i> Eliminar
                     </a>
                     {% endif %}
@@ -43,6 +58,37 @@
             </div>
         </div>
     </div>
+
+    {% if es_terminado_activo or es_terminado_futuro %}
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="alert border-0 shadow-sm d-flex align-items-center gap-3 flex-wrap"
+                 style="background: #fff5f5; border-left: 5px solid #dc3545 !important;">
+                <i class="fas fa-stop-circle fa-2x text-danger flex-shrink-0"></i>
+                <div class="flex-grow-1">
+                    {% if es_terminado_activo %}
+                    <strong class="text-danger d-block">Contrato Terminado Formalmente</strong>
+                    Fecha de terminación: <strong>{{ contrato.finalizacion.fecha_finalizacion|date:"d \d\e F \d\e Y" }}</strong>
+                    &mdash; Motivo: <strong>{{ contrato.finalizacion.get_motivo_display }}</strong>
+                    {% else %}
+                    <strong class="text-warning d-block">Terminación Programada</strong>
+                    Este contrato quedará terminado el <strong>{{ contrato.finalizacion.fecha_finalizacion|date:"d \d\e F \d\e Y" }}</strong>
+                    &mdash; Motivo: <strong>{{ contrato.finalizacion.get_motivo_display }}</strong>
+                    {% endif %}
+                    {% if contrato.finalizacion.numero_acta %}
+                        &mdash; Acta: <strong>{{ contrato.finalizacion.numero_acta }}</strong>
+                    {% endif %}
+                </div>
+                {% if es_admin_general %}
+                <a href="{% url 'gestion:finalizar_contrato' contrato.id %}"
+                   class="btn btn-sm btn-outline-danger flex-shrink-0">
+                    <i class="fas fa-file-alt me-1"></i> Ver Ficha de Terminación
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
 
     <div class="row">
         <!-- Información del Contrato -->
@@ -76,7 +122,21 @@
                                 <tr>
                                     <td><strong>Estado:</strong></td>
                                     <td>
-                                        {% if estado_vigente %}
+                                        {% if es_terminado_activo %}
+                                            <span class="badge bg-danger">
+                                                <i class="fas fa-stop-circle me-1"></i>Terminado
+                                            </span>
+                                            <small class="text-muted ms-1">
+                                                desde {{ contrato.finalizacion.fecha_finalizacion|date:"d/m/Y" }}
+                                            </small>
+                                        {% elif es_terminado_futuro %}
+                                            <span class="badge bg-warning text-dark">
+                                                <i class="fas fa-clock me-1"></i>Terminación Programada
+                                            </span>
+                                            <small class="text-muted ms-1">
+                                                el {{ contrato.finalizacion.fecha_finalizacion|date:"d/m/Y" }}
+                                            </small>
+                                        {% elif estado_vigente %}
                                             <span class="badge bg-success">Vigente</span>
                                         {% else %}
                                             <span class="badge bg-secondary">No Vigente</span>

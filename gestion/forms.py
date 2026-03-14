@@ -1,9 +1,9 @@
 from django import forms
 from .models import (
-    TipoContrato, TipoServicio, Contrato, Tercero, Arrendatario, Local, Poliza, 
-    ConfiguracionEmpresa, ConfiguracionEmail, RequerimientoPoliza, InformeVentas, CalculoFacturacionVentas, 
+    TipoContrato, TipoServicio, Contrato, Tercero, Arrendatario, Local, Poliza,
+    ConfiguracionEmpresa, ConfiguracionEmail, RequerimientoPoliza, InformeVentas, CalculoFacturacionVentas,
     IPCHistorico, CalculoIPC, TipoCondicionIPC, PeriodicidadIPC,
-    SalarioMinimoHistorico, CalculoSalarioMinimo,
+    SalarioMinimoHistorico, CalculoSalarioMinimo, FinalizacionContrato,
     obtener_tipos_condicion_ipc_choices, obtener_periodicidades_ipc_choices, MESES_CHOICES
 )
 from django.forms import inlineformset_factory
@@ -611,6 +611,21 @@ class ContratoForm(BaseModelForm):
             cleaned_data['arrendatario'] = None
             cleaned_data['local'] = None
         
+        # Validar: reporta_ventas, porcentaje_ventas y dia_limite no aplican si modalidad es Fijo
+        if tipo_contrato_val == 'CLIENTE':
+            modalidad = cleaned_data.get('modalidad_pago')
+            reporta_ventas = cleaned_data.get('reporta_ventas')
+            if modalidad == 'Fijo':
+                if reporta_ventas:
+                    self.add_error(
+                        'reporta_ventas',
+                        'No se puede marcar Reporta Ventas cuando la modalidad de pago es Fijo. '
+                        'Solo aplica para Variable Puro o Híbrido (Min Garantizado).'
+                    )
+                    cleaned_data['reporta_ventas'] = False
+                cleaned_data['porcentaje_ventas'] = None
+                cleaned_data['dia_limite_reporte_ventas'] = None
+
         # Cálculo de fechas
         fecha_inicial = cleaned_data.get('fecha_inicial_contrato')
         duracion_meses = cleaned_data.get('duracion_inicial_meses')
@@ -2820,5 +2835,71 @@ class EditarCalculoSalarioMinimoForm(BaseModelForm):
                 cleaned_data['porcentaje_salario_minimo'] = variacion_salario_minimo
             except ValueError as e:
                 raise ValidationError(f'Error al calcular el ajuste: {str(e)}')
-        
+
+        return cleaned_data
+
+
+class FinalizacionContratoForm(forms.ModelForm):
+    """Formulario para registrar la terminación formal de un contrato."""
+
+    class Meta:
+        model = FinalizacionContrato
+        fields = [
+            'motivo',
+            'fecha_finalizacion',
+            'numero_acta',
+            'acuerdo_partes',
+            'visto_bueno_gerencia',
+            'nombre_gerente',
+            'fecha_vb_gerencia',
+            'visto_bueno_juridica',
+            'nombre_juridica',
+            'fecha_vb_juridica',
+            'detalles',
+            'observaciones_legales',
+            'url_documento_soporte',
+        ]
+        widgets = {
+            'motivo': forms.Select(attrs={'class': 'form-select'}),
+            'fecha_finalizacion': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'numero_acta': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: Acta N.° 001-2026'}),
+            'acuerdo_partes': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'visto_bueno_gerencia': forms.CheckboxInput(attrs={'class': 'form-check-input', 'id': 'id_visto_bueno_gerencia'}),
+            'nombre_gerente': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nombre completo del gerente'}),
+            'fecha_vb_gerencia': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'visto_bueno_juridica': forms.CheckboxInput(attrs={'class': 'form-check-input', 'id': 'id_visto_bueno_juridica'}),
+            'nombre_juridica': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nombre completo del responsable jurídico'}),
+            'fecha_vb_juridica': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'detalles': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 5,
+                'placeholder': 'Describa detalladamente las circunstancias, condiciones y acuerdos bajo los cuales se termina el contrato...',
+            }),
+            'observaciones_legales': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 4,
+                'placeholder': 'Obligaciones residuales, compromisos de confidencialidad, devolución de activos, penalidades u otras notas legales...',
+            }),
+            'url_documento_soporte': forms.URLInput(attrs={'class': 'form-control', 'placeholder': 'https://...'}),
+        }
+
+    def clean(self):
+        cleaned_data = super().clean()
+        vb_gerencia = cleaned_data.get('visto_bueno_gerencia')
+        nombre_gerente = cleaned_data.get('nombre_gerente', '').strip()
+        fecha_vb_gerencia = cleaned_data.get('fecha_vb_gerencia')
+        vb_juridica = cleaned_data.get('visto_bueno_juridica')
+        nombre_juridica = cleaned_data.get('nombre_juridica', '').strip()
+        fecha_vb_juridica = cleaned_data.get('fecha_vb_juridica')
+
+        if vb_gerencia and not nombre_gerente:
+            self.add_error('nombre_gerente', 'Indique el nombre del gerente que otorga el visto bueno.')
+        if vb_gerencia and not fecha_vb_gerencia:
+            self.add_error('fecha_vb_gerencia', 'Indique la fecha del visto bueno de gerencia.')
+
+        if vb_juridica and not nombre_juridica:
+            self.add_error('nombre_juridica', 'Indique el nombre del responsable jurídico que otorga el visto bueno.')
+        if vb_juridica and not fecha_vb_juridica:
+            self.add_error('fecha_vb_juridica', 'Indique la fecha del visto bueno de jurídica.')
+
         return cleaned_data
