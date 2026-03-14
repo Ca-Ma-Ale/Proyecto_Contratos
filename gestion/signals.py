@@ -80,8 +80,65 @@ def eliminar_polizas_renovacion(sender, instance, **kwargs):
 
 # ── OtroSí ───────────────────────────────────────────────────────────────────
 
-# Guardamos el estado anterior para detectar la transición a APROBADO
+# Guardamos el estado anterior para detectar la transición a APROBADO / ANULADO
 _OTROSI_ESTADO_ANTERIOR: dict[int, str] = {}
+
+# Guarda el valor de prorroga_automatica del Contrato ANTES de que cada OtroSí
+# lo cambiara. Permite revertir si el OtroSí es eliminado o anulado.
+# Clave: otrosi.pk  →  Valor: bool (prorroga_automatica antes del cambio)
+_PRORROGA_ANTES_DE_OTROSI: dict[int, bool] = {}
+
+
+def _revertir_prorroga_contrato(otrosi_instance):
+    """
+    Recalcula Contrato.prorroga_automatica cuando un OtroSí que la modificaba
+    es eliminado o pasa a ANULADO.
+
+    Estrategia:
+      1. Busca el OtroSí APROBADO más reciente (por effective_from) que aún
+         modifica nueva_prorroga_automatica para este contrato.
+         — Si lo encuentra, usa ese valor.
+      2. Si no queda ningún OtroSí que haya modificado prorroga, consulta el
+         dict en memoria _PRORROGA_ANTES_DE_OTROSI para recuperar el valor
+         original previo a cualquier cambio.
+      3. Si el dict tampoco tiene datos (reinicio de servidor y ningún OtroSí
+         restante), no se aplica ningún cambio para evitar corrupción.
+    """
+    from gestion.models import Contrato, OtroSi
+
+    contrato_pk = otrosi_instance.contrato_id
+    otrosi_pk = otrosi_instance.pk
+
+    try:
+        # El OtroSi eliminado ya no está en BD; el anulado tiene estado='ANULADO'
+        # → ambos quedan excluidos del filtro estado='APROBADO' automáticamente.
+        otrosi_vigente = (
+            OtroSi.objects.filter(
+                contrato_id=contrato_pk,
+                estado='APROBADO',
+                nueva_prorroga_automatica__isnull=False,
+            )
+            .exclude(pk=otrosi_pk)
+            .order_by('-effective_from', '-version')
+            .first()
+        )
+
+        if otrosi_vigente is not None:
+            nuevo_valor = otrosi_vigente.nueva_prorroga_automatica
+        else:
+            # Ningún OtroSí restante define prorroga → recuperar valor original
+            info = _PRORROGA_ANTES_DE_OTROSI.pop(otrosi_pk, None)
+            if info is None:
+                # Dict perdido (reinicio del servidor): no podemos revertir
+                return
+            nuevo_valor = info
+
+        contrato = Contrato.objects.get(pk=contrato_pk)
+        if contrato.prorroga_automatica != nuevo_valor:
+            contrato.prorroga_automatica = nuevo_valor
+            contrato.save(update_fields=['prorroga_automatica'])
+    except Exception:
+        pass  # La reversión no debe romper el flujo principal
 
 
 @receiver(pre_save, sender=OtroSi)
@@ -98,11 +155,15 @@ def otrosi_pre_save(sender, instance, **kwargs):
 @receiver(post_save, sender=OtroSi)
 def otrosi_post_save(sender, instance, created, **kwargs):
     """
-    Detecta cuando un OtroSí pasa a estado APROBADO y:
-      1. Registra sus dependencias de efecto cadena.
-      2. Actualiza prorroga_automatica / duracion_inicial_meses en el Contrato
-         si el OtroSí modifica la condición de prórroga automática.
-    Solo actúa en la transición BORRADOR/EN_REVISION → APROBADO.
+    Detecta transiciones de estado en OtroSí y actúa en consecuencia:
+
+    → APROBADO:
+      1. Registra dependencias de efecto cadena.
+      2. Si modifica prorroga_automatica: guarda el valor anterior del contrato
+         (para reversión) y aplica el nuevo valor.
+
+    → ANULADO (desde APROBADO):
+      Si modificaba prorroga_automatica, revierte el campo en el Contrato.
     """
     from gestion.services.chain_validation import registrar_dependencias_otrosi
 
@@ -118,6 +179,9 @@ def otrosi_post_save(sender, instance, created, **kwargs):
         if instance.nueva_prorroga_automatica is not None:
             try:
                 contrato = instance.contrato
+                # Guardar valor ANTES del cambio para poder revertir
+                _PRORROGA_ANTES_DE_OTROSI[instance.pk] = contrato.prorroga_automatica
+
                 update_fields = ['prorroga_automatica']
                 contrato.prorroga_automatica = instance.nueva_prorroga_automatica
 
@@ -129,6 +193,11 @@ def otrosi_post_save(sender, instance, created, **kwargs):
             except Exception:
                 pass  # La señal no debe romper el flujo principal
 
+    elif instance.estado == 'ANULADO' and estado_anterior == 'APROBADO':
+        # OtroSí revertido a ANULADO: revertir prorroga si la había cambiado
+        if instance.nueva_prorroga_automatica is not None:
+            _revertir_prorroga_contrato(instance)
+
 
 @receiver(pre_delete, sender=OtroSi)
 def otrosi_pre_delete_cadena(sender, instance, **kwargs):
@@ -136,8 +205,6 @@ def otrosi_pre_delete_cadena(sender, instance, **kwargs):
     Captura el estado del OtroSí antes de que sea eliminado
     para poder liberar dependencias después.
     """
-    # Guardamos el pk para usarlo en post_delete
-    # (en post_delete, instance ya no existe en BD pero el objeto Python sí)
     pass
 
 
@@ -146,8 +213,13 @@ def otrosi_post_delete(sender, instance, **kwargs):
     """
     Libera las DependenciaDocumento donde este OtroSí era el bloqueador.
     También registra el evento en el historial de auditoría.
+    Si el OtroSí había modificado prorroga_automatica, revierte el Contrato.
     """
     from gestion.services.chain_validation import auditar_cambio, liberar_dependencias
+
+    # Revertir prorroga si este OtroSí la había cambiado
+    if instance.nueva_prorroga_automatica is not None:
+        _revertir_prorroga_contrato(instance)
 
     eliminados = liberar_dependencias('OTROSI', instance.pk)
 
