@@ -98,7 +98,10 @@ def otrosi_pre_save(sender, instance, **kwargs):
 @receiver(post_save, sender=OtroSi)
 def otrosi_post_save(sender, instance, created, **kwargs):
     """
-    Detecta cuando un OtroSí pasa a estado APROBADO y registra sus dependencias.
+    Detecta cuando un OtroSí pasa a estado APROBADO y:
+      1. Registra sus dependencias de efecto cadena.
+      2. Actualiza prorroga_automatica / duracion_inicial_meses en el Contrato
+         si el OtroSí modifica la condición de prórroga automática.
     Solo actúa en la transición BORRADOR/EN_REVISION → APROBADO.
     """
     from gestion.services.chain_validation import registrar_dependencias_otrosi
@@ -110,6 +113,21 @@ def otrosi_post_save(sender, instance, created, **kwargs):
             registrar_dependencias_otrosi(instance)
         except Exception:
             pass  # La auditoría no debe romper el flujo
+
+        # Activar / desactivar prórroga automática en el Contrato base
+        if instance.nueva_prorroga_automatica is not None:
+            try:
+                contrato = instance.contrato
+                update_fields = ['prorroga_automatica']
+                contrato.prorroga_automatica = instance.nueva_prorroga_automatica
+
+                if instance.nueva_prorroga_automatica and instance.nueva_duracion_renovacion_meses:
+                    contrato.duracion_inicial_meses = instance.nueva_duracion_renovacion_meses
+                    update_fields.append('duracion_inicial_meses')
+
+                contrato.save(update_fields=update_fields)
+            except Exception:
+                pass  # La señal no debe romper el flujo principal
 
 
 @receiver(pre_delete, sender=OtroSi)

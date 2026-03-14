@@ -1381,18 +1381,24 @@ def exportar_contratos(request):
 @login_required_custom
 def autorizar_renovacion_automatica(request, contrato_id):
     """Vista para autorizar renovación automática de un contrato"""
-    from gestion.utils_otrosi import get_ultimo_otrosi_que_modifico_campo_hasta_fecha
+    from gestion.utils_otrosi import (
+        get_ultimo_otrosi_que_modifico_campo_hasta_fecha,
+        obtener_estado_prorroga_vigente,
+    )
     from gestion.forms_renovacion_automatica import RenovacionAutomaticaForm
     from gestion.services.alertas import obtener_alertas_renovacion_automatica
     from datetime import date
-    
+
     contrato = get_object_or_404(Contrato, id=contrato_id)
-    
-    if not contrato.prorroga_automatica:
+
+    fecha_actual = date.today()
+
+    # Verificar prorroga usando la fuente canónica (considera OtroSís que la activaron)
+    estado_prorroga = obtener_estado_prorroga_vigente(contrato, fecha_actual)
+    if not estado_prorroga['prorroga_activa']:
         messages.error(request, 'Este contrato no tiene prórroga automática activa.')
         return redirect('gestion:detalle_contrato', contrato_id=contrato.id)
-    
-    fecha_actual = date.today()
+
     fecha_final_actual = _obtener_fecha_final_contrato(contrato, fecha_actual)
     
     if not fecha_final_actual:
@@ -1414,7 +1420,8 @@ def autorizar_renovacion_automatica(request, contrato_id):
             meses_renovacion = form.cleaned_data.get('meses_renovacion')
             
             if usar_duracion_inicial:
-                meses_renovacion = contrato.duracion_inicial_meses
+                # Usar duración del OtroSí que activó la prórroga si aplica
+                meses_renovacion = estado_prorroga['duracion_meses'] or contrato.duracion_inicial_meses
             
             if not meses_renovacion:
                 messages.error(request, 'Debe especificar el número de meses para la renovación.')
@@ -1640,7 +1647,9 @@ def autorizar_renovacion_automatica(request, contrato_id):
         'fecha_final_actual': fecha_final_actual,
         'dias_restantes': dias_restantes,
         'dias_abs': dias_abs,
-        'duracion_inicial_meses': contrato.duracion_inicial_meses,
+        'duracion_inicial_meses': estado_prorroga['duracion_meses'] or contrato.duracion_inicial_meses,
+        'otrosi_activador_prorroga': estado_prorroga['otrosi_activador'],
+        'fecha_inicio_prorroga': estado_prorroga['fecha_inicio_prorroga'],
         'valores_iniciales_polizas': valores_iniciales_polizas,
         'valores_iniciales_polizas_json': valores_iniciales_polizas_json,
     }

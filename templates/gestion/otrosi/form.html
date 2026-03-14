@@ -72,7 +72,26 @@ document.addEventListener('DOMContentLoaded', function() {
         const modalidadSelect = document.querySelector('select[name="nueva_modalidad_pago"]');
         const nuevoValorCanonInput = document.getElementById('{{ form.nuevo_valor_canon.id_for_label }}');
         const nuevoCanonMinimoInput = document.getElementById('{{ form.nuevo_canon_minimo_garantizado.id_for_label }}');
+        const nuevoPorcentajeVentasInput = document.getElementById('{{ form.nuevo_porcentaje_ventas.id_for_label }}');
         const modificarCondicionesCheckbox = document.getElementById('modificar_condiciones_financieras');
+
+        function deshabilitarPorcentajeVentas() {
+            if (nuevoPorcentajeVentasInput) {
+                nuevoPorcentajeVentasInput.value = '';
+                nuevoPorcentajeVentasInput.disabled = true;
+                nuevoPorcentajeVentasInput.style.backgroundColor = '#e9ecef';
+                nuevoPorcentajeVentasInput.style.cursor = 'not-allowed';
+                nuevoPorcentajeVentasInput.title = 'No aplica con modalidad Fijo.';
+            }
+        }
+        function habilitarPorcentajeVentas() {
+            if (nuevoPorcentajeVentasInput) {
+                nuevoPorcentajeVentasInput.disabled = false;
+                nuevoPorcentajeVentasInput.style.backgroundColor = '';
+                nuevoPorcentajeVentasInput.style.cursor = '';
+                nuevoPorcentajeVentasInput.title = '';
+            }
+        }
 
         // Prioridad absoluta: bloqueo por efecto cadena (usa lista del servidor, no depende de timing)
         const canonBloqueado = canonBloqueadoPorCadena || (nuevoValorCanonInput && nuevoValorCanonInput.getAttribute('data-chain-locked') === 'true');
@@ -149,6 +168,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     nuevoCanonMinimoInput.style.backgroundColor = '#e9ecef';
                     nuevoCanonMinimoInput.style.cursor = 'not-allowed';
                 }
+                deshabilitarPorcentajeVentas();
             } else if (modalidadRef === 'Hibrido (Min Garantizado)') {
                 if (nuevoValorCanonInput) {
                     nuevoValorCanonInput.disabled = true;
@@ -163,6 +183,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     nuevoCanonMinimoInput.style.backgroundColor = '';
                     nuevoCanonMinimoInput.style.cursor = '';
                 }
+                habilitarPorcentajeVentas();
             } else {
                 if (nuevoValorCanonInput) {
                     nuevoValorCanonInput.disabled = true;
@@ -174,6 +195,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     nuevoCanonMinimoInput.style.backgroundColor = '#e9ecef';
                     nuevoCanonMinimoInput.style.cursor = 'not-allowed';
                 }
+                habilitarPorcentajeVentas();
             }
             return;
         }
@@ -197,6 +219,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     nuevoCanonMinimoInput.style.backgroundColor = '#e9ecef';
                     nuevoCanonMinimoInput.style.cursor = 'not-allowed';
                 }
+                deshabilitarPorcentajeVentas();
                 return;
             } else if (modalidadSeleccionada === 'Hibrido (Min Garantizado)') {
                 if (nuevoValorCanonInput) {
@@ -210,6 +233,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     nuevoCanonMinimoInput.style.backgroundColor = '';
                     nuevoCanonMinimoInput.style.cursor = '';
                 }
+                habilitarPorcentajeVentas();
                 return;
             }
         }
@@ -230,15 +254,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 nuevoValorCanonInput.style.cursor = '';
                 nuevoValorCanonInput.required = false;
             }
-            // Siempre deshabilitar Canon Mínimo para modalidad Fijo
+            // Siempre deshabilitar Canon Mínimo y % Ventas para modalidad Fijo
             if (nuevoCanonMinimoInput) {
                 nuevoCanonMinimoInput.disabled = true;
                 nuevoCanonMinimoInput.style.backgroundColor = '#e9ecef';
                 nuevoCanonMinimoInput.style.cursor = 'not-allowed';
                 nuevoCanonMinimoInput.value = '';
             }
+            deshabilitarPorcentajeVentas();
         } else if (modalidadSeleccionada === 'Variable Puro') {
-            // Ninguno de los dos campos habilitado
+            // Ninguno de los dos campos habilitado, pero % ventas sí aplica
             if (nuevoValorCanonInput) {
                 nuevoValorCanonInput.disabled = true;
                 nuevoValorCanonInput.style.backgroundColor = '#e9ecef';
@@ -251,6 +276,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 nuevoCanonMinimoInput.style.cursor = 'not-allowed';
                 nuevoCanonMinimoInput.value = '';
             }
+            habilitarPorcentajeVentas();
         } else if (modalidadSeleccionada === 'Hibrido (Min Garantizado)') {
             // Siempre deshabilitar Nuevo Valor Canon para modalidad Híbrido
             if (nuevoValorCanonInput) {
@@ -259,8 +285,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 nuevoValorCanonInput.style.cursor = 'not-allowed';
                 nuevoValorCanonInput.value = '';
             }
-            // Siempre habilitar Nuevo Canon Mínimo Garantizado cuando la modalidad es Híbrido
-            // (independientemente de si es igual o diferente a la actual)
+            // Siempre habilitar Nuevo Canon Mínimo Garantizado y % Ventas cuando la modalidad es Híbrido
             if (nuevoCanonMinimoInput && !canonMinimoBloqueado) {
                 nuevoCanonMinimoInput.disabled = false;
                 nuevoCanonMinimoInput.readOnly = false;
@@ -270,8 +295,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 nuevoCanonMinimoInput.style.cursor = '';
                 nuevoCanonMinimoInput.required = false;
             }
+            habilitarPorcentajeVentas();
         } else {
-            // Si no hay modalidad seleccionada o es otra, deshabilitar ambos
+            // Si no hay modalidad seleccionada o es otra, deshabilitar ambos y % ventas
             if (nuevoValorCanonInput) {
                 nuevoValorCanonInput.disabled = true;
                 nuevoValorCanonInput.style.backgroundColor = '#e9ecef';
@@ -282,6 +308,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 nuevoCanonMinimoInput.style.backgroundColor = '#e9ecef';
                 nuevoCanonMinimoInput.style.cursor = 'not-allowed';
             }
+            deshabilitarPorcentajeVentas();
         }
         // Efecto cadena tiene prioridad absoluta sobre cualquier estilo de modalidad
         if (canonBloqueado && nuevoValorCanonInput) {
@@ -303,6 +330,19 @@ document.addEventListener('DOMContentLoaded', function() {
     
     if (modalidadSelect) {
         modalidadSelect.addEventListener('change', validarCamposFinancierosPorModalidad);
+        modalidadSelect.addEventListener('change', function() {
+            const alertaFijoReportaVentas = document.getElementById('alerta-modalidad-fijo-reporta-ventas');
+            if (alertaFijoReportaVentas) {
+                alertaFijoReportaVentas.style.display = (this.value === 'Fijo') ? 'block' : 'none';
+            }
+        });
+    }
+    const alertaFijoReportaVentas = document.getElementById('alerta-modalidad-fijo-reporta-ventas');
+    if (alertaFijoReportaVentas) {
+        const modalidadSelectInit = document.querySelector('select[name="nueva_modalidad_pago"]');
+        if (modalidadSelectInit && modalidadSelectInit.value === 'Fijo') {
+            alertaFijoReportaVentas.style.display = 'block';
+        }
     }
     
     if (modificarCondicionesCheckbox) {
@@ -536,6 +576,97 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Actualizar fechas al cargar la página (con un pequeño delay para asegurar que los campos estén renderizados)
     setTimeout(actualizarFechasPlazos, 100);
+
+    // ── Lógica de Prórroga Automática ─────────────────────────────────────────
+    (function() {
+        const checkProrroga = document.getElementById('modificar_prorroga_check');
+        const panelProrroga = document.getElementById('prorroga-details');
+        const selectProrroga = document.getElementById('id_nueva_prorroga_automatica');
+        const duracionContainer = document.getElementById('duracion_renovacion_container');
+        const infoVigencia = document.getElementById('info_vigencia_prorroga');
+        const fechaVigenciaSpan = document.getElementById('fecha_vigencia_prorroga_span');
+        const effectiveFromEl = document.getElementById('{{ form.effective_from.id_for_label }}');
+
+        // Referencias a elementos del bloque Plazos (solo existen si contrato.prorroga_automatica=True)
+        const plazosCheckbox = document.getElementById('modificar_plazos');
+        const labelPlazos = document.getElementById('label_modificar_plazos');
+        const badgeBloqueado = document.getElementById('badge_plazos_bloqueado');
+        const restriccionDiv = document.getElementById('restriccion_plazos_prorroga');
+        const plazosDetails = document.getElementById('plazos-details');
+
+        function actualizarPanelProrroga() {
+            if (!selectProrroga) return;
+            const val = selectProrroga.value;
+
+            // Mostrar/ocultar campo de duración (solo al activar)
+            if (duracionContainer) {
+                duracionContainer.style.display = (val === 'activar') ? 'block' : 'none';
+            }
+
+            // Mostrar info de vigencia cuando hay selección
+            if (infoVigencia) {
+                if (val && val !== '') {
+                    const fecha = effectiveFromEl ? effectiveFromEl.value : '';
+                    if (fechaVigenciaSpan && fecha) fechaVigenciaSpan.textContent = fecha;
+                    infoVigencia.style.display = 'block';
+                } else {
+                    infoVigencia.style.display = 'none';
+                }
+            }
+
+            {% if contrato.prorroga_automatica %}
+            // Si el contrato tiene prorroga activa y se selecciona desactivar → desbloquear Plazos
+            if (val === 'desactivar') {
+                if (plazosCheckbox) {
+                    plazosCheckbox.disabled = false;
+                }
+                if (labelPlazos) labelPlazos.classList.remove('text-muted');
+                if (badgeBloqueado) badgeBloqueado.style.display = 'none';
+                if (restriccionDiv) restriccionDiv.style.display = 'none';
+            } else {
+                // Cualquier otra selección (activar / sin cambio) → mantener bloqueo
+                if (plazosCheckbox) {
+                    plazosCheckbox.disabled = true;
+                    plazosCheckbox.checked = false;
+                    syncModificarPlazos();
+                }
+                if (plazosDetails) plazosDetails.style.display = 'none';
+                if (labelPlazos) labelPlazos.classList.add('text-muted');
+                if (badgeBloqueado) badgeBloqueado.style.display = '';
+                if (restriccionDiv) restriccionDiv.style.display = '';
+            }
+            {% endif %}
+        }
+
+        if (checkProrroga && panelProrroga) {
+            checkProrroga.addEventListener('change', function() {
+                panelProrroga.style.display = this.checked ? 'block' : 'none';
+                if (!this.checked && selectProrroga) {
+                    selectProrroga.value = '';
+                    actualizarPanelProrroga();
+                }
+            });
+        }
+
+        if (selectProrroga) {
+            selectProrroga.addEventListener('change', actualizarPanelProrroga);
+        }
+
+        // En modo edición: mostrar panel si ya tiene valor guardado
+        {% if otrosi and otrosi.nueva_prorroga_automatica is not None %}
+            if (checkProrroga) checkProrroga.checked = true;
+            if (panelProrroga) panelProrroga.style.display = 'block';
+            actualizarPanelProrroga();
+        {% endif %}
+
+        // Re-mostrar si hay errores de validación y venía un valor en POST
+        {% if form.nueva_prorroga_automatica.value %}
+            if (checkProrroga) checkProrroga.checked = true;
+            if (panelProrroga) panelProrroga.style.display = 'block';
+            if (selectProrroga) selectProrroga.value = '{{ form.nueva_prorroga_automatica.value }}';
+            actualizarPanelProrroga();
+        {% endif %}
+    })();
 
     // Inicializar tooltips Bootstrap
     if (window.bootstrap && typeof bootstrap.Tooltip === 'function') {
@@ -1290,6 +1421,12 @@ document.addEventListener('DOMContentLoaded', function() {
                                     {% if form.nueva_modalidad_pago.errors %}
                                         <div class="text-danger">{{ form.nueva_modalidad_pago.errors }}</div>
                                     {% endif %}
+                                    {% if contrato.reporta_ventas %}
+                                    <div id="alerta-modalidad-fijo-reporta-ventas" class="alert alert-warning mt-2 mb-0" style="display: none;">
+                                        <i class="fas fa-exclamation-triangle"></i>
+                                        No se puede establecer modalidad Fijo en un contrato que reporta ventas. Primero desmarque "Reporta Ventas" en el contrato.
+                                    </div>
+                                    {% endif %}
                                 </div>
                             </div>
                             <div class="col-md-6">
@@ -1336,15 +1473,15 @@ document.addEventListener('DOMContentLoaded', function() {
                         <div class="form-check">
                             <input type="checkbox" class="form-check-input" id="modificar_plazos" {% if contrato.prorroga_automatica %}disabled{% endif %}>
                             <input type="hidden" name="modificar_plazos" id="modificar_plazos_hidden" value="0">
-                            <label class="form-check-label {% if contrato.prorroga_automatica %}text-muted{% endif %}" for="modificar_plazos">
+                            <label class="form-check-label {% if contrato.prorroga_automatica %}text-muted{% endif %}" id="label_modificar_plazos" for="modificar_plazos">
                                 <i class="fas fa-clock text-warning"></i> <strong>Modificar Plazos y Vigencia</strong>
                                 {% if contrato.prorroga_automatica %}
-                                    <span class="badge bg-danger ms-2">Bloqueado</span>
+                                    <span class="badge bg-danger ms-2" id="badge_plazos_bloqueado">Bloqueado</span>
                                 {% endif %}
                             </label>
                         </div>
                         {% if contrato.prorroga_automatica %}
-                            <div class="alert alert-danger mt-2 mb-0">
+                            <div class="alert alert-danger mt-2 mb-0" id="restriccion_plazos_prorroga">
                                 <i class="fas fa-lock"></i>
                                 <strong>Restricción:</strong> Este contrato tiene renovación automática activada. No se pueden modificar los plazos ni la vigencia mediante Otro Sí. Solo se permiten ajustes de otros tipos (valores, condiciones, etc.).
                             </div>
@@ -1385,6 +1522,70 @@ document.addEventListener('DOMContentLoaded', function() {
                             </div>
                         </div>
                         {{ form.nueva_fecha_final_actualizada.as_hidden }}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Prórroga Automática -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" id="modificar_prorroga_check">
+                            <label class="form-check-label" for="modificar_prorroga_check">
+                                <i class="fas fa-sync-alt text-primary"></i>
+                                <strong>Modificar Prórroga Automática</strong>
+                            </label>
+                        </div>
+                        <small class="text-muted ms-4">
+                            Estado actual:
+                            {% if contrato.prorroga_automatica %}
+                                <span class="badge bg-success">Activa</span>
+                            {% else %}
+                                <span class="badge bg-secondary">No activa</span>
+                            {% endif %}
+                        </small>
+                    </div>
+                    <div class="card-body" id="prorroga-details" style="display: none;">
+                        <div class="alert {% if contrato.prorroga_automatica %}alert-warning{% else %}alert-info{% endif %} mb-3">
+                            <i class="fas fa-info-circle"></i>
+                            {% if contrato.prorroga_automatica %}
+                                <strong>Desactivar:</strong> El sistema dejará de generar alertas de renovación automática para este contrato.
+                            {% else %}
+                                <strong>Activar:</strong> El sistema comenzará a generar alertas de renovación automática a partir de la fecha de vigencia de este Otro Sí.
+                            {% endif %}
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    {{ form.nueva_prorroga_automatica.label_tag }}
+                                    {{ form.nueva_prorroga_automatica }}
+                                    {% if form.nueva_prorroga_automatica.errors %}
+                                        <div class="text-danger">{{ form.nueva_prorroga_automatica.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-6" id="duracion_renovacion_container" style="display: none;">
+                                <div class="mb-3">
+                                    {{ form.nueva_duracion_renovacion_meses.label_tag }}
+                                    {{ form.nueva_duracion_renovacion_meses }}
+                                    <small class="form-text text-muted">
+                                        Si no se especifica, se usará la duración inicial del contrato
+                                        {% if contrato.duracion_inicial_meses %}({{ contrato.duracion_inicial_meses }} meses){% endif %}.
+                                    </small>
+                                    {% if form.nueva_duracion_renovacion_meses.errors %}
+                                        <div class="text-danger">{{ form.nueva_duracion_renovacion_meses.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="alert alert-success mt-2 mb-0" id="info_vigencia_prorroga" style="display: none;">
+                            <i class="fas fa-calendar-check"></i>
+                            La prórroga entrará en vigor desde <strong id="fecha_vigencia_prorroga_span"></strong>
+                            (fecha de vigencia de este Otro Sí).
+                        </div>
                     </div>
                 </div>
             </div>

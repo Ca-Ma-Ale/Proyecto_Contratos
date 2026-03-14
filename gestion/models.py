@@ -1630,6 +1630,25 @@ class OtroSi(models.Model):
     # Plazo
     nueva_fecha_final_actualizada = models.DateField(blank=True, null=True, verbose_name='Nueva Fecha Final')
     nuevo_plazo_meses = models.IntegerField(blank=True, null=True, verbose_name='Nuevo Plazo (Meses)')
+
+    # Prórroga Automática — None = "sin cambio", True = activar, False = desactivar
+    nueva_prorroga_automatica = models.BooleanField(
+        blank=True, null=True,
+        verbose_name='Modificar Prórroga Automática',
+        help_text='True activa la prórroga, False la desactiva, None = sin cambio en este OtroSí'
+    )
+    nueva_duracion_renovacion_meses = models.IntegerField(
+        blank=True, null=True,
+        verbose_name='Nueva Duración de Renovación (Meses)',
+        help_text='Duración de cada ciclo de renovación automática a partir de este OtroSí. '
+                  'Si se omite, se usa la duración inicial del contrato.'
+    )
+    fecha_inicio_prorroga_automatica = models.DateField(
+        blank=True, null=True,
+        verbose_name='Fecha de Inicio de Prórroga Automática',
+        help_text='Se auto-llena desde effective_from al guardar. '
+                  'Es el punto de partida para calcular renovaciones futuras.'
+    )
     
     # IPC
     nuevo_tipo_condicion_ipc = models.CharField(
@@ -1867,7 +1886,12 @@ class OtroSi(models.Model):
             cambios.append(f"Fecha Aumento IPC: {self.nueva_fecha_aumento_ipc.strftime('%d/%m/%Y')}")
         if self.modifica_polizas:
             cambios.append("✓ Incluye modificación de pólizas")
-        
+        if self.nueva_prorroga_automatica is not None:
+            estado_prorroga = 'Activada' if self.nueva_prorroga_automatica else 'Desactivada'
+            cambios.append(f"Prórroga Automática: {estado_prorroga}")
+        if self.nueva_duracion_renovacion_meses:
+            cambios.append(f"Duración Renovación: {self.nueva_duracion_renovacion_meses} meses")
+
         return cambios if cambios else ['Sin cambios específicos registrados']
     
     def save(self, *args, **kwargs):

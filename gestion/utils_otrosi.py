@@ -6,6 +6,65 @@ from decimal import Decimal
 from django.db.models import Q
 
 
+def obtener_estado_prorroga_vigente(contrato, fecha_referencia=None):
+    """
+    Fuente canónica de verdad sobre el estado de prórroga automática de un contrato.
+
+    Considera OtroSís APROBADOS que hayan modificado nueva_prorroga_automatica,
+    ordenados por effective_from descendente, para reflejar el último cambio vigente
+    hasta fecha_referencia.
+
+    Cubre dos escenarios:
+      - Contrato nace con prorroga_automatica=True y un OtroSí la desactiva.
+      - Contrato nace con prorroga_automatica=False y un OtroSí la activa.
+
+    Retorna un dict:
+      {
+        'prorroga_activa':       bool,
+        'duracion_meses':        int | None,   # meses por ciclo de renovación
+        'fecha_inicio_prorroga': date | None,  # desde cuándo aplica (base para calcular renovaciones)
+        'otrosi_activador':      OtroSi | None,
+      }
+    """
+    from gestion.models import OtroSi
+
+    if fecha_referencia is None:
+        fecha_referencia = date.today()
+
+    otrosi_modificador = (
+        OtroSi.objects.filter(
+            contrato=contrato,
+            estado='APROBADO',
+            nueva_prorroga_automatica__isnull=False,
+            effective_from__lte=fecha_referencia,
+        )
+        .order_by('-effective_from', '-version')
+        .first()
+    )
+
+    if otrosi_modificador is not None:
+        return {
+            'prorroga_activa': otrosi_modificador.nueva_prorroga_automatica,
+            'duracion_meses': (
+                otrosi_modificador.nueva_duracion_renovacion_meses
+                or contrato.duracion_inicial_meses
+            ),
+            'fecha_inicio_prorroga': (
+                otrosi_modificador.fecha_inicio_prorroga_automatica
+                or otrosi_modificador.effective_from
+            ),
+            'otrosi_activador': otrosi_modificador,
+        }
+
+    # Sin OtroSí modificador: usar valores del contrato base directamente
+    return {
+        'prorroga_activa': contrato.prorroga_automatica,
+        'duracion_meses': contrato.duracion_inicial_meses,
+        'fecha_inicio_prorroga': contrato.fecha_inicial_contrato,
+        'otrosi_activador': None,
+    }
+
+
 def _obtener_numero_evento(evento):
     """Retorna el número del evento (Otro Sí o Renovación Automática)."""
     try:

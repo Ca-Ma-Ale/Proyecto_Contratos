@@ -51,6 +51,31 @@ class OtroSiForm(BaseModelForm):
         ('Hibrido (Min Garantizado)', 'Híbrido (Min Garantizado)'),
     ]
     
+    # ── Prórroga Automática ────────────────────────────────────────────────────
+    PRORROGA_CHOICES = [
+        ('', 'Sin cambio'),
+        ('activar', 'Activar prórroga automática'),
+        ('desactivar', 'Desactivar prórroga automática'),
+    ]
+    nueva_prorroga_automatica = forms.ChoiceField(
+        choices=PRORROGA_CHOICES,
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-control', 'id': 'id_nueva_prorroga_automatica'}),
+        label='Modificar Prórroga Automática',
+        help_text='Solo completar si este Otro Sí cambia la condición de prórroga del contrato.',
+    )
+    nueva_duracion_renovacion_meses = forms.IntegerField(
+        required=False,
+        min_value=1,
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control',
+            'id': 'id_nueva_duracion_renovacion_meses',
+            'placeholder': 'Ej: 12',
+        }),
+        label='Duración de Cada Renovación (Meses)',
+        help_text='Solo aplica al activar la prórroga. Si se omite, se usa la duración inicial del contrato.',
+    )
+
     # Campo de modalidad de pago con Select
     nueva_modalidad_pago = forms.ChoiceField(
         choices=MODALIDAD_CHOICES,
@@ -387,6 +412,25 @@ class OtroSiForm(BaseModelForm):
         label='Fecha Fin Vigencia Otras Pólizas'
     )
     
+    def clean_nueva_prorroga_automatica(self):
+        """Convierte el ChoiceField (activar/desactivar/'') al BooleanField nullable del modelo."""
+        valor = self.cleaned_data.get('nueva_prorroga_automatica')
+        if not valor:
+            return None
+        if valor == 'activar':
+            return True
+        if valor == 'desactivar':
+            return False
+        return None
+
+    def clean_nueva_duracion_renovacion_meses(self):
+        """Solo persiste la duración cuando se está activando la prórroga."""
+        valor = self.cleaned_data.get('nueva_duracion_renovacion_meses')
+        prorroga_raw = self.data.get('nueva_prorroga_automatica', '')
+        if valor is not None and prorroga_raw != 'activar':
+            return None
+        return valor
+
     def save(self, commit=True):
         """Override save para asegurar que None se mantenga como None y no se convierta a 0"""
         instance = super().save(commit=False)
@@ -407,13 +451,23 @@ class OtroSiForm(BaseModelForm):
                     if not campo_en_post:
                         setattr(instance, campo, None)
         
+        # Auto-llenar fecha_inicio_prorroga_automatica desde effective_from
+        if instance.nueva_prorroga_automatica is not None and instance.effective_from:
+            instance.fecha_inicio_prorroga_automatica = instance.effective_from
+        elif instance.nueva_prorroga_automatica is None:
+            instance.fecha_inicio_prorroga_automatica = None
+
         if commit:
             instance.save()
         return instance
-    
+
     class Meta:
         model = OtroSi
-        exclude = ['contrato', 'creado_por', 'fecha_creacion', 'aprobado_por', 'fecha_aprobacion', 'modificado_por', 'fecha_modificacion', 'version']
+        exclude = [
+            'contrato', 'creado_por', 'fecha_creacion', 'aprobado_por', 'fecha_aprobacion',
+            'modificado_por', 'fecha_modificacion', 'version',
+            'fecha_inicio_prorroga_automatica',  # se auto-llena en save()
+        ]
         widgets = {
             'fecha_otrosi': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}, format='%Y-%m-%d'),
             'effective_from': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}, format='%Y-%m-%d'),
@@ -1177,6 +1231,17 @@ class OtroSiForm(BaseModelForm):
                 raise forms.ValidationError(
                     'La fecha de vigencia hasta debe ser posterior a la fecha desde.'
                 )
+
+        # No se puede establecer modalidad Fijo si el contrato reporta ventas
+        nueva_modalidad = cleaned_data.get('nueva_modalidad_pago')
+        if nueva_modalidad == 'Fijo':
+            if contrato and contrato.reporta_ventas:
+                self.add_error(
+                    'nueva_modalidad_pago',
+                    'No se puede establecer modalidad Fijo en un contrato que reporta ventas. '
+                    'Primero desmarque "Reporta Ventas" en el contrato.'
+                )
+            cleaned_data['nuevo_porcentaje_ventas'] = None
         
         # Nota: No se valida solapamiento de vigencias. El efecto cadena permite
         # múltiples Otros Sí con vigencias solapadas (ej: OS-1 renovación ene-dic,

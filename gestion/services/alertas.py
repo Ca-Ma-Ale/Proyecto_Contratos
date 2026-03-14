@@ -1332,35 +1332,64 @@ def obtener_alertas_renovacion_automatica(
     """
     Obtiene alertas de contratos con prórroga automática que están vencidos o próximos a vencer.
     Estos contratos requieren autorización del usuario para renovar automáticamente.
-    
-    Excluye contratos que ya tienen renovaciones automáticas aprobadas, ya que estas
-    ya fueron gestionadas y extienden el contrato.
-    
+
+    Cubre dos casos:
+      - Contratos que nacieron con prorroga_automatica=True en el campo base.
+      - Contratos donde un OtroSí APROBADO activó la prórroga (prorroga_automatica=True
+        en nueva_prorroga_automatica con effective_from <= fecha_base).
+
     Args:
         fecha_referencia: Fecha base para evaluar vencimientos.
         ventana_dias: Ventana en días hacia adelante para considerar contratos próximos a vencer.
-    
+
     Returns:
         Lista ordenada de alertas de renovación automática.
     """
     from gestion.models import RenovacionAutomatica
-    
+    from gestion.utils_otrosi import obtener_estado_prorroga_vigente
+
     fecha_base = fecha_referencia or timezone.now().date()
     fecha_limite = fecha_base + timedelta(days=ventana_dias)
-    
-    contratos_vigentes = (
+
+    prefetch = ['otrosi', 'renovaciones_automaticas']
+    select = ['arrendatario', 'proveedor', 'local', 'tipo_servicio']
+
+    # Contratos con prórroga activa en el campo base
+    contratos_base = (
+        Contrato.objects.filter(vigente=True, prorroga_automatica=True)
+        .select_related(*select)
+        .prefetch_related(*prefetch)
+    )
+
+    # Contratos donde un OtroSí activó la prórroga (campo base puede ser False)
+    contratos_via_otrosi = (
         Contrato.objects.filter(
             vigente=True,
-            prorroga_automatica=True
+            prorroga_automatica=False,
+            otrosi__estado='APROBADO',
+            otrosi__nueva_prorroga_automatica=True,
+            otrosi__effective_from__lte=fecha_base,
         )
-        .select_related('arrendatario', 'proveedor', 'local', 'tipo_servicio')
-        .prefetch_related('otrosi', 'renovaciones_automaticas')
+        .distinct()
+        .select_related(*select)
+        .prefetch_related(*prefetch)
     )
-    
+
+    # Unión sin duplicados por pk
+    ids_base = set(c.pk for c in contratos_base)
+    contratos_vigentes = list(contratos_base) + [
+        c for c in contratos_via_otrosi if c.pk not in ids_base
+    ]
+
     alertas: List[AlertaRenovacionAutomatica] = []
-    
+
     for contrato in contratos_vigentes:
         try:
+            # Verificar estado real de prórroga (considera OtroSís que la desactivaron)
+            estado_prorroga = obtener_estado_prorroga_vigente(contrato, fecha_base)
+            if not estado_prorroga['prorroga_activa']:
+                continue
+
             # Obtener la fecha final actual del contrato considerando renovaciones y Otrosí vigentes
             fecha_final_actual = _obtener_fecha_final_contrato(contrato, fecha_base)
             
@@ -1379,8 +1408,11 @@ def obtener_alertas_renovacion_automatica(
                     # Si la renovación inicia después de la fecha final actual, ya está gestionado
                     if renovacion_aprobada.effective_from > fecha_final_actual:
                         continue
-                    # Si la renovación ya está vigente (effective_from <= fecha_base), también está gestionado
-                    elif renovacion_aprobada.effective_from <= fecha_base:
+                    # Si la última renovación extiende el contrato más allá de la ventana de alerta, ya está gestionado.
+                    # No basta con que effective_from sea anterior a hoy: la renovación pudo haber vencido
+                    # y requerir una nueva (e.g. renovaciones anuales o quinquenales en el pasado).
+                    elif (renovacion_aprobada.nueva_fecha_final_actualizada and
+                          renovacion_aprobada.nueva_fecha_final_actualizada > fecha_limite):
                         continue
                 # Si no tiene effective_from pero tiene nueva_fecha_final_actualizada y está aprobada,
                 # verificar si extiende más allá de la ventana de alerta
@@ -1412,7 +1444,7 @@ def obtener_alertas_renovacion_automatica(
                         contrato=contrato,
                         fecha_final_actualizada=fecha_final_actual,
                         dias_restantes=dias_restantes,
-                        duracion_inicial_meses=contrato.duracion_inicial_meses,
+                        duracion_inicial_meses=estado_prorroga['duracion_meses'] or contrato.duracion_inicial_meses,
                         otrosi_modificador=otrosi_modificador_numero,
                     )
                 )

@@ -18,6 +18,7 @@ CAMPOS_BLOQUEABLES_CONTRATO = [
     'porcentaje_ventas',
     'fecha_final_actualizada',
     'duracion_inicial_meses',
+    'prorroga_automatica',
     'tipo_condicion_ipc',
     'puntos_adicionales_ipc',
     'periodicidad_ipc',
@@ -71,20 +72,24 @@ CAMPOS_BLOQUEABLES_OTROSI = [
     'nueva_periodicidad_ipc',
     'nueva_fecha_aumento_ipc',
     'modifica_polizas',
+    'nueva_prorroga_automatica',
+    'nueva_duracion_renovacion_meses',
 ]
 
 # ── Mapa: campo en OtroSí → campo equivalente en Contrato Base ───────────────
 MAPA_OTROSI_A_CONTRATO = {
-    'nuevo_valor_canon':              'valor_canon_fijo',
-    'nueva_modalidad_pago':           'modalidad_pago',
-    'nuevo_canon_minimo_garantizado': 'canon_minimo_garantizado',
-    'nuevo_porcentaje_ventas':        'porcentaje_ventas',
-    'nueva_fecha_final_actualizada':  'fecha_final_actualizada',
-    'nuevo_plazo_meses':              'duracion_inicial_meses',
-    'nuevo_tipo_condicion_ipc':       'tipo_condicion_ipc',
-    'nuevos_puntos_adicionales_ipc':  'puntos_adicionales_ipc',
-    'nueva_periodicidad_ipc':         'periodicidad_ipc',
-    'nueva_fecha_aumento_ipc':        'fecha_aumento_ipc',
+    'nuevo_valor_canon':               'valor_canon_fijo',
+    'nueva_modalidad_pago':            'modalidad_pago',
+    'nuevo_canon_minimo_garantizado':  'canon_minimo_garantizado',
+    'nuevo_porcentaje_ventas':         'porcentaje_ventas',
+    'nueva_fecha_final_actualizada':   'fecha_final_actualizada',
+    'nuevo_plazo_meses':               'duracion_inicial_meses',
+    'nuevo_tipo_condicion_ipc':        'tipo_condicion_ipc',
+    'nuevos_puntos_adicionales_ipc':   'puntos_adicionales_ipc',
+    'nueva_periodicidad_ipc':          'periodicidad_ipc',
+    'nueva_fecha_aumento_ipc':         'fecha_aumento_ipc',
+    'nueva_prorroga_automatica':       'prorroga_automatica',
+    'nueva_duracion_renovacion_meses': 'duracion_inicial_meses',
     # modifica_polizas bloquea todos los campos de pólizas del contrato
 }
 
@@ -157,6 +162,8 @@ LABELS_CAMPOS = {
     'valor_asegurado_todo_riesgo':              'Valor Asegurado Todo Riesgo',
     'exige_poliza_otra_1':                      'Exige Otra Póliza',
     'nombre_poliza_otra_1':                     'Nombre Otra Póliza',
+    # Contrato — prórroga
+    'prorroga_automatica':                      'Prórroga Automática',
     # OtroSí
     'nuevo_valor_canon':                        'Nuevo Valor Canon',
     'nueva_modalidad_pago':                     'Nueva Modalidad de Pago',
@@ -169,4 +176,6 @@ LABELS_CAMPOS = {
     'nueva_periodicidad_ipc':                   'Nueva Periodicidad IPC',
     'nueva_fecha_aumento_ipc':                  'Nueva Fecha Aumento IPC',
     'modifica_polizas':                         'Modifica Pólizas',
+    'nueva_prorroga_automatica':                'Nueva Prórroga Automática',
+    'nueva_duracion_renovacion_meses':          'Nueva Duración de Renovación (Meses)',
 }
