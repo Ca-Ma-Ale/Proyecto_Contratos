@@ -2169,25 +2169,27 @@ class CalculoIPCForm(BaseForm):
                         f'Para la fecha seleccionada, el contrato no está activo.'
                     )
             
-            # Validar que la fecha de aplicación coincida exactamente con la fecha proyectada
-            from gestion.utils_ipc import calcular_proxima_fecha_aumento
+            # Validar que día y mes de la fecha de aplicación coincidan con la fecha de aumento IPC
+            # (el año no se valida para permitir iniciar cálculos desde cualquier año)
             from gestion.utils_otrosi import get_ultimo_otrosi_que_modifico_campo_hasta_fecha
-            
-            fecha_referencia = date.today()
-            fecha_proyectada = calcular_proxima_fecha_aumento(contrato, fecha_referencia)
-            
-            if fecha_proyectada:
-                diferencia_dias = abs((fecha_aplicacion - fecha_proyectada).days)
-                if diferencia_dias > 0:
-                    fecha_proyectada_str = fecha_proyectada.strftime("%d/%m/%Y")
-                    fecha_aplicacion_str = fecha_aplicacion.strftime("%d/%m/%Y")
+
+            otrosi_fecha_ipc = get_ultimo_otrosi_que_modifico_campo_hasta_fecha(
+                contrato, 'nueva_fecha_aumento_ipc', fecha_aplicacion
+            )
+            if otrosi_fecha_ipc and otrosi_fecha_ipc.nueva_fecha_aumento_ipc:
+                fecha_aumento_ref = otrosi_fecha_ipc.nueva_fecha_aumento_ipc
+            else:
+                fecha_aumento_ref = contrato.fecha_aumento_ipc
+
+            if fecha_aumento_ref:
+                if fecha_aplicacion.month != fecha_aumento_ref.month or fecha_aplicacion.day != fecha_aumento_ref.day:
                     self.add_error(
                         'fecha_aplicacion',
-                        f'La fecha de aplicación ({fecha_aplicacion_str}) debe coincidir exactamente con la fecha proyectada '
-                        f'({fecha_proyectada_str}). No se permite ningún margen de diferencia. '
-                        f'Si necesita ajustar en una fecha diferente, debe modificar la fecha de aumento en el contrato u otro sí.'
+                        f'El día y mes de la fecha de aplicación deben coincidir con la fecha de aumento IPC '
+                        f'del contrato ({fecha_aumento_ref.strftime("%d/%m")}). '
+                        f'El año puede ser cualquier año a partir del inicio del contrato.'
                     )
-            
+
             # Si no es manual, obtener el canon automáticamente
             if not canon_anterior_manual and not canon_anterior:
                 from gestion.utils_ipc import obtener_canon_base_para_ipc
@@ -2678,22 +2680,25 @@ class CalculoSalarioMinimoForm(BaseForm):
                         f'Para la fecha seleccionada, el contrato no está activo.'
                     )
             
-            # Validar que la fecha de aplicación coincida exactamente con la fecha proyectada
-            from gestion.utils_ipc import calcular_proxima_fecha_aumento
-            
-            fecha_referencia = date.today()
-            fecha_proyectada = calcular_proxima_fecha_aumento(contrato, fecha_referencia)
-            
-            if fecha_proyectada:
-                diferencia_dias = abs((fecha_aplicacion - fecha_proyectada).days)
-                if diferencia_dias > 0:
-                    fecha_proyectada_str = fecha_proyectada.strftime("%d/%m/%Y")
-                    fecha_aplicacion_str = fecha_aplicacion.strftime("%d/%m/%Y")
+            # Validar que día y mes de la fecha de aplicación coincidan con la fecha de aumento IPC
+            # (el año no se valida para permitir iniciar cálculos desde cualquier año)
+            from gestion.utils_otrosi import get_ultimo_otrosi_que_modifico_campo_hasta_fecha
+
+            otrosi_fecha_smlv = get_ultimo_otrosi_que_modifico_campo_hasta_fecha(
+                contrato, 'nueva_fecha_aumento_ipc', fecha_aplicacion
+            )
+            if otrosi_fecha_smlv and otrosi_fecha_smlv.nueva_fecha_aumento_ipc:
+                fecha_aumento_ref = otrosi_fecha_smlv.nueva_fecha_aumento_ipc
+            else:
+                fecha_aumento_ref = contrato.fecha_aumento_ipc
+
+            if fecha_aumento_ref:
+                if fecha_aplicacion.month != fecha_aumento_ref.month or fecha_aplicacion.day != fecha_aumento_ref.day:
                     self.add_error(
                         'fecha_aplicacion',
-                        f'La fecha de aplicación ({fecha_aplicacion_str}) debe coincidir exactamente con la fecha proyectada '
-                        f'({fecha_proyectada_str}). No se permite ningún margen de diferencia. '
-                        f'Si necesita ajustar en una fecha diferente, debe modificar la fecha de aumento en el contrato u otro sí.'
+                        f'El día y mes de la fecha de aplicación deben coincidir con la fecha de aumento IPC '
+                        f'del contrato ({fecha_aumento_ref.strftime("%d/%m")}). '
+                        f'El año puede ser cualquier año a partir del inicio del contrato.'
                     )
         
         # Si no es manual y no hay canon, obtenerlo automáticamente
