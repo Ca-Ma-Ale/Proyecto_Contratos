@@ -379,19 +379,9 @@ def get_ultimo_otrosi_que_modifico_campo_hasta_fecha(contrato, campo_nombre, fec
             # Para strings, verificar que no esté vacío
             elif isinstance(valor, str) and valor.strip() != '':
                 return evento
-            # Para Decimal, verificar que no sea 0 (0 puede indicar que no se modificó)
-            elif isinstance(valor, (Decimal, int, float)):
-                # Convertir a Decimal para comparación
-                try:
-                    valor_decimal = Decimal(str(valor)) if valor is not None else None
-                    # Para campos financieros, 0 generalmente significa que no se modificó
-                    # Solo retornar si el valor es diferente de 0
-                    if valor_decimal is not None and valor_decimal != Decimal('0'):
-                        return evento
-                except (ValueError, TypeError):
-                    # Si no se puede convertir a Decimal, tratar como valor válido
-                    return evento
-            # Para otros tipos (date), si no es None, es válido
+            # Para Decimal, int, float y otros tipos (date), si no es None, es válido.
+            # None significa "campo no modificado por este OtroSí"; 0 es un valor
+            # explícito y válido (ej: nuevos_puntos_adicionales_ipc = 0).
             elif not isinstance(valor, str):
                 return evento
     
@@ -553,21 +543,10 @@ def get_vista_vigente_contrato(contrato, fecha_referencia=None):
                         if isinstance(valor_anterior, str):
                             if valor_anterior.strip() != '':
                                 return valor_anterior
-                        # Para Decimal y otros tipos numéricos, verificar que no sea 0
+                        # Para Decimal y otros tipos numéricos, si no es None es válido
+                        # (None = no modificado; 0 = explícitamente puesto en 0)
                         else:
-                            from decimal import Decimal
-                            try:
-                                if isinstance(valor_anterior, Decimal):
-                                    if valor_anterior != Decimal('0'):
-                                        return valor_anterior
-                                else:
-                                    # Intentar convertir a Decimal
-                                    valor_decimal = Decimal(str(valor_anterior))
-                                    if valor_decimal != Decimal('0'):
-                                        return valor_anterior
-                            except (ValueError, TypeError):
-                                # Si no se puede convertir, retornar el valor tal cual
-                                return valor_anterior
+                            return valor_anterior
             except Exception:
                 # Si hay error al buscar Otro Sí anterior, usar valor del contrato base
                 pass
@@ -604,14 +583,9 @@ def get_vista_vigente_contrato(contrato, fecha_referencia=None):
                 # Para strings, verificar que no esté vacío
                 if isinstance(valor, str) and valor.strip() != '':
                     return valor, otrosi_modificador
-                # Para Decimal y otros tipos numéricos, verificar que no sea 0
+                # Para Decimal y otros tipos numéricos, si no es None es válido
+                # (None = no modificado; 0 = explícitamente puesto en 0)
                 elif not isinstance(valor, str):
-                    from decimal import Decimal
-                    # Si es Decimal, verificar que no sea 0
-                    if isinstance(valor, Decimal) and valor == Decimal('0'):
-                        # Si el Otro Sí tiene 0, usar el valor del contrato base
-                        return valor_contrato, None
-                    # Para otros tipos numéricos o valores válidos, retornar el valor del Otro Sí
                     return valor, otrosi_modificador
         
         # Si no hay Otro Sí que lo modificó o el Otro Sí no tiene valor válido, usar valor del contrato
