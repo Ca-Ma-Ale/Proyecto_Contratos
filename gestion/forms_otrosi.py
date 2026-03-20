@@ -67,11 +67,11 @@ class OtroSiForm(BaseModelForm):
     )
     nueva_duracion_renovacion_meses = forms.IntegerField(
         required=False,
-        min_value=1,
         widget=forms.NumberInput(attrs={
             'class': 'form-control',
             'id': 'id_nueva_duracion_renovacion_meses',
             'placeholder': 'Ej: 12',
+            'min': '1',
         }),
         label='Duración de Cada Renovación (Meses)',
         help_text='Solo aplica al activar la prórroga. Si se omite, se usa la duración inicial del contrato.',
@@ -430,6 +430,9 @@ class OtroSiForm(BaseModelForm):
         prorroga_raw = self.data.get('nueva_prorroga_automatica', '')
         if valor is not None and prorroga_raw != 'activar':
             return None
+        # Validar >= 1 solo cuando se está activando la prórroga
+        if prorroga_raw == 'activar' and valor is not None and valor < 1:
+            raise forms.ValidationError('Asegúrese de que este valor sea mayor o igual a 1.')
         return valor
 
     def save(self, commit=True):
