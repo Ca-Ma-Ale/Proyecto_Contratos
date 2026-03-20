@@ -177,6 +177,14 @@ def eliminar_salario_minimo_historico(request, smlv_id):
 @login_required_custom
 def calcular_salario_minimo(request):
     """Vista para calcular el ajuste de canon por Salario Mínimo"""
+    # Obtener contrato_id y año disponibles en GET y POST
+    if request.method == 'POST':
+        contrato_id = request.POST.get('contrato')
+        año = request.POST.get('año_aplicacion', date.today().year)
+    else:
+        contrato_id = request.GET.get('contrato')
+        año = request.GET.get('año', date.today().year)
+
     if request.method == 'POST':
         form = CalculoSalarioMinimoForm(request.POST, user=request.user)
         accion = request.POST.get('accion', 'calcular')
@@ -604,9 +612,6 @@ def calcular_salario_minimo(request):
             from gestion.utils import agregar_errores_formulario_a_mensajes
             agregar_errores_formulario_a_mensajes(request, form)
     else:
-        contrato_id = request.GET.get('contrato')
-        año = request.GET.get('año', date.today().year)
-        
         form = CalculoSalarioMinimoForm(user=request.user, contrato_initial=contrato_id)
         
         # Establecer fecha de aplicación por defecto como fecha actual

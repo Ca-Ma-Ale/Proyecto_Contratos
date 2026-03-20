@@ -199,6 +199,14 @@ def eliminar_ipc_historico(request, ipc_id):
 @login_required_custom
 def calcular_ipc(request):
     """Vista para calcular el ajuste de canon por IPC"""
+    # Obtener contrato_id y año disponibles en GET y POST
+    if request.method == 'POST':
+        contrato_id = request.POST.get('contrato')
+        año = request.POST.get('año_aplicacion', date.today().year)
+    else:
+        contrato_id = request.GET.get('contrato')
+        año = request.GET.get('año', date.today().year)
+
     if request.method == 'POST':
         form = CalculoIPCForm(request.POST, user=request.user)
         accion = request.POST.get('accion', 'calcular')  # 'calcular' o 'guardar'
@@ -616,9 +624,6 @@ def calcular_ipc(request):
             from gestion.utils import agregar_errores_formulario_a_mensajes
             agregar_errores_formulario_a_mensajes(request, form)
     else:
-        contrato_id = request.GET.get('contrato')
-        año = request.GET.get('año', date.today().year)
-        
         form = CalculoIPCForm(
             contrato_initial=contrato_id,
             año_initial=año,
