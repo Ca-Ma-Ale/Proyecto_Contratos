@@ -8,7 +8,7 @@ from .models import (
 )
 from datetime import date
 from .utils_formateo import limpiar_valor_numerico, limpiar_datos_post_numericos
-from .forms import BaseModelForm
+from .forms import BaseModelForm, URLFlexibleField
 
 
 class DateInputHTML5(forms.DateInput):
@@ -42,7 +42,8 @@ class DateInputHTML5(forms.DateInput):
 
 class OtroSiForm(BaseModelForm):
     """Formulario para crear/editar Otro Sí"""
-    
+    url_archivo = URLFlexibleField()
+
     # Opciones de modalidad de pago (iguales a las del modelo Contrato)
     MODALIDAD_CHOICES = [
         ('', '---------'),
@@ -533,7 +534,7 @@ class OtroSiForm(BaseModelForm):
         
         # Configurar widget para url_archivo
         if 'url_archivo' in self.fields:
-            self.fields['url_archivo'].widget = forms.URLInput(attrs={'class': 'form-control', 'placeholder': 'https://...'})
+            self.fields['url_archivo'].widget = forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'https://...'})
         for field_name in fecha_fields:
             if field_name in self.fields:
                 self.fields[field_name].input_formats = ['%Y-%m-%d']

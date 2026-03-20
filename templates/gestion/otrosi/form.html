@@ -1236,7 +1236,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     </style>
 
-    <form method="post" action="" id="form-otrosi" onsubmit="if(typeof syncModificarPlazos === 'function') syncModificarPlazos(); if(typeof cleanFormValues === 'function') cleanFormValues(); return true;">
+    <form method="post" action="" id="form-otrosi" novalidate onsubmit="if(typeof syncModificarPlazos === 'function') syncModificarPlazos(); if(typeof cleanFormValues === 'function') cleanFormValues(); return true;">
         {% csrf_token %}
 
         <!-- Advertencia si se edita Otro Sí APROBADO -->

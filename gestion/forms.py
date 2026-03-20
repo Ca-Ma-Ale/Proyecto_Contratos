@@ -26,6 +26,24 @@ from gestion.utils_otrosi import (
 )
 
 
+class URLFlexibleField(forms.CharField):
+    """
+    Campo URL que acepta URLs de intranets (hostnames sin dominio, puertos como documentos:8080),
+    fragmentos (#...), caracteres codificados (%7C, %2F, etc.) y protocolos no estándar (workspace://).
+    No usa URLValidator estricto de Django — solo valida longitud y que no sea código malicioso.
+    """
+    widget = forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'https://...'})
+
+    def __init__(self, *args, **kwargs):
+        kwargs.setdefault('required', False)
+        kwargs.setdefault('max_length', 500)
+        super().__init__(*args, **kwargs)
+
+    def to_python(self, value):
+        value = super().to_python(value)
+        return value.strip() if value else value
+
+
 def sanitizar_texto(texto):
     """
     Sanitiza texto removiendo HTML y scripts potencialmente peligrosos.
@@ -249,6 +267,7 @@ class BaseForm(forms.Form):
         return cleaned_data
 
 class ContratoForm(BaseModelForm):
+    url_archivo = URLFlexibleField()
     seguimiento_general = forms.CharField(
         required=False,
         label='Seguimiento general del contrato',
@@ -313,7 +332,6 @@ class ContratoForm(BaseModelForm):
             'fecha_inicio_vigencia_otra_1': forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d'),
             'fecha_fin_vigencia_otra_1': forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d'),
             'fecha_aumento_ipc': forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d'),
-            'url_archivo': forms.URLInput(attrs={'class': 'form-control', 'placeholder': 'https://...'}),
             # Campos monetarios con formateo automático
             'canon_minimo_garantizado': forms.TextInput(attrs={'class': 'money-input'}),
             'valor_asegurado_rce': forms.TextInput(attrs={'class': 'money-input'}),
@@ -825,6 +843,7 @@ RequerimientoPolizaFormSet = inlineformset_factory(
 )
 
 class PolizaForm(BaseModelForm):
+    url_archivo = URLFlexibleField()
     # Campo para seleccionar documento origen
     documento_origen = forms.ChoiceField(
         required=True,
@@ -856,7 +875,6 @@ class PolizaForm(BaseModelForm):
             'fecha_vencimiento': forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d'),
             'valor_asegurado': forms.TextInput(attrs={'class': 'money-input'}),
             'valor_propietario_locatario_ocupante_rce': forms.TextInput(attrs={'class': 'money-input'}),
-            'url_archivo': forms.URLInput(attrs={'class': 'form-control', 'placeholder': 'https://...'}),
             'valor_patronal_rce': forms.TextInput(attrs={'class': 'money-input'}),
             'valor_gastos_medicos_rce': forms.TextInput(attrs={'class': 'money-input'}),
             'valor_vehiculos_rce': forms.TextInput(attrs={'class': 'money-input'}),
@@ -1339,7 +1357,8 @@ class FiltroExportacionContratosForm(BaseForm):
 
 class InformeVentasForm(BaseModelForm):
     """Formulario para crear y editar informes de ventas"""
-    
+    url_archivo = URLFlexibleField()
+
     class Meta:
         model = InformeVentas
         fields = ['contrato', 'mes', 'año', 'observaciones', 'url_archivo']
@@ -1348,7 +1367,6 @@ class InformeVentasForm(BaseModelForm):
             'mes': forms.Select(attrs={'class': 'form-select'}),
             'año': forms.NumberInput(attrs={'class': 'form-control', 'min': 2000, 'max': 2100}),
             'observaciones': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
-            'url_archivo': forms.URLInput(attrs={'class': 'form-control', 'placeholder': 'https://...'}),
         }
     
     def __init__(self, *args, **kwargs):
@@ -2841,6 +2859,7 @@ class EditarCalculoSalarioMinimoForm(BaseModelForm):
 
 class FinalizacionContratoForm(forms.ModelForm):
     """Formulario para registrar la terminación formal de un contrato."""
+    url_documento_soporte = URLFlexibleField()
 
     class Meta:
         model = FinalizacionContrato
@@ -2880,7 +2899,6 @@ class FinalizacionContratoForm(forms.ModelForm):
                 'rows': 4,
                 'placeholder': 'Obligaciones residuales, compromisos de confidencialidad, devolución de activos, penalidades u otras notas legales...',
             }),
-            'url_documento_soporte': forms.URLInput(attrs={'class': 'form-control', 'placeholder': 'https://...'}),
         }
 
     def clean(self):
