@@ -2351,6 +2351,60 @@ document.addEventListener('DOMContentLoaded', function() {
         tienePeriodoGracia.addEventListener('change', togglePeriodoGracia);
         togglePeriodoGracia(); // Estado inicial
     }
+
+    // Reporta Ventas, porcentaje y día límite no aplican si modalidad es Fijo
+    const modalidadPagoSelect = document.getElementById('{{ form.modalidad_pago.id_for_label }}');
+    const reportaVentasCheckbox = document.getElementById('{{ form.reporta_ventas.id_for_label }}');
+    const porcentajeVentasField = document.getElementById('{{ form.porcentaje_ventas.id_for_label }}');
+    const diaLimiteReporteField = document.getElementById('{{ form.dia_limite_reporte_ventas.id_for_label }}');
+    function actualizarReportaVentasPorModalidad() {
+        if (!modalidadPagoSelect) return;
+        const modalidad = modalidadPagoSelect.value;
+        const camposCliente = document.getElementById('campos-opciones-cliente');
+        const esFijoYCliente = modalidad === 'Fijo' && camposCliente && camposCliente.offsetParent !== null;
+        if (esFijoYCliente) {
+            if (reportaVentasCheckbox) {
+                reportaVentasCheckbox.checked = false;
+                reportaVentasCheckbox.disabled = true;
+                reportaVentasCheckbox.title = 'No aplica con modalidad Fijo. Solo Variable Puro o Híbrido.';
+            }
+            if (porcentajeVentasField) {
+                porcentajeVentasField.value = '';
+                porcentajeVentasField.disabled = true;
+                porcentajeVentasField.title = 'No aplica con modalidad Fijo.';
+                porcentajeVentasField.style.backgroundColor = '#e9ecef';
+                porcentajeVentasField.style.cursor = 'not-allowed';
+            }
+            if (diaLimiteReporteField) {
+                diaLimiteReporteField.value = '';
+                diaLimiteReporteField.disabled = true;
+                diaLimiteReporteField.title = 'No aplica con modalidad Fijo.';
+                diaLimiteReporteField.style.backgroundColor = '#e9ecef';
+                diaLimiteReporteField.style.cursor = 'not-allowed';
+            }
+        } else {
+            if (reportaVentasCheckbox) {
+                reportaVentasCheckbox.disabled = false;
+                reportaVentasCheckbox.title = '';
+            }
+            if (porcentajeVentasField) {
+                porcentajeVentasField.disabled = false;
+                porcentajeVentasField.title = '';
+                porcentajeVentasField.style.backgroundColor = '';
+                porcentajeVentasField.style.cursor = '';
+            }
+            if (diaLimiteReporteField) {
+                diaLimiteReporteField.disabled = false;
+                diaLimiteReporteField.title = '';
+                diaLimiteReporteField.style.backgroundColor = '';
+                diaLimiteReporteField.style.cursor = '';
+            }
+        }
+    }
+    if (modalidadPagoSelect) {
+        modalidadPagoSelect.addEventListener('change', actualizarReportaVentasPorModalidad);
+        actualizarReportaVentasPorModalidad();
+    }
     
     // Funcionalidad IPC
     const periodicidadIpc = document.getElementById('{{ form.periodicidad_ipc.id_for_label }}');
@@ -2586,6 +2640,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Limpiar campos de proveedor (usar variables ya declaradas arriba)
                 if (proveedorField) proveedorField.value = '';
                 if (tipoServicioField) tipoServicioField.value = '';
+
+                if (typeof actualizarReportaVentasPorModalidad === 'function') {
+                    actualizarReportaVentasPorModalidad();
+                }
             } else if (valor === 'PROVEEDOR') {
                 // Mostrar campos de proveedor
                 if (camposCliente) camposCliente.style.display = 'none';
