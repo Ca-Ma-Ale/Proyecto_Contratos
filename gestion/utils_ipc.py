@@ -476,9 +476,35 @@ def calcular_proxima_fecha_aumento(contrato, fecha_referencia=None):
             fecha_base = otrosi_fecha_ipc.nueva_fecha_aumento_ipc
         else:
             fecha_base = contrato.fecha_aumento_ipc
-        
+
         if fecha_base:
-            return fecha_base
+            # Si hay cálculos previos, avanzar desde el último +1 año (igual que ANUAL)
+            from gestion.models import CalculoSalarioMinimo
+            ultimo_ipc = CalculoIPC.objects.filter(
+                contrato=contrato
+            ).order_by('-fecha_aplicacion', '-fecha_calculo').first()
+            ultimo_salario = CalculoSalarioMinimo.objects.filter(
+                contrato=contrato
+            ).order_by('-fecha_aplicacion', '-fecha_calculo').first()
+
+            ultimo_calculo = None
+            if ultimo_ipc and ultimo_salario:
+                ultimo_calculo = ultimo_ipc if ultimo_ipc.fecha_aplicacion >= ultimo_salario.fecha_aplicacion else ultimo_salario
+            elif ultimo_ipc:
+                ultimo_calculo = ultimo_ipc
+            elif ultimo_salario:
+                ultimo_calculo = ultimo_salario
+
+            if ultimo_calculo:
+                f = ultimo_calculo.fecha_aplicacion
+                return date(f.year + 1, f.month, f.day)
+
+            # Sin cálculos: misma lógica que ANUAL — ocurrencia más reciente (pasada o futura)
+            candidato = date(fecha_referencia.year, fecha_base.month, fecha_base.day)
+            if candidato <= fecha_referencia:
+                return candidato
+            candidato_anterior = date(fecha_referencia.year - 1, fecha_base.month, fecha_base.day)
+            return candidato_anterior if candidato_anterior >= fecha_base else fecha_base
     
     return None
 
