@@ -533,7 +533,7 @@ class Contrato(models.Model):
         verbose_name='Fecha de Eliminación',
         help_text='Fecha y hora de eliminación del contrato'
     )
-    url_archivo = models.URLField(
+    url_archivo = models.CharField(
         max_length=500,
         blank=True,
         null=True,
@@ -818,7 +818,7 @@ class Poliza(PolizaMixin, AuditoriaMixin):
     cobertura = models.CharField(max_length=200, blank=True, null=True, verbose_name='Características de la Póliza')
     condiciones = models.TextField(blank=True, null=True, verbose_name='Condiciones de la Póliza')
     garantias = models.TextField(blank=True, null=True, verbose_name='Cláusulas de Garantías')
-    url_archivo = models.URLField(
+    url_archivo = models.CharField(
         max_length=500,
         blank=True,
         null=True,
@@ -1783,7 +1783,7 @@ class OtroSi(models.Model):
         verbose_name='Fecha de Eliminación',
         help_text='Fecha y hora de eliminación del Otro Sí'
     )
-    url_archivo = models.URLField(
+    url_archivo = models.CharField(
         max_length=500,
         blank=True,
         null=True,
@@ -1976,7 +1976,7 @@ class InformeVentas(models.Model):
         auto_now=True,
         verbose_name='Fecha de actualización'
     )
-    url_archivo = models.URLField(
+    url_archivo = models.CharField(
         max_length=500,
         blank=True,
         null=True,
@@ -3809,7 +3809,8 @@ class FinalizacionContrato(models.Model):
         verbose_name='Observaciones Legales / Compromisos Post-Terminación',
         help_text='Obligaciones residuales, compromisos de confidencialidad, devolución de activos u otras notas legales relevantes.',
     )
-    url_documento_soporte = models.URLField(
+    url_documento_soporte = models.CharField(
+        max_length=500,
         blank=True,
         null=True,
         verbose_name='URL Documento de Soporte',
