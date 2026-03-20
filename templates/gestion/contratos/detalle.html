@@ -288,7 +288,7 @@
                                 <tr>
                                     <td><strong>% Ventas:</strong></td>
                                     <td>
-                                        <span class="formato-porcentaje">{{ porcentaje_ventas|default:contrato.porcentaje_ventas|floatformat:0 }}</span>%
+                                        <span class="formato-porcentaje">{% if porcentaje_ventas is not None %}{{ porcentaje_ventas|floatformat:0 }}{% else %}{{ contrato.porcentaje_ventas|floatformat:0 }}{% endif %}</span>%
                                         {% if otrosi_modificadores.nuevo_porcentaje_ventas %}
                                             <span class="badge bg-info ms-2" title="Del documento {% if otrosi_modificadores.nuevo_porcentaje_ventas.numero_otrosi %}{{ otrosi_modificadores.nuevo_porcentaje_ventas.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_porcentaje_ventas.numero_renovacion }}{% endif %}">
                                                 <i class="fas {% if otrosi_modificadores.nuevo_porcentaje_ventas.numero_otrosi %}fa-file-signature{% else %}fa-sync-alt{% endif %}"></i> {% if otrosi_modificadores.nuevo_porcentaje_ventas.numero_otrosi %}{{ otrosi_modificadores.nuevo_porcentaje_ventas.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevo_porcentaje_ventas.numero_renovacion }}{% endif %}
@@ -374,7 +374,7 @@
                                 <tr>
                                     <td><strong>Puntos Adicionales:</strong></td>
                                     <td>
-                                        + {{ puntos_adicionales_ipc|default:contrato.puntos_adicionales_ipc|floatformat:2 }} puntos
+                                        + {% if puntos_adicionales_ipc is not None %}{{ puntos_adicionales_ipc|floatformat:2 }}{% else %}{{ contrato.puntos_adicionales_ipc|floatformat:2 }}{% endif %} puntos
                                         {% if otrosi_modificadores.nuevos_puntos_adicionales_ipc %}
                                             <span class="badge bg-info ms-2" title="Del documento {% if otrosi_modificadores.nuevos_puntos_adicionales_ipc.numero_otrosi %}{{ otrosi_modificadores.nuevos_puntos_adicionales_ipc.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevos_puntos_adicionales_ipc.numero_renovacion }}{% endif %}">
                                                 <i class="fas {% if otrosi_modificadores.nuevos_puntos_adicionales_ipc.numero_otrosi %}fa-file-signature{% else %}fa-sync-alt{% endif %}"></i> {% if otrosi_modificadores.nuevos_puntos_adicionales_ipc.numero_otrosi %}{{ otrosi_modificadores.nuevos_puntos_adicionales_ipc.numero_otrosi }}{% else %}{{ otrosi_modificadores.nuevos_puntos_adicionales_ipc.numero_renovacion }}{% endif %}

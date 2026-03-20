@@ -471,6 +471,18 @@ document.addEventListener('DOMContentLoaded', function() {
                     checkbox.checked = true;
                     checkboxMarcadoAutomaticamente = true;
                 }
+            } else if (config.checkbox === 'modificar_condiciones_ipc') {
+                const nuevoTipoIpc = document.querySelector('select[name="nuevo_tipo_condicion_ipc"]');
+                const nuevosPuntosIpc = document.getElementById('{{ form.nuevos_puntos_adicionales_ipc.id_for_label }}');
+                const nuevaPeriodicidad = document.querySelector('select[name="nueva_periodicidad_ipc"]');
+                const nuevaFechaAumento = document.getElementById('{{ form.nueva_fecha_aumento_ipc.id_for_label }}');
+                if ((nuevoTipoIpc && nuevoTipoIpc.value) ||
+                    (nuevosPuntosIpc && nuevosPuntosIpc.value) ||
+                    (nuevaPeriodicidad && nuevaPeriodicidad.value) ||
+                    (nuevaFechaAumento && nuevaFechaAumento.value)) {
+                    checkbox.checked = true;
+                    checkboxMarcadoAutomaticamente = true;
+                }
             }
             {% endif %}
             

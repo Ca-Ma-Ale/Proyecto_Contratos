@@ -715,8 +715,8 @@ def detalle_contrato(request, contrato_id):
             if valor_antes_otrosi is None:
                 return True  # Si no había valor antes pero el Otro Sí sí tiene, fue modificado
             try:
-                valor_antes_decimal = Decimal(str(valor_antes_otrosi)) if valor_antes_otrosi else None
-                valor_otrosi_decimal = Decimal(str(valor_otrosi)) if valor_otrosi else None
+                valor_antes_decimal = Decimal(str(valor_antes_otrosi)) if valor_antes_otrosi is not None else None
+                valor_otrosi_decimal = Decimal(str(valor_otrosi)) if valor_otrosi is not None else None
                 if valor_antes_decimal is None and valor_otrosi_decimal is not None:
                     return True
                 if valor_antes_decimal is not None and valor_otrosi_decimal is None:
