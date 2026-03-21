@@ -263,11 +263,11 @@ def calcular_ipc(request):
                 año_aplicacion=otrosi_effective_from.year,
                 fecha_aplicacion=otrosi_effective_from,
                 ipc_historico=ipc_historico,
-                canon_anterior=canon_anterior,
+                canon_anterior=canon_anterior.quantize(Decimal('0.01')),
                 canon_anterior_manual=False,
                 fuente_canon_anterior=fuente_canon_anterior,
                 puntos_adicionales=puntos_adicionales,
-                porcentaje_total_aplicar=porcentaje_total.quantize(Decimal('0.0001')),
+                porcentaje_total_aplicar=porcentaje_total.quantize(Decimal('0.01')),
                 valor_incremento=valor_incremento.quantize(Decimal('0.01')),
                 nuevo_canon=nuevo_canon_final.quantize(Decimal('0.01')),
                 periodicidad_contrato=contrato.periodicidad_ipc,
@@ -595,13 +595,13 @@ def calcular_ipc(request):
                     año_aplicacion=fecha_aplicacion.year,
                     fecha_aplicacion=fecha_aplicacion,
                     ipc_historico=ipc_historico,
-                    canon_anterior=canon_anterior,
+                    canon_anterior=Decimal(str(canon_anterior)).quantize(Decimal('0.01')),
                     canon_anterior_manual=canon_anterior_manual,
                     fuente_canon_anterior=canon_info.get('fuente', 'Automático'),
                     puntos_adicionales=puntos_adicionales,
-                    porcentaje_total_aplicar=resultado['porcentaje_total'],
-                    valor_incremento=resultado['valor_incremento'],
-                    nuevo_canon=resultado['nuevo_canon'],
+                    porcentaje_total_aplicar=Decimal(str(resultado['porcentaje_total'])).quantize(Decimal('0.01')),
+                    valor_incremento=Decimal(str(resultado['valor_incremento'])).quantize(Decimal('0.01')),
+                    nuevo_canon=Decimal(str(resultado['nuevo_canon'])).quantize(Decimal('0.01')),
                     periodicidad_contrato=contrato.periodicidad_ipc,
                     fecha_aumento_contrato=contrato.fecha_aumento_ipc,
                     observaciones=observaciones_finales,
@@ -797,13 +797,13 @@ def confirmar_calculo_ipc(request):
             año_aplicacion=fecha_aplicacion.year,
             fecha_aplicacion=fecha_aplicacion,
             ipc_historico=ipc_historico,
-            canon_anterior=canon_anterior,
+            canon_anterior=canon_anterior.quantize(Decimal('0.01')),
             canon_anterior_manual=True,
             fuente_canon_anterior=canon_info.get('fuente', 'Manual (Usuario)'),
             puntos_adicionales=puntos_adicionales,
-            porcentaje_total_aplicar=resultado['porcentaje_total'],
-            valor_incremento=resultado['valor_incremento'],
-            nuevo_canon=resultado['nuevo_canon'],
+            porcentaje_total_aplicar=Decimal(str(resultado['porcentaje_total'])).quantize(Decimal('0.01')),
+            valor_incremento=Decimal(str(resultado['valor_incremento'])).quantize(Decimal('0.01')),
+            nuevo_canon=Decimal(str(resultado['nuevo_canon'])).quantize(Decimal('0.01')),
             periodicidad_contrato=contrato.periodicidad_ipc,
             fecha_aumento_contrato=contrato.fecha_aumento_ipc,
             observaciones=observaciones,
@@ -1036,6 +1036,8 @@ def obtener_canon_anterior_ajax(request):
                 }, status=404)
         except Contrato.DoesNotExist:
             return JsonResponse({'error': 'Contrato no encontrado'}, status=404)
+        except ValueError:
+            return JsonResponse({'error': 'Fecha inválida'}, status=400)
         except Exception as e:
             import logging
             logger = logging.getLogger(__name__)
@@ -1071,3 +1073,31 @@ def otrosi_legalizables_ipc_ajax(request):
         return JsonResponse({'otrosi': otrosi_list, 'hay_otrosi': bool(otrosi_list), 'año': año})
     except (Contrato.DoesNotExist, ValueError):
         return JsonResponse({'otrosi': [], 'hay_otrosi': False})
+
+
+@login_required_custom
+def ipc_historico_por_anio_ajax(request):
+    """
+    Retorna el registro de IPCHistorico correspondiente al año anterior a la fecha dada.
+    Ej: si fecha_aplicacion es 2025-03-01, retorna el IPC del año 2024.
+    """
+    fecha_str = request.GET.get('fecha_aplicacion')
+    if not fecha_str:
+        return JsonResponse({'encontrado': False})
+
+    try:
+        año_aplicacion = date.fromisoformat(fecha_str).year
+        año_ipc = año_aplicacion - 1
+        ipc = IPCHistorico.objects.get(año=año_ipc)
+        return JsonResponse({
+            'encontrado': True,
+            'id': ipc.id,
+            'año': ipc.año,
+            'valor_ipc': str(ipc.valor_ipc),
+            'label': str(ipc),
+        })
+    except IPCHistorico.DoesNotExist:
+        año_ipc = date.fromisoformat(fecha_str).year - 1
+        return JsonResponse({'encontrado': False, 'año_requerido': año_ipc})
+    except ValueError:
+        return JsonResponse({'encontrado': False})

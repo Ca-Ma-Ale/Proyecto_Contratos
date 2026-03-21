@@ -98,6 +98,7 @@ urlpatterns = [
     path('ipc/contratos-pendientes/', views.contratos_pendientes_ipc, name='contratos_pendientes_ipc'),
     path('ipc/ajax/obtener-canon-anterior/', views.obtener_canon_anterior_ajax, name='obtener_canon_anterior_ajax'),
     path('ipc/ajax/otrosi-legalizables/', views.otrosi_legalizables_ipc_ajax, name='otrosi_legalizables_ipc_ajax'),
+    path('ipc/ajax/ipc-por-anio/', views.ipc_historico_por_anio_ajax, name='ipc_historico_por_anio_ajax'),
     # URLs de Configuración IPC
     path('ipc/configuracion/tipos/', views.lista_tipos_condicion_ipc, name='lista_tipos_condicion_ipc'),
     path('ipc/configuracion/tipos/nuevo/', views.nuevo_tipo_condicion_ipc, name='nuevo_tipo_condicion_ipc'),

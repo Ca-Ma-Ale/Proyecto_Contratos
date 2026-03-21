@@ -355,9 +355,9 @@ class ContratoForm(BaseModelForm):
             'valor_otros_arrendamiento': forms.TextInput(attrs={'class': 'money-input'}),
             'valor_asegurado_todo_riesgo': forms.TextInput(attrs={'class': 'money-input'}),
             'valor_asegurado_otra_1': forms.TextInput(attrs={'class': 'money-input'}),
-            'clausula_penal_incumplimiento': forms.TextInput(attrs={'class': 'money-input'}),
-            'penalidad_terminacion_anticipada': forms.TextInput(attrs={'class': 'money-input'}),
-            'multa_mora_no_restitucion': forms.TextInput(attrs={'class': 'money-input'}),
+            'clausula_penal_incumplimiento': forms.TextInput(attrs={'class': 'form-control'}),
+            'penalidad_terminacion_anticipada': forms.TextInput(attrs={'class': 'form-control'}),
+            'multa_mora_no_restitucion': forms.TextInput(attrs={'class': 'form-control'}),
             # Campos de coberturas RCE para PROVEEDOR
             'rce_cobertura_danos_materiales': forms.TextInput(attrs={'class': 'money-input'}),
             'rce_cobertura_lesiones_personales': forms.TextInput(attrs={'class': 'money-input'}),
@@ -536,8 +536,6 @@ class ContratoForm(BaseModelForm):
             'valor_asegurado_arrendamiento', 'valor_remuneraciones_arrendamiento',
             'valor_servicios_publicos_arrendamiento', 'valor_iva_arrendamiento',
             'valor_otros_arrendamiento', 'valor_asegurado_todo_riesgo', 'valor_asegurado_otra_1',
-            'clausula_penal_incumplimiento', 'penalidad_terminacion_anticipada',
-            'multa_mora_no_restitucion'
         ]
         return limpiar_datos_post_numericos(data, campos_numericos)
 
@@ -580,10 +578,8 @@ class ContratoForm(BaseModelForm):
             'valor_asegurado_arrendamiento', 'valor_remuneraciones_arrendamiento',
             'valor_servicios_publicos_arrendamiento', 'valor_iva_arrendamiento',
             'valor_otros_arrendamiento', 'valor_asegurado_todo_riesgo', 'valor_asegurado_otra_1',
-            'clausula_penal_incumplimiento', 'penalidad_terminacion_anticipada',
-            'multa_mora_no_restitucion'
         ]
-        
+
         for campo in campos_numericos:
             if campo in cleaned_data and cleaned_data[campo]:
                 try:
@@ -1944,7 +1940,8 @@ class CalculoIPCForm(BaseForm):
     )
     fecha_aplicacion = forms.DateField(
         label='Fecha de Aplicación',
-        widget=forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+        widget=forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}, format='%Y-%m-%d'),
+        input_formats=['%Y-%m-%d'],
         help_text='Fecha exacta en que se aplica el ajuste por IPC',
         required=True
     )
@@ -2027,22 +2024,19 @@ class CalculoIPCForm(BaseForm):
                     self.fields['ipc_historico'].widget = forms.HiddenInput()
                     self.fields['ipc_historico'].required = False
                 elif contrato_obj.tipo_condicion_ipc == 'IPC':
-                    # Si es IPC, cargar IPC histórico según año
+                    # Mostrar todos los IPC disponibles para que el JS pueda seleccionar
+                    # el correcto cuando el usuario cambie la fecha
+                    self.fields['ipc_historico'].queryset = IPCHistorico.objects.all().order_by('-año')
+                    # Pre-seleccionar el del año anterior según la fecha inicial
                     if fecha_aplicacion_initial:
                         año_requerido = fecha_aplicacion_initial.year - 1
                     elif año_initial:
                         año_requerido = int(año_initial) - 1
                     else:
-                        año_actual = timezone.now().year
-                        año_requerido = año_actual - 1
-                    
-                    queryset_ipc = IPCHistorico.objects.filter(año=año_requerido).order_by('-año')
-                    if queryset_ipc.exists():
-                        self.fields['ipc_historico'].queryset = queryset_ipc
-                        if not self.initial.get('ipc_historico'):
-                            self.initial['ipc_historico'] = queryset_ipc.first().id
-                    else:
-                        self.fields['ipc_historico'].queryset = IPCHistorico.objects.all().order_by('-año')
+                        año_requerido = timezone.now().year - 1
+                    ipc_inicial = IPCHistorico.objects.filter(año=año_requerido).first()
+                    if ipc_inicial and not self.initial.get('ipc_historico'):
+                        self.initial['ipc_historico'] = ipc_inicial.id
             except Contrato.DoesNotExist:
                 pass
         
@@ -2063,21 +2057,6 @@ class CalculoIPCForm(BaseForm):
                 except Contrato.DoesNotExist:
                     pass
         
-        # Actualizar queryset de IPC histórico si no se hizo antes
-        if not contrato_initial or (contrato_initial and not hasattr(self, '_ipc_queryset_set')):
-            if fecha_aplicacion_initial:
-                año_requerido = fecha_aplicacion_initial.year - 1
-                queryset_ipc = IPCHistorico.objects.filter(año=año_requerido).order_by('-año')
-            elif año_initial:
-                año_requerido = int(año_initial) - 1
-                queryset_ipc = IPCHistorico.objects.filter(año=año_requerido).order_by('-año')
-            else:
-                año_actual = timezone.now().year
-                queryset_ipc = IPCHistorico.objects.filter(año=año_actual - 1).order_by('-año')
-            if queryset_ipc.exists():
-                self.fields['ipc_historico'].queryset = queryset_ipc
-            else:
-                self.fields['ipc_historico'].queryset = IPCHistorico.objects.all().order_by('-año')
 
     def clean_canon_anterior(self):
         """Limpia y valida el canon anterior"""

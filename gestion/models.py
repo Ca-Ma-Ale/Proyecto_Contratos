@@ -486,9 +486,9 @@ class Contrato(models.Model):
     fecha_fin_vigencia_otra_1 = models.DateField(null=True, blank=True, verbose_name="Fecha Fin Vigencia Otras Pólizas")
     
     # Sanciones y Penalidades
-    clausula_penal_incumplimiento = models.DecimalField(max_digits=15, decimal_places=2, blank=True, null=True, verbose_name='Cláusula Penal por Incumplimiento')
-    penalidad_terminacion_anticipada = models.DecimalField(max_digits=15, decimal_places=2, blank=True, null=True, verbose_name='Penalidad por Terminación Anticipada')
-    multa_mora_no_restitucion = models.DecimalField(max_digits=15, decimal_places=2, blank=True, null=True, verbose_name='Multa por Mora en No Restitución')
+    clausula_penal_incumplimiento = models.TextField(blank=True, null=True, verbose_name='Cláusula Penal por Incumplimiento')
+    penalidad_terminacion_anticipada = models.TextField(blank=True, null=True, verbose_name='Penalidad por Terminación Anticipada')
+    multa_mora_no_restitucion = models.TextField(blank=True, null=True, verbose_name='Multa por Mora en No Restitución')
     
     # Relaciones
     arrendatario = models.ForeignKey('Tercero', on_delete=models.CASCADE, related_name='contratos_arrendatario', blank=True, null=True, verbose_name='Arrendatario')

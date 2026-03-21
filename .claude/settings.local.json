@@ -23,7 +23,15 @@
       "Bash(python -c \"import django; django.setup\\(\\); from gestion.forms import ContratoForm, PolizaForm, InformeVentasForm, FinalizacionContratoForm, URLFlexibleField; from gestion.forms_otrosi import OtroSiForm; print\\(''OK''\\)\")",
       "Bash(python -m django --version)",
       "Bash(py -m django --version)",
-      "Bash(DJANGO_SETTINGS_MODULE=contratos.settings venv/Scripts/python.exe -c \"import django; django.setup\\(\\); from gestion.forms import ContratoForm, PolizaForm, InformeVentasForm, FinalizacionContratoForm, URLFlexibleField; from gestion.forms_otrosi import OtroSiForm; print\\(''All forms imported OK''\\)\")"
+      "Bash(DJANGO_SETTINGS_MODULE=contratos.settings venv/Scripts/python.exe -c \"import django; django.setup\\(\\); from gestion.forms import ContratoForm, PolizaForm, InformeVentasForm, FinalizacionContratoForm, URLFlexibleField; from gestion.forms_otrosi import OtroSiForm; print\\(''All forms imported OK''\\)\")",
+      "Bash(DJANGO_SETTINGS_MODULE=contratos.settings venv/Scripts/python.exe -c \"from gestion.forms_otrosi import OtroSiForm; print\\(''OK''\\)\")",
+      "Bash(DJANGO_SETTINGS_MODULE=contratos.settings venv/Scripts/python.exe -c \"import django; django.setup\\(\\); from gestion.forms_otrosi import OtroSiForm; print\\(''OK''\\)\")",
+      "Bash(DJANGO_SETTINGS_MODULE=contratos.settings venv/Scripts/python.exe manage.py makemigrations --name=\"urlfield_to_charfield_url_archivo\")",
+      "Bash(DJANGO_SETTINGS_MODULE=contratos.settings venv/Scripts/python.exe manage.py migrate)",
+      "Bash(DJANGO_SETTINGS_MODULE=contratos.settings venv/Scripts/python.exe -c \"import django; django.setup\\(\\); from gestion.forms import CalculoIPCForm, CalculoSalarioMinimoForm; print\\(''OK''\\)\")",
+      "Bash(DJANGO_SETTINGS_MODULE=contratos.settings venv/Scripts/python.exe -c \"import django; django.setup\\(\\); from gestion.utils_ipc import calcular_proxima_fecha_aumento; print\\(''OK''\\)\")",
+      "Bash(python manage.py check)",
+      "Bash(python manage.py makemigrations gestion --name=\"cambiar_sanciones_penalidades_a_textfield\")"
     ]
   }
 }

@@ -103,8 +103,20 @@
                                 <span class="input-group-text bg-light">
                                     <i class="fas fa-percentage text-muted"></i>
                                 </span>
-                                {{ form.ipc_historico }}
+                                <select name="ipc_historico"
+                                        id="{{ form.ipc_historico.id_for_label }}"
+                                        class="form-control">
+                                    <option value="">---------</option>
+                                    {% for ipc in form.ipc_historico.field.queryset %}
+                                    <option value="{{ ipc.id }}"
+                                            data-anio="{{ ipc.año }}"
+                                            {% if form.ipc_historico.value|stringformat:"s" == ipc.id|stringformat:"s" %}selected{% endif %}>
+                                        {{ ipc }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
                             </div>
+                            <div id="ipc-aviso-anio"></div>
                             {% if form.ipc_historico.help_text %}
                                 <small class="form-text text-muted">{{ form.ipc_historico.help_text }}</small>
                             {% endif %}
@@ -414,6 +426,52 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     }
 
+    // ── IPC Histórico: auto-seleccionar el del año anterior (client-side) ─
+    // Usamos querySelector por nombre en lugar de getElementById para mayor robustez
+    const ipcSelect = document.querySelector('select[name="ipc_historico"]');
+
+    const ipcAviso = document.getElementById('ipc-aviso-anio');
+
+    function actualizarIPCHistorico() {
+        if (!ipcSelect) return;
+        const fecha = fechaAplicacionInput ? fechaAplicacionInput.value : '';
+        if (!fecha || fecha.length !== 10) return;
+
+        const partes = fecha.split('-');
+        if (partes.length !== 3 || partes[0].length !== 4) return;
+
+        const añoAplicacion = parseInt(partes[0], 10);
+        if (isNaN(añoAplicacion) || añoAplicacion < 1990 || añoAplicacion > 2100) return;
+
+        const añoIPC = añoAplicacion - 1;
+
+        let encontrado = false;
+        for (let i = 0; i < ipcSelect.options.length; i++) {
+            const opt = ipcSelect.options[i];
+            const anioOpt = parseInt(opt.getAttribute('data-anio'), 10);
+            if (anioOpt === añoIPC) {
+                opt.selected = true;
+                encontrado = true;
+            } else {
+                opt.selected = false;
+            }
+        }
+
+        if (ipcAviso) {
+            if (encontrado) {
+                ipcAviso.innerHTML = '';
+            } else {
+                ipcAviso.innerHTML =
+                    '<div class="alert alert-danger mt-1 mb-0 py-2">' +
+                    '<i class="fas fa-exclamation-circle"></i> ' +
+                    '<strong>No hay IPC registrado para el año ' + añoIPC + '.</strong> ' +
+                    'Debe agregar el IPC histórico del año ' + añoIPC + ' antes de continuar.' +
+                    '</div>';
+                ipcSelect.value = '';
+            }
+        }
+    }
+
     // ── Canon anterior (lógica existente) ────────────────────────────────
     function actualizarEstadoCanon(esManual) {
         const canonInputGroup = document.getElementById('canon-input-group');
@@ -458,7 +516,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const contratoId = contratoSelect.value;
         const fechaAplicacion = fechaAplicacionInput ? fechaAplicacionInput.value : '';
 
-        if (!contratoId || !fechaAplicacion) {
+        if (!contratoId || !fechaAplicacion || fechaAplicacion.length !== 10) {
             canonInput.value = '';
             canonFuente.textContent = '';
             return;
@@ -525,6 +583,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // ── Listeners ─────────────────────────────────────────────────────────
     function onContratoOFechaChange() {
+        actualizarIPCHistorico();
         actualizarPanelOtrosi();
         obtenerCanonAnterior();
     }
@@ -572,6 +631,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // ── Inicialización ────────────────────────────────────────────────────
     setTimeout(function() {
         if (contratoSelect.value && fechaAplicacionInput && fechaAplicacionInput.value) {
+            actualizarIPCHistorico();
             actualizarPanelOtrosi();
             obtenerCanonAnterior();
         } else {

@@ -105,6 +105,7 @@ from gestion.views.ipc import (
     contratos_pendientes_ipc,
     obtener_canon_anterior_ajax,
     otrosi_legalizables_ipc_ajax,
+    ipc_historico_por_anio_ajax,
 )
 from gestion.views.configuracion_ipc import (
     lista_tipos_condicion_ipc,
@@ -232,6 +233,7 @@ __all__ = [
     'contratos_pendientes_ipc',
     'obtener_canon_anterior_ajax',
     'otrosi_legalizables_ipc_ajax',
+    'ipc_historico_por_anio_ajax',
     'lista_tipos_condicion_ipc',
     'nuevo_tipo_condicion_ipc',
     'editar_tipo_condicion_ipc',
