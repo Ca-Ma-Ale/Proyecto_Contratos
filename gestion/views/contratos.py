@@ -1486,11 +1486,25 @@ def autorizar_renovacion_automatica(request, contrato_id):
         return redirect('gestion:detalle_contrato', contrato_id=contrato.id)
 
     fecha_final_actual = _obtener_fecha_final_contrato(contrato, fecha_actual)
-    
+
     if not fecha_final_actual:
         messages.error(request, 'No se puede determinar la fecha final del contrato.')
         return redirect('gestion:detalle_contrato', contrato_id=contrato.id)
-    
+
+    # Corrección primera renovación: si no hay renovaciones previas y un OtroSí activó
+    # la prórroga automática, la fecha base debe ser fecha_inicio_prorroga + duracion_meses,
+    # no la fecha_final_inicial del contrato original.
+    from gestion.models import RenovacionAutomatica as _RA
+    from gestion.utils import calcular_fecha_vencimiento
+    if not _RA.objects.filter(contrato=contrato, estado='APROBADO').exists():
+        _fecha_inicio_otrosi = estado_prorroga.get('fecha_inicio_prorroga')
+        _duracion_otrosi = estado_prorroga.get('duracion_meses')
+        _otrosi_activador = estado_prorroga.get('otrosi_activador')
+        if _otrosi_activador and _fecha_inicio_otrosi and _duracion_otrosi:
+            _fecha_fin_primer_ciclo = calcular_fecha_vencimiento(_fecha_inicio_otrosi, _duracion_otrosi)
+            if _fecha_fin_primer_ciclo > fecha_final_actual:
+                fecha_final_actual = _fecha_fin_primer_ciclo
+
     # Inicializar valores_iniciales_polizas para evitar UnboundLocalError
     valores_iniciales_polizas = {}
     

@@ -32,7 +32,10 @@
       "Bash(DJANGO_SETTINGS_MODULE=contratos.settings venv/Scripts/python.exe -c \"import django; django.setup\\(\\); from gestion.utils_ipc import calcular_proxima_fecha_aumento; print\\(''OK''\\)\")",
       "Bash(python manage.py check)",
       "Bash(python manage.py makemigrations gestion --name=\"cambiar_sanciones_penalidades_a_textfield\")",
-      "Bash(find '/c/Users/DELL/OneDrive - GLOBAL ANALITICS SAS/Proyecto_Contratos/gestion/services' -type f -name *.py)"
+      "Bash(find '/c/Users/DELL/OneDrive - GLOBAL ANALITICS SAS/Proyecto_Contratos/gestion/services' -type f -name *.py)",
+      "Bash(sqlite3 db.sqlite3 \"SELECT id, numero_contrato, nombre_contratista, fecha_inicial_contrato, fecha_aumento_ipc, periodicidad_ipc, tipo_condicion_ipc FROM gestion_contrato WHERE numero_contrato LIKE ''%310-2009%'' OR nombre_contratista LIKE ''%Procafecol%'' OR nombre_contratista LIKE ''%Procafe%'';\")",
+      "Bash(python manage.py shell -c \":*)",
+      "Bash(pip install:*)"
     ]
   }
 }
