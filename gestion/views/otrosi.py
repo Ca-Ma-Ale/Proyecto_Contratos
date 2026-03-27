@@ -199,9 +199,12 @@ def nuevo_otrosi(request, contrato_id):
                         }
                         return render(request, 'gestion/otrosi/advertencia_calculo_existente.html', context)
             
+            if otrosi.estado == 'APROBADO' and not otrosi.fecha_aprobacion:
+                otrosi.fecha_aprobacion = timezone.now()
+                otrosi.aprobado_por = request.user.username
             guardar_con_auditoria(otrosi, request.user, es_nuevo=True)
             otrosi.save()
-            
+
             # Si el Otro Sí modifica el canon, actualizar cálculos existentes inmediatamente
             # Esto asegura que la base de datos se actualice cuando se detecta el cálculo existente
             if otrosi.nuevo_valor_canon or otrosi.nuevo_canon_minimo_garantizado:
@@ -543,6 +546,9 @@ def editar_otrosi(request, otrosi_id):
             except Exception:
                 pass
 
+            if otrosi.estado == 'APROBADO' and not otrosi.fecha_aprobacion:
+                otrosi.fecha_aprobacion = timezone.now()
+                otrosi.aprobado_por = request.user.username
             guardar_con_auditoria(otrosi, request.user, es_nuevo=False)
             otrosi.save()
 
