@@ -1,7 +1,9 @@
 """
 Utilidades para gestión de Otrosí y vistas vigentes de contratos
 """
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone as dt_tz
+
+_FECHA_APROBACION_MIN = datetime(2000, 1, 1, tzinfo=dt_tz.utc)
 from decimal import Decimal
 from django.db.models import Q
 
@@ -219,7 +221,7 @@ def get_ultimo_otrosi_que_modifico_campo(contrato, campo_nombre):
         [o for o in contrato.otrosi.all() if o.estado == 'APROBADO'],
         key=lambda o: (
             o.effective_from,
-            o.fecha_aprobacion if o.fecha_aprobacion else timezone.now(),
+            o.fecha_aprobacion if o.fecha_aprobacion else _FECHA_APROBACION_MIN,
             -(o.version if hasattr(o, 'version') else 0),
         ),
         reverse=True,
@@ -229,24 +231,25 @@ def get_ultimo_otrosi_que_modifico_campo(contrato, campo_nombre):
         [r for r in contrato.renovaciones_automaticas.all() if r.estado == 'APROBADO'],
         key=lambda r: (
             r.effective_from,
-            r.fecha_aprobacion if r.fecha_aprobacion else timezone.now(),
+            r.fecha_aprobacion if r.fecha_aprobacion else _FECHA_APROBACION_MIN,
             -(r.version if hasattr(r, 'version') else 0),
         ),
         reverse=True,
     )
-    
+
     # Combinar y ordenar por fecha de aprobación descendente
     eventos = []
     for otrosi in otrosis_aprobados:
         eventos.append(('otrosi', otrosi))
     for renovacion in renovaciones_aprobadas:
         eventos.append(('renovacion', renovacion))
-    
-    # Ordenar por effective_from descendente (más reciente primero), luego por fecha_aprobacion descendente
-    # Esto asegura que se tome el Otro Sí más reciente en vigencia, no el más recientemente aprobado
+
+    # Ordenar por effective_from descendente (más reciente primero), luego por fecha_aprobacion descendente.
+    # Documentos sin fecha_aprobacion se tratan como los más antiguos (_FECHA_APROBACION_MIN)
+    # para que no desplacen a eventos aprobados explícitamente.
     eventos.sort(key=lambda x: (
         x[1].effective_from,
-        x[1].fecha_aprobacion if x[1].fecha_aprobacion else timezone.now(),
+        x[1].fecha_aprobacion if x[1].fecha_aprobacion else _FECHA_APROBACION_MIN,
         -x[1].version if hasattr(x[1], 'version') else 0
     ), reverse=True)
     
@@ -299,7 +302,7 @@ def get_ultimo_otrosi_que_modifico_campo_hasta_fecha(contrato, campo_nombre, fec
             [o for o in contrato.otrosi.all() if o.estado == 'APROBADO'],
             key=lambda o: (
                 o.effective_from,
-                o.fecha_aprobacion if o.fecha_aprobacion else timezone.now(),
+                o.fecha_aprobacion if o.fecha_aprobacion else _FECHA_APROBACION_MIN,
                 -(o.version if hasattr(o, 'version') else 0),
             ),
             reverse=True,
@@ -308,7 +311,7 @@ def get_ultimo_otrosi_que_modifico_campo_hasta_fecha(contrato, campo_nombre, fec
             [r for r in contrato.renovaciones_automaticas.all() if r.estado == 'APROBADO'],
             key=lambda r: (
                 r.effective_from,
-                r.fecha_aprobacion if r.fecha_aprobacion else timezone.now(),
+                r.fecha_aprobacion if r.fecha_aprobacion else _FECHA_APROBACION_MIN,
                 -(r.version if hasattr(r, 'version') else 0),
             ),
             reverse=True,
@@ -321,7 +324,7 @@ def get_ultimo_otrosi_que_modifico_campo_hasta_fecha(contrato, campo_nombre, fec
             ],
             key=lambda o: (
                 o.effective_from,
-                o.fecha_aprobacion if o.fecha_aprobacion else timezone.now(),
+                o.fecha_aprobacion if o.fecha_aprobacion else _FECHA_APROBACION_MIN,
                 -(o.version if hasattr(o, 'version') else 0),
             ),
             reverse=True,
@@ -333,7 +336,7 @@ def get_ultimo_otrosi_que_modifico_campo_hasta_fecha(contrato, campo_nombre, fec
             ],
             key=lambda r: (
                 r.effective_from,
-                r.fecha_aprobacion if r.fecha_aprobacion else timezone.now(),
+                r.fecha_aprobacion if r.fecha_aprobacion else _FECHA_APROBACION_MIN,
                 -(r.version if hasattr(r, 'version') else 0),
             ),
             reverse=True,
@@ -355,14 +358,15 @@ def get_ultimo_otrosi_que_modifico_campo_hasta_fecha(contrato, campo_nombre, fec
         if permitir_futuros or renovacion.effective_from <= fecha_referencia:
             eventos.append(('renovacion', renovacion))
     
-    # Ordenar por effective_from descendente (más reciente primero), luego por fecha_aprobacion descendente
-    # Esto asegura que se tome el Otro Sí más reciente en vigencia, no el más recientemente aprobado
+    # Ordenar por effective_from descendente (más reciente primero), luego por fecha_aprobacion descendente.
+    # Documentos sin fecha_aprobacion se tratan como los más antiguos (_FECHA_APROBACION_MIN)
+    # para que no desplacen a eventos aprobados explícitamente.
     eventos.sort(key=lambda x: (
         x[1].effective_from,
-        x[1].fecha_aprobacion if x[1].fecha_aprobacion else timezone.now(),
+        x[1].fecha_aprobacion if x[1].fecha_aprobacion else _FECHA_APROBACION_MIN,
         -x[1].version if hasattr(x[1], 'version') else 0
     ), reverse=True)
-    
+
     # Buscar el primero que tenga el campo modificado (no None y no vacío).
     # El efecto cadena significa que la última modificación persiste indefinidamente:
     # un Otro Sí que cambió un campo sigue siendo la fuente del valor actual aunque
