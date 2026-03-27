@@ -453,6 +453,12 @@ def calcular_proxima_fecha_aumento(contrato, fecha_referencia=None):
             # Encontrar la ocurrencia más reciente (pasada o futura) para mostrar en alertas.
             candidato = date(fecha_referencia.year, fecha_base.month, fecha_base.day)
             if candidato <= fecha_referencia:
+                # El primer ajuste solo puede ocurrir después de completar el primer ciclo anual.
+                # Si el candidato del año actual aún no supera fecha_base + 1 año,
+                # el contrato está en su primer ciclo → devolver el ajuste del año siguiente.
+                primer_ajuste = date(fecha_base.year + 1, fecha_base.month, fecha_base.day)
+                if candidato < primer_ajuste:
+                    return primer_ajuste
                 return candidato
             candidato_anterior = date(fecha_referencia.year - 1, fecha_base.month, fecha_base.day)
             return candidato_anterior if candidato_anterior >= fecha_base else fecha_base
@@ -502,6 +508,10 @@ def calcular_proxima_fecha_aumento(contrato, fecha_referencia=None):
             # Sin cálculos: misma lógica que ANUAL — ocurrencia más reciente (pasada o futura)
             candidato = date(fecha_referencia.year, fecha_base.month, fecha_base.day)
             if candidato <= fecha_referencia:
+                # El primer ajuste solo puede ocurrir después de completar el primer ciclo anual.
+                primer_ajuste = date(fecha_base.year + 1, fecha_base.month, fecha_base.day)
+                if candidato < primer_ajuste:
+                    return primer_ajuste
                 return candidato
             candidato_anterior = date(fecha_referencia.year - 1, fecha_base.month, fecha_base.day)
             return candidato_anterior if candidato_anterior >= fecha_base else fecha_base
