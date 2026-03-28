@@ -16,6 +16,7 @@ from gestion.services.alertas import (
     obtener_alertas_renovacion_automatica,
     obtener_polizas_criticas,
     AlertaPolizaRequerida,
+    _obtener_fecha_final_contrato,
 )
 from gestion.services.exportes import (
     ColumnaExportacion,
@@ -76,14 +77,8 @@ def dashboard(request):
         # Filtrar por tipo de contrato si se especifica
         if tipo_filtro and contrato.tipo_contrato_cliente_proveedor != tipo_filtro:
             continue
-        # Usar efecto cadena para obtener fecha final vigente hasta fecha_actual
-        otrosi_modificador = get_ultimo_otrosi_que_modifico_campo_hasta_fecha(
-            contrato, 'nueva_fecha_final_actualizada', fecha_actual
-        )
-        if otrosi_modificador and otrosi_modificador.nueva_fecha_final_actualizada:
-            fecha_final_actual = otrosi_modificador.nueva_fecha_final_actualizada
-        else:
-            fecha_final_actual = contrato.fecha_final_actualizada or contrato.fecha_final_inicial
+        # Usar la misma función del servicio para obtener la fecha final real (considera effective_to y efecto cadena)
+        fecha_final_actual = _obtener_fecha_final_contrato(contrato, fecha_actual)
         contratos_por_vencer_con_fecha.append({
             'contrato': contrato,
             'fecha_final_actualizada': fecha_final_actual,
@@ -105,14 +100,8 @@ def dashboard(request):
         # Filtrar por tipo de contrato si se especifica
         if tipo_filtro and contrato.tipo_contrato_cliente_proveedor != tipo_filtro:
             continue
-        # Usar efecto cadena para obtener fecha final vigente hasta fecha_actual
-        otrosi_modificador = get_ultimo_otrosi_que_modifico_campo_hasta_fecha(
-            contrato, 'nueva_fecha_final_actualizada', fecha_actual
-        )
-        if otrosi_modificador and otrosi_modificador.nueva_fecha_final_actualizada:
-            fecha_final_actual = otrosi_modificador.nueva_fecha_final_actualizada
-        else:
-            fecha_final_actual = contrato.fecha_final_actualizada or contrato.fecha_final_inicial
+        # Usar la misma función del servicio para obtener la fecha final real (considera effective_to y efecto cadena)
+        fecha_final_actual = _obtener_fecha_final_contrato(contrato, fecha_actual)
         alertas_preaviso_con_fecha.append({
             'contrato': contrato,
             'fecha_final_actualizada': fecha_final_actual,
@@ -527,18 +516,13 @@ def exportar_alertas_vencimiento(request):
     ]
 
     registros = []
+    from gestion.utils_otrosi import get_otrosi_vigente
     for contrato in contratos:
-        # Usar efecto cadena para obtener fecha final vigente hasta fecha_actual
-        otrosi_modificador_fecha = get_ultimo_otrosi_que_modifico_campo_hasta_fecha(
-            contrato, 'nueva_fecha_final_actualizada', fecha_actual
-        )
-        if otrosi_modificador_fecha and otrosi_modificador_fecha.nueva_fecha_final_actualizada:
-            fecha_final_actual = otrosi_modificador_fecha.nueva_fecha_final_actualizada
-            otrosi_numero = otrosi_modificador_fecha.numero_otrosi
-        else:
-            fecha_final_actual = contrato.fecha_final_actualizada or contrato.fecha_final_inicial
-            otrosi_numero = None
-        
+        # Usar la función del servicio para obtener la fecha final real (considera effective_to y efecto cadena)
+        fecha_final_actual = _obtener_fecha_final_contrato(contrato, fecha_actual)
+        otrosi_vigente = get_otrosi_vigente(contrato, fecha_actual)
+        otrosi_numero = otrosi_vigente.numero_otrosi if otrosi_vigente else None
+
         # Usar efecto cadena para obtener modalidad vigente hasta fecha_actual
         otrosi_modificador_modalidad = get_ultimo_otrosi_que_modifico_campo_hasta_fecha(
             contrato, 'nueva_modalidad_pago', fecha_actual
@@ -547,7 +531,7 @@ def exportar_alertas_vencimiento(request):
             modalidad_actual = otrosi_modificador_modalidad.nueva_modalidad_pago
         else:
             modalidad_actual = contrato.modalidad_pago or 'Sin especificar'
-        
+
         dias_restantes = None
         if fecha_final_actual:
             dias_restantes = (fecha_final_actual - fecha_actual).days
@@ -721,18 +705,13 @@ def exportar_alertas_preaviso(request):
     ]
 
     registros = []
+    from gestion.utils_otrosi import get_otrosi_vigente
     for contrato in contratos:
-        # Usar efecto cadena para obtener fecha final vigente hasta fecha_actual
-        otrosi_modificador_fecha = get_ultimo_otrosi_que_modifico_campo_hasta_fecha(
-            contrato, 'nueva_fecha_final_actualizada', fecha_actual
-        )
-        if otrosi_modificador_fecha and otrosi_modificador_fecha.nueva_fecha_final_actualizada:
-            fecha_final_actual = otrosi_modificador_fecha.nueva_fecha_final_actualizada
-            otrosi_numero = otrosi_modificador_fecha.numero_otrosi
-        else:
-            fecha_final_actual = contrato.fecha_final_actualizada or contrato.fecha_final_inicial
-            otrosi_numero = None
-        
+        # Usar la función del servicio para obtener la fecha final real (considera effective_to y efecto cadena)
+        fecha_final_actual = _obtener_fecha_final_contrato(contrato, fecha_actual)
+        otrosi_vigente = get_otrosi_vigente(contrato, fecha_actual)
+        otrosi_numero = otrosi_vigente.numero_otrosi if otrosi_vigente else None
+
         dias_preaviso = contrato.dias_preaviso_no_renovacion or 0
         fecha_limite_preaviso = None
         if fecha_final_actual:

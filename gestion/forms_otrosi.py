@@ -1236,6 +1236,18 @@ class OtroSiForm(BaseModelForm):
                     'La fecha de vigencia hasta debe ser posterior a la fecha desde.'
                 )
 
+        # Si se modifica el tipo de condición IPC/SMLV, los puntos adicionales son obligatorios
+        # (el usuario debe declarar explícitamente el valor, aunque sea 0)
+        nuevo_tipo_condicion = cleaned_data.get('nuevo_tipo_condicion_ipc')
+        if nuevo_tipo_condicion:
+            puntos = cleaned_data.get('nuevos_puntos_adicionales_ipc')
+            if puntos is None:
+                self.add_error(
+                    'nuevos_puntos_adicionales_ipc',
+                    'Cuando se modifican las condiciones de ajuste debe indicar los puntos adicionales. '
+                    'Si no aplican puntos adicionales, ingrese 0.'
+                )
+
         # No se puede establecer modalidad Fijo si el contrato reporta ventas
         nueva_modalidad = cleaned_data.get('nueva_modalidad_pago')
         if nueva_modalidad == 'Fijo':
