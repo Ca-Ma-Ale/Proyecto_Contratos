@@ -798,6 +798,10 @@ def detalle_contrato(request, contrato_id):
                         elif not isinstance(valor_otrosi, str):
                             otrosi_modificadores[campo] = otrosi_mod
     
+    # Garantizar que claves usadas como argumentos de filtro en el template existan,
+    # para evitar VariableDoesNotExist al resolver argumentos de |default:
+    otrosi_modificadores.setdefault('nuevos_puntos_adicionales_ipc', None)
+
     # Obtener el último cálculo IPC aplicado
     ultimo_calculo_ipc_aplicado = obtener_ultimo_calculo_ipc_aplicado(contrato)
     
