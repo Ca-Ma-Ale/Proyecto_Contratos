@@ -156,18 +156,18 @@
                                             {% endif %}
                                         </td>
                                         <td>
-                                            {% if info.contrato.tipo_condicion_ipc %}
+                                            {% if info.tipo_condicion_ipc %}
                                                 <span class="badge bg-primary">
-                                                    {{ info.contrato.get_tipo_condicion_ipc_display }}
+                                                    {{ info.tipo_condicion_ipc_display|default:info.tipo_condicion_ipc }}
                                                 </span>
                                             {% else %}
                                                 <span class="text-muted">-</span>
                                             {% endif %}
                                         </td>
                                         <td>
-                                            {% if info.contrato.periodicidad_ipc %}
+                                            {% if info.periodicidad_ipc %}
                                                 <span class="badge bg-info">
-                                                    {{ info.contrato.get_periodicidad_ipc_display }}
+                                                    {{ info.periodicidad_ipc_display|default:info.periodicidad_ipc }}
                                                 </span>
                                             {% else %}
                                                 <span class="text-muted">-</span>

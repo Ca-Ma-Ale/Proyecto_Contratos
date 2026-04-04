@@ -35,7 +35,8 @@
       "Bash(find '/c/Users/DELL/OneDrive - GLOBAL ANALITICS SAS/Proyecto_Contratos/gestion/services' -type f -name *.py)",
       "Bash(sqlite3 db.sqlite3 \"SELECT id, numero_contrato, nombre_contratista, fecha_inicial_contrato, fecha_aumento_ipc, periodicidad_ipc, tipo_condicion_ipc FROM gestion_contrato WHERE numero_contrato LIKE ''%310-2009%'' OR nombre_contratista LIKE ''%Procafecol%'' OR nombre_contratista LIKE ''%Procafe%'';\")",
       "Bash(python manage.py shell -c \":*)",
-      "Bash(pip install:*)"
+      "Bash(pip install:*)",
+      "Bash(python manage.py shell -c \"from gestion.models import Contrato; c = Contrato.objects.filter\\(num_contrato='2022-001'\\).first\\(\\); print\\('tipo_condicion_ipc:', c.tipo_condicion_ipc\\) if c else print\\('No encontrado'\\)\")"
     ]
   }
 }

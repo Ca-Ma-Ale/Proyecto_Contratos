@@ -30,6 +30,7 @@ from gestion.utils_ipc import (
     obtener_otrosi_para_legalizar,
 )
 from gestion.utils_formateo import limpiar_valor_numerico
+from gestion.models import obtener_nombre_tipo_condicion_ipc, obtener_nombre_periodicidad_ipc
 
 
 @login_required_custom
@@ -70,18 +71,38 @@ def lista_ipc_historico(request):
         else:
             fecha_aumento_ipc = contrato.fecha_aumento_ipc
         
+        # Obtener tipo_condicion_ipc efectivo considerando otrosí
+        tipo_condicion_ipc = contrato.tipo_condicion_ipc
+        otrosi_tipo_ipc = get_ultimo_otrosi_que_modifico_campo_hasta_fecha(
+            contrato, 'nuevo_tipo_condicion_ipc', fecha_actual
+        )
+        if otrosi_tipo_ipc and otrosi_tipo_ipc.nuevo_tipo_condicion_ipc:
+            tipo_condicion_ipc = otrosi_tipo_ipc.nuevo_tipo_condicion_ipc
+
+        # Obtener periodicidad_ipc efectiva considerando otrosí
+        periodicidad_ipc = contrato.periodicidad_ipc
+        otrosi_periodicidad = get_ultimo_otrosi_que_modifico_campo_hasta_fecha(
+            contrato, 'nueva_periodicidad_ipc', fecha_actual
+        )
+        if otrosi_periodicidad and otrosi_periodicidad.nueva_periodicidad_ipc:
+            periodicidad_ipc = otrosi_periodicidad.nueva_periodicidad_ipc
+
         # Calcular próxima fecha de aumento
         proxima_fecha_aumento = calcular_proxima_fecha_aumento(contrato, fecha_actual)
-        
+
         # Obtener último cálculo de ajuste (IPC o Salario Mínimo)
         ultimo_calculo = obtener_ultimo_calculo_ajuste(contrato)
-        
+
         contratos_info.append({
             'contrato': contrato,
             'fecha_final': fecha_final,
             'fecha_aumento_ipc': fecha_aumento_ipc,
             'proxima_fecha_aumento': proxima_fecha_aumento,
             'ultimo_calculo': ultimo_calculo,
+            'tipo_condicion_ipc': tipo_condicion_ipc,
+            'tipo_condicion_ipc_display': obtener_nombre_tipo_condicion_ipc(tipo_condicion_ipc) if tipo_condicion_ipc else None,
+            'periodicidad_ipc': periodicidad_ipc,
+            'periodicidad_ipc_display': obtener_nombre_periodicidad_ipc(periodicidad_ipc) if periodicidad_ipc else None,
         })
     
     # Filtrar por estado del último cálculo
@@ -208,7 +229,7 @@ def calcular_ipc(request):
         año = request.GET.get('año', date.today().year)
 
     if request.method == 'POST':
-        form = CalculoIPCForm(request.POST, user=request.user)
+        form = CalculoIPCForm(request.POST, user=request.user, contrato_initial=request.POST.get('contrato'))
         accion = request.POST.get('accion', 'calcular')  # 'calcular' o 'guardar'
         
         # Manejar confirmación de legalización (lee desde sesión, no requiere form válido)
