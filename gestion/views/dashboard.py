@@ -521,7 +521,10 @@ def exportar_alertas_vencimiento(request):
         # Usar la función del servicio para obtener la fecha final real (considera effective_to y efecto cadena)
         fecha_final_actual = _obtener_fecha_final_contrato(contrato, fecha_actual)
         otrosi_vigente = get_otrosi_vigente(contrato, fecha_actual)
-        otrosi_numero = otrosi_vigente.numero_otrosi if otrosi_vigente else None
+        if otrosi_vigente:
+            otrosi_numero = getattr(otrosi_vigente, 'numero_otrosi', None) or getattr(otrosi_vigente, 'numero_renovacion', None)
+        else:
+            otrosi_numero = None
 
         # Usar efecto cadena para obtener modalidad vigente hasta fecha_actual
         otrosi_modificador_modalidad = get_ultimo_otrosi_que_modifico_campo_hasta_fecha(
@@ -710,7 +713,10 @@ def exportar_alertas_preaviso(request):
         # Usar la función del servicio para obtener la fecha final real (considera effective_to y efecto cadena)
         fecha_final_actual = _obtener_fecha_final_contrato(contrato, fecha_actual)
         otrosi_vigente = get_otrosi_vigente(contrato, fecha_actual)
-        otrosi_numero = otrosi_vigente.numero_otrosi if otrosi_vigente else None
+        if otrosi_vigente:
+            otrosi_numero = getattr(otrosi_vigente, 'numero_otrosi', None) or getattr(otrosi_vigente, 'numero_renovacion', None)
+        else:
+            otrosi_numero = None
 
         dias_preaviso = contrato.dias_preaviso_no_renovacion or 0
         fecha_limite_preaviso = None
