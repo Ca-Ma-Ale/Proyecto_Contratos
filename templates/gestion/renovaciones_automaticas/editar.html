@@ -135,6 +135,29 @@ document.addEventListener('DOMContentLoaded', function() {
             togglePolizaDetails(); // Ejecutar al cargar la página
         }
     });
+
+    // Toggle recobro visibility based on exige checkbox
+    const recobroMappingsEditar = [
+        { exigeId: '{{ form.nuevo_exige_poliza_rce.id_for_label }}', recobroWrap: 'recobro-rce-wrap' },
+        { exigeId: '{{ form.nuevo_exige_poliza_cumplimiento.id_for_label }}', recobroWrap: 'recobro-cumplimiento-wrap' },
+        { exigeId: '{{ form.nuevo_exige_poliza_arrendamiento.id_for_label }}', recobroWrap: 'recobro-arrendamiento-wrap' },
+        { exigeId: '{{ form.nuevo_exige_poliza_todo_riesgo.id_for_label }}', recobroWrap: 'recobro-todo-riesgo-wrap' },
+        { exigeId: '{{ form.nuevo_exige_poliza_otra_1.id_for_label }}', recobroWrap: 'recobro-otra-wrap' },
+    ];
+    recobroMappingsEditar.forEach(({ exigeId, recobroWrap }) => {
+        const exigeChk = document.getElementById(exigeId);
+        const wrap = document.getElementById(recobroWrap);
+        if (!exigeChk || !wrap) return;
+        const toggleRecobro = () => {
+            if (exigeChk.checked) {
+                wrap.style.removeProperty('display');
+            } else {
+                wrap.style.setProperty('display', 'none', 'important');
+            }
+        };
+        toggleRecobro();
+        exigeChk.addEventListener('change', toggleRecobro);
+    });
 });
 </script>
 {% endblock %}
@@ -409,11 +432,19 @@ document.addEventListener('DOMContentLoaded', function() {
                             <!-- Póliza RCE -->
                             <div class="card mb-3 border-primary poliza-card">
                                 <div class="card-header">
-                                    <div class="form-check">
-                                        {{ form.nuevo_exige_poliza_rce }}
-                                        <label class="form-check-label" for="{{ form.nuevo_exige_poliza_rce.id_for_label }}">
-                                            <i class="fas fa-shield-alt text-primary"></i> <strong>RCE - Responsabilidad Civil</strong>
-                                        </label>
+                                    <div class="d-flex align-items-center flex-wrap gap-4">
+                                        <div class="form-check">
+                                            {{ form.nuevo_exige_poliza_rce }}
+                                            <label class="form-check-label" for="{{ form.nuevo_exige_poliza_rce.id_for_label }}">
+                                                <i class="fas fa-shield-alt text-primary"></i> <strong>RCE - Responsabilidad Civil</strong>
+                                            </label>
+                                        </div>
+                                        <div class="form-check d-flex align-items-center recobro-check" id="recobro-rce-wrap" style="display: none !important;">
+                                            {{ form.nuevo_recobro_poliza_rce }}
+                                            <label class="form-check-label ms-2" for="{{ form.nuevo_recobro_poliza_rce.id_for_label }}" style="font-size: 0.95rem; color: #28a745; cursor: pointer;">
+                                                <i class="fas fa-redo-alt me-1"></i> ¿Aplica Recobro?
+                                            </label>
+                                        </div>
                                     </div>
                                 </div>
                                 <div class="card-body" id="poliza-rce-details" style="display: none; padding: 1.5rem;">
@@ -693,11 +724,19 @@ document.addEventListener('DOMContentLoaded', function() {
                             <!-- Póliza Cumplimiento -->
                             <div class="card mb-3 border-primary poliza-card">
                                 <div class="card-header">
-                                    <div class="form-check">
-                                        {{ form.nuevo_exige_poliza_cumplimiento }}
-                                        <label class="form-check-label" for="{{ form.nuevo_exige_poliza_cumplimiento.id_for_label }}">
-                                            <i class="fas fa-shield-alt text-primary"></i> <strong>Cumplimiento</strong>
-                                        </label>
+                                    <div class="d-flex align-items-center flex-wrap gap-4">
+                                        <div class="form-check">
+                                            {{ form.nuevo_exige_poliza_cumplimiento }}
+                                            <label class="form-check-label" for="{{ form.nuevo_exige_poliza_cumplimiento.id_for_label }}">
+                                                <i class="fas fa-shield-alt text-primary"></i> <strong>Cumplimiento</strong>
+                                            </label>
+                                        </div>
+                                        <div class="form-check d-flex align-items-center recobro-check" id="recobro-cumplimiento-wrap" style="display: none !important;">
+                                            {{ form.nuevo_recobro_poliza_cumplimiento }}
+                                            <label class="form-check-label ms-2" for="{{ form.nuevo_recobro_poliza_cumplimiento.id_for_label }}" style="font-size: 0.95rem; color: #28a745; cursor: pointer;">
+                                                <i class="fas fa-redo-alt me-1"></i> ¿Aplica Recobro?
+                                            </label>
+                                        </div>
                                     </div>
                                 </div>
                                 <div class="card-body" id="poliza-cumplimiento-details" style="display: none; padding: 1.5rem;">
@@ -925,11 +964,19 @@ document.addEventListener('DOMContentLoaded', function() {
                             <!-- Póliza Arrendamiento -->
                             <div class="card mb-3 border-primary poliza-card">
                                 <div class="card-header">
-                                    <div class="form-check">
-                                        {{ form.nuevo_exige_poliza_arrendamiento }}
-                                        <label class="form-check-label" for="{{ form.nuevo_exige_poliza_arrendamiento.id_for_label }}">
-                                            <i class="fas fa-shield-alt text-primary"></i> <strong>Póliza de Arrendamiento</strong>
-                                        </label>
+                                    <div class="d-flex align-items-center flex-wrap gap-4">
+                                        <div class="form-check">
+                                            {{ form.nuevo_exige_poliza_arrendamiento }}
+                                            <label class="form-check-label" for="{{ form.nuevo_exige_poliza_arrendamiento.id_for_label }}">
+                                                <i class="fas fa-shield-alt text-primary"></i> <strong>Póliza de Arrendamiento</strong>
+                                            </label>
+                                        </div>
+                                        <div class="form-check d-flex align-items-center recobro-check" id="recobro-arrendamiento-wrap" style="display: none !important;">
+                                            {{ form.nuevo_recobro_poliza_arrendamiento }}
+                                            <label class="form-check-label ms-2" for="{{ form.nuevo_recobro_poliza_arrendamiento.id_for_label }}" style="font-size: 0.95rem; color: #28a745; cursor: pointer;">
+                                                <i class="fas fa-redo-alt me-1"></i> ¿Aplica Recobro?
+                                            </label>
+                                        </div>
                                     </div>
                                 </div>
                                 <div class="card-body" id="poliza-arrendamiento-details" style="display: none; padding: 1.5rem;">
@@ -1032,11 +1079,19 @@ document.addEventListener('DOMContentLoaded', function() {
                             <!-- Póliza Todo Riesgo -->
                             <div class="card mb-3 border-primary poliza-card">
                                 <div class="card-header">
-                                    <div class="form-check">
-                                        {{ form.nuevo_exige_poliza_todo_riesgo }}
-                                        <label class="form-check-label" for="{{ form.nuevo_exige_poliza_todo_riesgo.id_for_label }}">
-                                            <i class="fas fa-shield-alt text-primary"></i> <strong>Todo Riesgo para Equipos</strong>
-                                        </label>
+                                    <div class="d-flex align-items-center flex-wrap gap-4">
+                                        <div class="form-check">
+                                            {{ form.nuevo_exige_poliza_todo_riesgo }}
+                                            <label class="form-check-label" for="{{ form.nuevo_exige_poliza_todo_riesgo.id_for_label }}">
+                                                <i class="fas fa-shield-alt text-primary"></i> <strong>Todo Riesgo para Equipos</strong>
+                                            </label>
+                                        </div>
+                                        <div class="form-check d-flex align-items-center recobro-check" id="recobro-todo-riesgo-wrap" style="display: none !important;">
+                                            {{ form.nuevo_recobro_poliza_todo_riesgo }}
+                                            <label class="form-check-label ms-2" for="{{ form.nuevo_recobro_poliza_todo_riesgo.id_for_label }}" style="font-size: 0.95rem; color: #28a745; cursor: pointer;">
+                                                <i class="fas fa-redo-alt me-1"></i> ¿Aplica Recobro?
+                                            </label>
+                                        </div>
                                     </div>
                                 </div>
                                 <div class="card-body" id="poliza-todo-riesgo-details" style="display: none; padding: 1.5rem;">
@@ -1091,11 +1146,19 @@ document.addEventListener('DOMContentLoaded', function() {
                             <!-- Otras Pólizas -->
                             <div class="card mb-3 border-primary poliza-card">
                                 <div class="card-header">
-                                    <div class="form-check">
-                                        {{ form.nuevo_exige_poliza_otra_1 }}
-                                        <label class="form-check-label" for="{{ form.nuevo_exige_poliza_otra_1.id_for_label }}">
-                                            <i class="fas fa-shield-alt text-primary"></i> <strong>Otras Pólizas</strong>
-                                        </label>
+                                    <div class="d-flex align-items-center flex-wrap gap-4">
+                                        <div class="form-check">
+                                            {{ form.nuevo_exige_poliza_otra_1 }}
+                                            <label class="form-check-label" for="{{ form.nuevo_exige_poliza_otra_1.id_for_label }}">
+                                                <i class="fas fa-shield-alt text-primary"></i> <strong>Otras Pólizas</strong>
+                                            </label>
+                                        </div>
+                                        <div class="form-check d-flex align-items-center recobro-check" id="recobro-otra-wrap" style="display: none !important;">
+                                            {{ form.nuevo_recobro_poliza_otra_1 }}
+                                            <label class="form-check-label ms-2" for="{{ form.nuevo_recobro_poliza_otra_1.id_for_label }}" style="font-size: 0.95rem; color: #28a745; cursor: pointer;">
+                                                <i class="fas fa-redo-alt me-1"></i> ¿Aplica Recobro?
+                                            </label>
+                                        </div>
                                     </div>
                                 </div>
                                 <div class="card-body" id="poliza-otra-details" style="display: none; padding: 1.5rem;">
