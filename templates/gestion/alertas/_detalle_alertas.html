@@ -55,7 +55,7 @@
                         </table>
                         <div class="fade-overlay" style="display: block; position: absolute; left: 0; right: 0; bottom: 0; height: 24px; background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,1));"></div>
                     </div>
-                    <button class="btn btn-link p-0 mt-2 toggle-alert" type="button">Ver más</button>
+                    <button class="btn btn-link p-0 mt-2 toggle-alert" type="button" aria-expanded="false">Ver más</button>
                 {% else %}
                     <div class="text-center text-muted">
                         <i class="fas fa-check-circle fa-2x mb-2"></i>
@@ -137,7 +137,7 @@
                         </table>
                         <div class="fade-overlay" style="display: block; position: absolute; left: 0; right: 0; bottom: 0; height: 24px; background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,1));"></div>
                     </div>
-                    <button class="btn btn-link p-0 mt-2 toggle-alert" type="button">Ver más</button>
+                    <button class="btn btn-link p-0 mt-2 toggle-alert" type="button" aria-expanded="false">Ver más</button>
                 {% else %}
                     <div class="text-center text-muted">
                         <i class="fas fa-check-circle fa-2x mb-2"></i>
@@ -203,7 +203,7 @@
                         </table>
                         <div class="fade-overlay" style="display: block; position: absolute; left: 0; right: 0; bottom: 0; height: 24px; background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,1));"></div>
                     </div>
-                    <button class="btn btn-link p-0 mt-2 toggle-alert" type="button">Ver más</button>
+                    <button class="btn btn-link p-0 mt-2 toggle-alert" type="button" aria-expanded="false">Ver más</button>
                 {% else %}
                     <div class="text-center text-muted">
                         <i class="fas fa-check-circle fa-2x mb-2"></i>
@@ -301,7 +301,7 @@
                         </table>
                         <div class="fade-overlay" style="display: block; position: absolute; left: 0; right: 0; bottom: 0; height: 24px; background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,1));"></div>
                     </div>
-                    <button class="btn btn-link p-0 mt-2 toggle-alert" type="button">Ver más</button>
+                    <button class="btn btn-link p-0 mt-2 toggle-alert" type="button" aria-expanded="false">Ver más</button>
                 {% else %}
                     <div class="text-center text-muted">
                         <i class="fas fa-check-circle fa-2x mb-2"></i>
@@ -315,7 +315,7 @@
     <!-- Alertas de Ajuste de Salario Mínimo -->
     <div class="col-lg-6 mb-4">
         <div class="card alert-card alert-salario-minimo">
-            <div class="card-header" style="background-color: #28a745; color: white;">
+            <div class="card-header" style="background-color: var(--avenida-green); color: white;">
                 <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center">
                     <div>
                         <h5 class="mb-0">
@@ -399,7 +399,7 @@
                         </table>
                         <div class="fade-overlay" style="display: block; position: absolute; left: 0; right: 0; bottom: 0; height: 24px; background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,1));"></div>
                     </div>
-                    <button class="btn btn-link p-0 mt-2 toggle-alert" type="button">Ver más</button>
+                    <button class="btn btn-link p-0 mt-2 toggle-alert" type="button" aria-expanded="false">Ver más</button>
                 {% else %}
                     <div class="text-center text-muted">
                         <i class="fas fa-check-circle fa-2x mb-2"></i>
@@ -476,7 +476,7 @@
                         </table>
                         <div class="fade-overlay" style="display: block; position: absolute; left: 0; right: 0; bottom: 0; height: 24px; background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,1));"></div>
                     </div>
-                    <button class="btn btn-link p-0 mt-2 toggle-alert" type="button">Ver más</button>
+                    <button class="btn btn-link p-0 mt-2 toggle-alert" type="button" aria-expanded="false">Ver más</button>
                 {% else %}
                     <div class="text-center text-muted">
                         <i class="fas fa-check-circle fa-2x mb-2"></i>
@@ -548,7 +548,7 @@
                         </table>
                         <div class="fade-overlay" style="display: block; position: absolute; left: 0; right: 0; bottom: 0; height: 24px; background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,1));"></div>
                     </div>
-                    <button class="btn btn-link p-0 mt-2 toggle-alert" type="button">Ver más</button>
+                    <button class="btn btn-link p-0 mt-2 toggle-alert" type="button" aria-expanded="false">Ver más</button>
                 {% else %}
                     <div class="text-center text-muted">
                         <i class="fas fa-check-circle fa-2x mb-2"></i>
@@ -561,20 +561,20 @@
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
+(function() {
   document.addEventListener('click', function(e){
-    const btn = e.target.closest('.toggle-alert');
+    var btn = e.target.closest('.toggle-alert');
     if (!btn) return;
     e.preventDefault();
-    const cardBody = btn.closest('.card-body');
+    var cardBody = btn.closest('.card-body');
     if (!cardBody) return;
-    const container = cardBody.querySelector('.alert-collapsible');
+    var container = cardBody.querySelector('.alert-collapsible');
     if (!container) return;
-    const collapsed = container.getAttribute('data-collapsed') === 'true';
+    var collapsed = container.getAttribute('data-collapsed') === 'true';
     if (collapsed) {
       container.style.maxHeight = '40vh';
       container.style.overflowY = 'auto';
-      const overlay = container.querySelector('.fade-overlay');
+      var overlay = container.querySelector('.fade-overlay');
       if (overlay) overlay.style.display = 'none';
       container.setAttribute('data-collapsed', 'false');
       btn.textContent = 'Ver menos';
@@ -582,12 +582,12 @@ document.addEventListener('DOMContentLoaded', function() {
     } else {
       container.style.maxHeight = '64px';
       container.style.overflowY = 'hidden';
-      const overlay = container.querySelector('.fade-overlay');
-      if (overlay) overlay.style.display = 'block';
+      var overlay2 = container.querySelector('.fade-overlay');
+      if (overlay2) overlay2.style.display = 'block';
       container.setAttribute('data-collapsed', 'true');
       btn.textContent = 'Ver más';
       btn.setAttribute('aria-expanded', 'false');
     }
   });
-});
+})();
 </script>
