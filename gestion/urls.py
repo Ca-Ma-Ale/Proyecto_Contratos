@@ -5,6 +5,9 @@ app_name = 'gestion'
 
 urlpatterns = [
     path('', views.dashboard, name='dashboard'),
+    path('alertas/', views.centro_alertas, name='centro_alertas'),
+    path('api/conteos-alertas/', views.api_conteos_alertas, name='api_conteos_alertas'),
+    path('api/detalle-alertas/', views.api_detalle_alertas, name='api_detalle_alertas'),
     path('exportaciones/', views.exportaciones, name='exportaciones'),
     path('exportaciones/contratos/', views.exportar_contratos, name='exportar_contratos'),
     path('exportaciones/alertas-vencimiento/', views.exportar_alertas_vencimiento, name='exportar_alertas_vencimiento'),

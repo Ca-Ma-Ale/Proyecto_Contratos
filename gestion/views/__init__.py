@@ -1,5 +1,8 @@
 from gestion.views.dashboard import (
     dashboard,
+    centro_alertas,
+    api_conteos_alertas,
+    api_detalle_alertas,
     exportaciones,
     exportar_alertas_ipc,
     exportar_alertas_salario_minimo,
@@ -152,6 +155,9 @@ from gestion.views.auditoria import (
 
 __all__ = [
     'dashboard',
+    'centro_alertas',
+    'api_conteos_alertas',
+    'api_detalle_alertas',
     'exportaciones',
     'exportar_alertas_ipc',
     'exportar_alertas_vencimiento',

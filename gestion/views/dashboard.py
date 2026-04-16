@@ -6,7 +6,7 @@ from django.shortcuts import redirect, render
 from django.template.loader import render_to_string
 from django.utils import timezone
 
-from gestion.decorators import login_required_custom
+from gestion.decorators import login_required_custom, ajax_login_required
 from gestion.models import Contrato, Local, Poliza, Tercero
 from gestion.services.alertas import (
     obtener_alertas_expiracion_contratos,
@@ -211,7 +211,7 @@ def centro_alertas(request):
     return render(request, 'gestion/alertas/index.html', context)
 
 
-@login_required_custom
+@ajax_login_required
 def api_conteos_alertas(request):
     """
     Endpoint AJAX: devuelve estadísticas generales + conteos de alertas.
@@ -299,7 +299,7 @@ def api_conteos_alertas(request):
     })
 
 
-@login_required_custom
+@ajax_login_required
 def api_detalle_alertas(request):
     """
     Endpoint AJAX: devuelve HTML pre-renderizado con todas las tarjetas de alertas.

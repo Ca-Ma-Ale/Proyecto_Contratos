@@ -28,6 +28,21 @@ def login_required_custom(function):
     return wrap
 
 
+def ajax_login_required(function):
+    """
+    Decorador para endpoints AJAX que requiere login.
+    Devuelve 403 JSON en lugar de redirigir al login, ya que los clientes AJAX
+    no siguen redirecciones de autenticación.
+    """
+    @wraps(function)
+    def wrap(request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            from django.http import JsonResponse
+            return JsonResponse({'error': 'Autenticación requerida.'}, status=403)
+        return function(request, *args, **kwargs)
+    return wrap
+
+
 def admin_required(function):
     """
     Decorador que requiere que el usuario sea staff/admin.
