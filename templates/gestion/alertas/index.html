@@ -3,7 +3,227 @@
 {% block title %}Centro de Alertas - Gestión de Contratos{% endblock %}
 
 {% block content %}
-<div id="centro-alertas">
-  {# Contenido completo será implementado en Task 7 #}
+<div class="container-fluid">
+
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <h1 class="display-4 mb-0">
+                    <i class="fas fa-bell text-primary"></i> Centro de Alertas
+                </h1>
+                <a href="{% url 'gestion:dashboard' %}" class="btn btn-volver-inicio">
+                    <i class="fas fa-home"></i> Volver al Inicio
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtro Global -->
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body py-2">
+                    <div class="d-flex align-items-center">
+                        <span class="me-3"><strong>Filtrar Alertas:</strong></span>
+                        <div class="btn-group" role="group">
+                            <button
+                                type="button"
+                                class="btn btn-sm {% if not tipo_filtro %}btn-primary{% else %}btn-outline-primary{% endif %}"
+                                onclick="cargarAlertas('')"
+                            >Todos</button>
+                            <button
+                                type="button"
+                                class="btn btn-sm {% if tipo_filtro == 'CLIENTE' %}btn-primary{% else %}btn-outline-primary{% endif %}"
+                                onclick="cargarAlertas('CLIENTE')"
+                            >Clientes</button>
+                            <button
+                                type="button"
+                                class="btn btn-sm {% if tipo_filtro == 'PROVEEDOR' %}btn-primary{% else %}btn-outline-primary{% endif %}"
+                                onclick="cargarAlertas('PROVEEDOR')"
+                            >Proveedores</button>
+                        </div>
+                        <span class="ms-3 text-muted small" id="filtro-activo">
+                            {% if tipo_filtro %}Mostrando: {{ tipo_filtro|capfirst|lower }}s{% else %}Mostrando: todos{% endif %}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Panel de progreso (visible mientras carga) -->
+    <div id="panel-carga" class="row mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body py-4 text-center">
+                    <div class="mb-3">
+                        <i class="fas fa-cogs fa-3x" style="color: var(--avenida-orange); animation: fa-spin 2s linear infinite;"></i>
+                    </div>
+                    <h5 class="mb-3" id="msg-progreso">Iniciando cálculo de alertas...</h5>
+                    <div class="progress mb-2" style="height: 12px; max-width: 480px; margin: 0 auto;">
+                        <div
+                            id="barra-progreso"
+                            class="progress-bar progress-bar-striped progress-bar-animated"
+                            role="progressbar"
+                            style="width: 0%; background-color: var(--avenida-orange);"
+                        ></div>
+                    </div>
+                    <small class="text-muted">Esto puede tardar un momento según el volumen de contratos</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mensaje de error (oculto por defecto) -->
+    <div id="panel-error" class="row mb-4 d-none">
+        <div class="col-12">
+            <div class="alert alert-danger d-flex align-items-center gap-3">
+                <i class="fas fa-exclamation-circle fa-2x"></i>
+                <div>
+                    <strong>No se pudieron cargar las alertas.</strong>
+                    <span id="msg-error" class="ms-1"></span>
+                </div>
+                <button class="btn btn-outline-danger btn-sm ms-auto" onclick="cargarAlertas(tipoFiltroActual)">
+                    <i class="fas fa-redo"></i> Reintentar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Contenido de alertas (oculto hasta que llegue el AJAX) -->
+    <div id="contenido-alertas" class="d-none">
+    </div>
+
+    <!-- Footer -->
+    <div class="row mt-2">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body text-center text-muted">
+                    <small>
+                        <i class="fas fa-info-circle"></i>
+                        Fecha de cálculo: {{ fecha_actual }} |
+                        <a href="{% url 'gestion:exportaciones' %}" class="text-decoration-none">Exportaciones</a>
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+var tipoFiltroActual = '{{ tipo_filtro|escapejs }}';
+
+var mensajesProgreso = [
+    'Revisando vencimientos de contratos...',
+    'Verificando estado de pólizas...',
+    'Calculando alertas de ajuste de IPC...',
+    'Revisando alertas de Salario Mínimo...',
+    'Verificando pólizas requeridas no aportadas...',
+    'Calculando períodos de terminación anticipada...',
+    'Verificando renovaciones automáticas...',
+    'Finalizando cálculos...',
+];
+
+var intervaloMensajes = null;
+var indMensaje = 0;
+var progresoActual = 5;
+
+function iniciarProgreso() {
+    var barra = document.getElementById('barra-progreso');
+    var msg = document.getElementById('msg-progreso');
+    if (barra) barra.style.width = '5%';
+    if (msg) msg.textContent = mensajesProgreso[0];
+    indMensaje = 0;
+    progresoActual = 5;
+
+    intervaloMensajes = setInterval(function() {
+        indMensaje = (indMensaje + 1) % mensajesProgreso.length;
+        if (msg) msg.textContent = mensajesProgreso[indMensaje];
+        progresoActual = Math.min(progresoActual + 10, 90);
+        if (barra) barra.style.width = progresoActual + '%';
+    }, 1500);
+}
+
+function detenerProgreso() {
+    if (intervaloMensajes) {
+        clearInterval(intervaloMensajes);
+        intervaloMensajes = null;
+    }
+}
+
+function completarProgreso(callback) {
+    var barra = document.getElementById('barra-progreso');
+    var msg = document.getElementById('msg-progreso');
+    if (barra) barra.style.width = '100%';
+    if (msg) msg.textContent = 'Listo.';
+    setTimeout(function() {
+        if (callback) callback();
+    }, 400);
+}
+
+function mostrarError(mensaje) {
+    detenerProgreso();
+    document.getElementById('panel-carga').classList.add('d-none');
+    document.getElementById('contenido-alertas').classList.add('d-none');
+    var panelError = document.getElementById('panel-error');
+    panelError.classList.remove('d-none');
+    var msgError = document.getElementById('msg-error');
+    if (msgError) msgError.textContent = mensaje || '';
+}
+
+function cargarAlertas(tipo) {
+    tipoFiltroActual = tipo;
+
+    var textoFiltro = document.getElementById('filtro-activo');
+    if (textoFiltro) {
+        textoFiltro.textContent = tipo ? 'Mostrando: ' + tipo.toLowerCase() + 's' : 'Mostrando: todos';
+    }
+    document.querySelectorAll('.btn-group .btn').forEach(function(btn) {
+        btn.classList.remove('btn-primary');
+        btn.classList.add('btn-outline-primary');
+    });
+    var btns = document.querySelectorAll('.btn-group .btn');
+    if (tipo === '') btns[0] && btns[0].classList.replace('btn-outline-primary', 'btn-primary');
+    if (tipo === 'CLIENTE') btns[1] && btns[1].classList.replace('btn-outline-primary', 'btn-primary');
+    if (tipo === 'PROVEEDOR') btns[2] && btns[2].classList.replace('btn-outline-primary', 'btn-primary');
+
+    document.getElementById('panel-error').classList.add('d-none');
+    document.getElementById('contenido-alertas').classList.add('d-none');
+    document.getElementById('panel-carga').classList.remove('d-none');
+
+    iniciarProgreso();
+
+    var url = '{% url "gestion:api_detalle_alertas" %}';
+    if (tipo) url += '?tipo_alerta=' + encodeURIComponent(tipo);
+
+    fetch(url, {
+        headers: {'X-Requested-With': 'XMLHttpRequest'}
+    })
+    .then(function(response) {
+        if (response.status === 403) throw new Error('Sin autorización. Recargue la página.');
+        if (!response.ok) throw new Error('Error del servidor (' + response.status + ').');
+        return response.json();
+    })
+    .then(function(data) {
+        detenerProgreso();
+        completarProgreso(function() {
+            var contenido = document.getElementById('contenido-alertas');
+            contenido.innerHTML = data.html;
+            document.getElementById('panel-carga').classList.add('d-none');
+            contenido.classList.remove('d-none');
+        });
+    })
+    .catch(function(err) {
+        mostrarError(err.message);
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    cargarAlertas(tipoFiltroActual);
+});
+</script>
 {% endblock %}
