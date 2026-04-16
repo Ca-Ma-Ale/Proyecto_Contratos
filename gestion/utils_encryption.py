@@ -59,11 +59,20 @@ def get_encryption_key():
             "No se puede usar SECRET_KEY por defecto en producción."
         )
     
+    # Fallback activo: ENCRYPTION_KEY no está configurada en el entorno.
+    # Este modo usa salt fijo para mantener compatibilidad con datos ya cifrados.
+    # Configura ENCRYPTION_KEY en las variables de entorno para eliminar este riesgo.
+    logger.warning(
+        "ENCRYPTION_KEY no configurada en variables de entorno. "
+        "Usando derivacion de fallback con salt fijo (menos seguro). "
+        "Configure ENCRYPTION_KEY en produccion para eliminar este riesgo."
+    )
+
     # Generar clave desde SECRET_KEY usando PBKDF2
     kdf = PBKDF2HMAC(
         algorithm=hashes.SHA256(),
         length=32,
-        salt=b'contratos_salt_fixed',  # Salt fijo para consistencia
+        salt=b'contratos_salt_fixed',  # Salt fijo — compatibilidad con datos existentes
         iterations=100000,
     )
     key = base64.urlsafe_b64encode(kdf.derive(secret_key.encode()))

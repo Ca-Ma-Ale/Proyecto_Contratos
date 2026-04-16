@@ -30,9 +30,16 @@ class ContentSecurityPolicyMiddleware:
     def __init__(self, get_response):
         self.get_response = get_response
 
+    PERMISSIONS_POLICY = (
+        "camera=(), microphone=(), geolocation=(), "
+        "payment=(), usb=(), magnetometer=(), gyroscope=()"
+    )
+
     def __call__(self, request):
         response = self.get_response(request)
         # No sobreescribir si ya viene definida (p.ej. en vistas específicas)
         if 'Content-Security-Policy' not in response:
             response['Content-Security-Policy'] = self.POLICY
+        if 'Permissions-Policy' not in response:
+            response['Permissions-Policy'] = self.PERMISSIONS_POLICY
         return response

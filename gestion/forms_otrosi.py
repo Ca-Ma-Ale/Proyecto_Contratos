@@ -1238,8 +1238,11 @@ class OtroSiForm(BaseModelForm):
 
         # Si se modifica el tipo de condición IPC/SMLV, los puntos adicionales son obligatorios
         # (el usuario debe declarar explícitamente el valor, aunque sea 0)
+        # Solo aplica cuando el campo está activo en el formulario (en POST).
+        # Si está bloqueado/disabled, no viaja en POST y el valor ya está guardado en la BD.
         nuevo_tipo_condicion = cleaned_data.get('nuevo_tipo_condicion_ipc')
-        if nuevo_tipo_condicion:
+        tipo_condicion_en_post = 'nuevo_tipo_condicion_ipc' in self.data
+        if nuevo_tipo_condicion and tipo_condicion_en_post:
             puntos = cleaned_data.get('nuevos_puntos_adicionales_ipc')
             if puntos is None:
                 self.add_error(
