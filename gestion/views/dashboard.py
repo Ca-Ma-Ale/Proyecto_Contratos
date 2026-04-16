@@ -1,7 +1,9 @@
 from datetime import timedelta
 
 from django.contrib import messages
+from django.http import JsonResponse
 from django.shortcuts import redirect, render
+from django.template.loader import render_to_string
 from django.utils import timezone
 
 from gestion.decorators import login_required_custom
@@ -15,6 +17,7 @@ from gestion.services.alertas import (
     obtener_alertas_terminacion_anticipada,
     obtener_alertas_renovacion_automatica,
     obtener_polizas_criticas,
+    obtener_tipo_condicion_ipc_vigente,
     AlertaPolizaRequerida,
     _obtener_fecha_final_contrato,
 )
@@ -122,7 +125,6 @@ def dashboard(request):
     
     # Exclusividad: un contrato solo puede tener alerta IPC o Salario Mínimo, nunca ambas.
     # Si aparece en ambas listas, conservar la del último cambio (efecto cadena: último documento).
-    from gestion.services.alertas import obtener_tipo_condicion_ipc_vigente
     ids_en_sm = {a.contrato.id for a in alertas_salario_minimo}
     ids_en_ipc = {a.contrato.id for a in alertas_ipc}
     contratos_duplicados = ids_en_ipc & ids_en_sm
@@ -215,11 +217,6 @@ def api_conteos_alertas(request):
     Endpoint AJAX: devuelve estadísticas generales + conteos de alertas.
     No devuelve el detalle — solo números para el panel de inicio.
     """
-    from django.http import JsonResponse
-
-    if not request.user.is_authenticated:
-        return JsonResponse({'error': 'No autorizado'}, status=403)
-
     fecha_actual = timezone.now().date()
 
     # Stats generales (loop pesado movido aquí desde dashboard)
@@ -263,7 +260,6 @@ def api_conteos_alertas(request):
     sm_list = obtener_alertas_salario_minimo(fecha_referencia=fecha_actual)
 
     # Deduplicación IPC / Salario Mínimo (preservar lógica original)
-    from gestion.services.alertas import obtener_tipo_condicion_ipc_vigente
     ids_en_sm = {a.contrato.id for a in sm_list}
     ids_en_ipc = {a.contrato.id for a in ipc_list}
     contratos_duplicados = ids_en_ipc & ids_en_sm
@@ -309,12 +305,6 @@ def api_detalle_alertas(request):
     Endpoint AJAX: devuelve HTML pre-renderizado con todas las tarjetas de alertas.
     Acepta ?tipo_alerta=CLIENTE|PROVEEDOR para filtrar.
     """
-    from django.http import JsonResponse
-    from django.template.loader import render_to_string
-
-    if not request.user.is_authenticated:
-        return JsonResponse({'error': 'No autorizado'}, status=403)
-
     fecha_actual = timezone.now().date()
     tipo_filtro = request.GET.get('tipo_alerta', '')
 
@@ -360,7 +350,6 @@ def api_detalle_alertas(request):
     alertas_salario_minimo = list(alertas_salario_minimo_list)
 
     # Deduplicación IPC / Salario Mínimo (preservar lógica original)
-    from gestion.services.alertas import obtener_tipo_condicion_ipc_vigente
     ids_en_sm = {a.contrato.id for a in alertas_salario_minimo}
     ids_en_ipc = {a.contrato.id for a in alertas_ipc}
     contratos_duplicados = ids_en_ipc & ids_en_sm
