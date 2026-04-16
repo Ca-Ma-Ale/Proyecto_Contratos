@@ -196,6 +196,243 @@ def dashboard(request):
 
 
 @login_required_custom
+def centro_alertas(request):
+    """
+    Vista dedicada para el centro de alertas.
+    Renderiza el contenedor vacío — las alertas se cargan vía AJAX.
+    """
+    tipo_filtro = request.GET.get('tipo_alerta', '')
+    context = {
+        'tipo_filtro': tipo_filtro,
+        'fecha_actual': timezone.now().date(),
+    }
+    return render(request, 'gestion/alertas/index.html', context)
+
+
+@login_required_custom
+def api_conteos_alertas(request):
+    """
+    Endpoint AJAX: devuelve estadísticas generales + conteos de alertas.
+    No devuelve el detalle — solo números para el panel de inicio.
+    """
+    from django.http import JsonResponse
+
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'No autorizado'}, status=403)
+
+    fecha_actual = timezone.now().date()
+
+    # Stats generales (loop pesado movido aquí desde dashboard)
+    todos_los_contratos = Contrato.objects.prefetch_related('otrosi', 'renovaciones_automaticas')
+    contratos_vigentes = 0
+    contratos_vencidos = 0
+    contratos_vigentes_list = []
+
+    for contrato in todos_los_contratos:
+        if _estado_vigente_contrato(contrato, fecha_actual):
+            contratos_vigentes += 1
+            contratos_vigentes_list.append(contrato)
+        else:
+            contratos_vencidos += 1
+
+    contratos_fijos = 0
+    contratos_variables = 0
+    contratos_hibridos = 0
+
+    for contrato in contratos_vigentes_list:
+        otrosi_modificador = get_ultimo_otrosi_que_modifico_campo_hasta_fecha(
+            contrato, 'nueva_modalidad_pago', fecha_actual
+        )
+        if otrosi_modificador and otrosi_modificador.nueva_modalidad_pago:
+            modalidad_actual = otrosi_modificador.nueva_modalidad_pago
+        else:
+            modalidad_actual = contrato.modalidad_pago
+
+        if modalidad_actual == 'Fijo':
+            contratos_fijos += 1
+        elif modalidad_actual == 'Variable Puro':
+            contratos_variables += 1
+        elif modalidad_actual == 'Hibrido (Min Garantizado)':
+            contratos_hibridos += 1
+
+    # Conteos de alertas (solo len — sin objetos completos)
+    vencimiento = len(obtener_alertas_expiracion_contratos(fecha_referencia=fecha_actual, ventana_dias=90))
+    polizas_criticas = len(obtener_polizas_criticas(fecha_referencia=fecha_actual))
+    preaviso = len(obtener_alertas_preaviso(fecha_referencia=fecha_actual))
+    ipc_list = obtener_alertas_ipc(fecha_referencia=fecha_actual)
+    sm_list = obtener_alertas_salario_minimo(fecha_referencia=fecha_actual)
+
+    # Deduplicación IPC / Salario Mínimo (preservar lógica original)
+    from gestion.services.alertas import obtener_tipo_condicion_ipc_vigente
+    ids_en_sm = {a.contrato.id for a in sm_list}
+    ids_en_ipc = {a.contrato.id for a in ipc_list}
+    contratos_duplicados = ids_en_ipc & ids_en_sm
+    if contratos_duplicados:
+        ipc_list = [
+            a for a in ipc_list
+            if a.contrato.id not in contratos_duplicados
+            or obtener_tipo_condicion_ipc_vigente(a.contrato, fecha_actual) == 'IPC'
+        ]
+        sm_list = [
+            a for a in sm_list
+            if a.contrato.id not in contratos_duplicados
+            or obtener_tipo_condicion_ipc_vigente(a.contrato, fecha_actual) == 'SALARIO_MINIMO'
+        ]
+
+    polizas_requeridas = len(obtener_alertas_polizas_requeridas_no_aportadas(fecha_referencia=fecha_actual))
+    terminacion = len(obtener_alertas_terminacion_anticipada(fecha_referencia=fecha_actual))
+    renovacion_automatica = len(obtener_alertas_renovacion_automatica(fecha_referencia=fecha_actual))
+
+    return JsonResponse({
+        'contratos_vigentes': contratos_vigentes,
+        'contratos_vencidos': contratos_vencidos,
+        'total_polizas': Poliza.objects.count(),
+        'contratos_fijos': contratos_fijos,
+        'contratos_variables': contratos_variables,
+        'contratos_hibridos': contratos_hibridos,
+        'alertas': {
+            'vencimiento': vencimiento,
+            'polizas_criticas': polizas_criticas,
+            'preaviso': preaviso,
+            'ipc': len(ipc_list),
+            'salario_minimo': len(sm_list),
+            'polizas_requeridas': polizas_requeridas,
+            'terminacion': terminacion,
+            'renovacion_automatica': renovacion_automatica,
+        },
+    })
+
+
+@login_required_custom
+def api_detalle_alertas(request):
+    """
+    Endpoint AJAX: devuelve HTML pre-renderizado con todas las tarjetas de alertas.
+    Acepta ?tipo_alerta=CLIENTE|PROVEEDOR para filtrar.
+    """
+    from django.http import JsonResponse
+    from django.template.loader import render_to_string
+
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'No autorizado'}, status=403)
+
+    fecha_actual = timezone.now().date()
+    tipo_filtro = request.GET.get('tipo_alerta', '')
+
+    # === Lógica idéntica al dashboard original ===
+    contratos_por_vencer_list = obtener_alertas_expiracion_contratos(fecha_referencia=fecha_actual, ventana_dias=90)
+    contratos_por_vencer_con_fecha = []
+    for contrato in contratos_por_vencer_list:
+        if tipo_filtro and contrato.tipo_contrato_cliente_proveedor != tipo_filtro:
+            continue
+        fecha_final_actual = _obtener_fecha_final_contrato(contrato, fecha_actual)
+        contratos_por_vencer_con_fecha.append({
+            'contrato': contrato,
+            'fecha_final_actualizada': fecha_final_actual,
+        })
+
+    polizas_criticas_list = obtener_polizas_criticas(fecha_referencia=fecha_actual)
+    polizas_criticas = [
+        p for p in polizas_criticas_list
+        if not tipo_filtro or p.contrato.tipo_contrato_cliente_proveedor == tipo_filtro
+    ]
+
+    alertas_preaviso_list = obtener_alertas_preaviso(fecha_referencia=fecha_actual)
+    alertas_preaviso_con_fecha = []
+    for contrato in alertas_preaviso_list:
+        if tipo_filtro and contrato.tipo_contrato_cliente_proveedor != tipo_filtro:
+            continue
+        fecha_final_actual = _obtener_fecha_final_contrato(contrato, fecha_actual)
+        alertas_preaviso_con_fecha.append({
+            'contrato': contrato,
+            'fecha_final_actualizada': fecha_final_actual,
+        })
+
+    alertas_ipc_list = obtener_alertas_ipc(
+        fecha_referencia=fecha_actual,
+        tipo_contrato_cp=tipo_filtro if tipo_filtro else None
+    )
+    alertas_ipc = list(alertas_ipc_list)
+
+    alertas_salario_minimo_list = obtener_alertas_salario_minimo(
+        fecha_referencia=fecha_actual,
+        tipo_contrato_cp=tipo_filtro if tipo_filtro else None
+    )
+    alertas_salario_minimo = list(alertas_salario_minimo_list)
+
+    # Deduplicación IPC / Salario Mínimo (preservar lógica original)
+    from gestion.services.alertas import obtener_tipo_condicion_ipc_vigente
+    ids_en_sm = {a.contrato.id for a in alertas_salario_minimo}
+    ids_en_ipc = {a.contrato.id for a in alertas_ipc}
+    contratos_duplicados = ids_en_ipc & ids_en_sm
+    if contratos_duplicados:
+        alertas_ipc = [
+            a for a in alertas_ipc
+            if a.contrato.id not in contratos_duplicados
+            or obtener_tipo_condicion_ipc_vigente(a.contrato, fecha_actual) == 'IPC'
+        ]
+        alertas_salario_minimo = [
+            a for a in alertas_salario_minimo
+            if a.contrato.id not in contratos_duplicados
+            or obtener_tipo_condicion_ipc_vigente(a.contrato, fecha_actual) == 'SALARIO_MINIMO'
+        ]
+
+    alertas_polizas_requeridas_list = obtener_alertas_polizas_requeridas_no_aportadas(fecha_referencia=fecha_actual)
+    alertas_polizas_requeridas = [
+        a for a in alertas_polizas_requeridas_list
+        if not tipo_filtro or a.contrato.tipo_contrato_cliente_proveedor == tipo_filtro
+    ]
+
+    alertas_terminacion_list = obtener_alertas_terminacion_anticipada(fecha_referencia=fecha_actual)
+    alertas_terminacion = [
+        a for a in alertas_terminacion_list
+        if not tipo_filtro or a.contrato.tipo_contrato_cliente_proveedor == tipo_filtro
+    ]
+
+    alertas_renovacion_automatica = obtener_alertas_renovacion_automatica(fecha_referencia=fecha_actual)
+
+    context = {
+        'fecha_actual': fecha_actual,
+        'tipo_filtro': tipo_filtro,
+        'contratos_por_vencer': contratos_por_vencer_con_fecha,
+        'total_alertas_vencimiento': len(contratos_por_vencer_con_fecha),
+        'polizas_criticas': polizas_criticas,
+        'total_polizas_criticas': len(polizas_criticas),
+        'hay_polizas_con_colchon': any(getattr(p, 'tiene_colchon', False) for p in polizas_criticas),
+        'alertas_preaviso_renovacion': alertas_preaviso_con_fecha,
+        'total_alertas_preaviso': len(alertas_preaviso_con_fecha),
+        'alertas_ipc': alertas_ipc,
+        'total_alertas_ipc': len(alertas_ipc),
+        'alertas_salario_minimo': alertas_salario_minimo,
+        'total_alertas_salario_minimo': len(alertas_salario_minimo),
+        'alertas_polizas_requeridas': alertas_polizas_requeridas,
+        'total_alertas_polizas_requeridas': len(alertas_polizas_requeridas),
+        'alertas_terminacion': alertas_terminacion,
+        'total_alertas_terminacion': len(alertas_terminacion),
+        'alertas_renovacion_automatica': alertas_renovacion_automatica,
+        'total_alertas_renovacion_automatica': len(alertas_renovacion_automatica),
+    }
+
+    html = render_to_string(
+        'gestion/alertas/_detalle_alertas.html',
+        context,
+        request=request,
+    )
+
+    totales = {
+        'vencimiento': len(contratos_por_vencer_con_fecha),
+        'polizas_criticas': len(polizas_criticas),
+        'preaviso': len(alertas_preaviso_con_fecha),
+        'ipc': len(alertas_ipc),
+        'salario_minimo': len(alertas_salario_minimo),
+        'polizas_requeridas': len(alertas_polizas_requeridas),
+        'terminacion': len(alertas_terminacion),
+        'renovacion_automatica': len(alertas_renovacion_automatica),
+    }
+
+    return JsonResponse({'html': html, 'totales': totales})
+
+
+@login_required_custom
 def exportaciones(request):
     """
     Centro de exportaciones de reportes del sistema.
