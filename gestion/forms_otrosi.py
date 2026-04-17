@@ -413,6 +413,18 @@ class OtroSiForm(BaseModelForm):
         label='Fecha Fin Vigencia Otras Pólizas'
     )
     
+    def clean_nueva_modalidad_pago(self):
+        valor = self.cleaned_data.get('nueva_modalidad_pago')
+        return valor if valor else None
+
+    def clean_nuevo_tipo_condicion_ipc(self):
+        valor = self.cleaned_data.get('nuevo_tipo_condicion_ipc')
+        return valor if valor else None
+
+    def clean_nueva_periodicidad_ipc(self):
+        valor = self.cleaned_data.get('nueva_periodicidad_ipc')
+        return valor if valor else None
+
     def clean_nueva_prorroga_automatica(self):
         """Convierte el ChoiceField (activar/desactivar/'') al BooleanField nullable del modelo."""
         valor = self.cleaned_data.get('nueva_prorroga_automatica')
@@ -1244,6 +1256,10 @@ class OtroSiForm(BaseModelForm):
         tipo_condicion_en_post = 'nuevo_tipo_condicion_ipc' in self.data
         if nuevo_tipo_condicion and tipo_condicion_en_post:
             puntos = cleaned_data.get('nuevos_puntos_adicionales_ipc')
+            puntos_en_post = 'nuevos_puntos_adicionales_ipc' in self.data
+            # Si el campo no viajó en POST (bloqueado por efecto cadena), usar el valor guardado en BD
+            if puntos is None and not puntos_en_post and self.instance and self.instance.pk:
+                puntos = self.instance.nuevos_puntos_adicionales_ipc
             if puntos is None:
                 self.add_error(
                     'nuevos_puntos_adicionales_ipc',

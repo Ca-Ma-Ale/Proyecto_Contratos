@@ -153,7 +153,7 @@ def registrar_dependencias_otrosi(otrosi: 'OtroSi') -> None:
 
     for campo_otrosi, campo_contrato in MAPA_OTROSI_A_CONTRATO.items():
         valor = getattr(otrosi, campo_otrosi, None)
-        if valor is not None:
+        if valor is not None and valor != '':
             campos_a_bloquear_en_contrato.append(campo_contrato)
             _crear_dependencia(
                 bloqueador_tipo='OTROSI',
@@ -192,10 +192,10 @@ def registrar_dependencias_otrosi(otrosi: 'OtroSi') -> None:
 
     for campo_otrosi in MAPA_OTROSI_A_CONTRATO:
         valor = getattr(otrosi, campo_otrosi, None)
-        if valor is None:
+        if valor is None or valor == '':
             continue
         for oa in otrosis_anteriores:
-            if getattr(oa, campo_otrosi, None) is not None:
+            if getattr(oa, campo_otrosi, None) not in (None, ''):
                 _crear_dependencia(
                     bloqueador_tipo='OTROSI',
                     bloqueador_id=otrosi.pk,
@@ -354,6 +354,22 @@ def liberar_dependencias(bloqueador_tipo: str, bloqueador_id: int) -> int:
         bloqueador_id=bloqueador_id,
     ).delete()
     return eliminados
+
+
+def recalcular_dependencias_otrosi(otrosi_pk: int) -> None:
+    """
+    Recalcula las dependencias de un OtroSí: elimina las existentes y las regenera.
+    Útil para corregir registros creados con lógica anterior incorrecta.
+
+    Uso desde la shell:
+        from gestion.services.chain_validation import recalcular_dependencias_otrosi
+        recalcular_dependencias_otrosi(<pk>)
+    """
+    from gestion.models import OtroSi
+    otrosi = OtroSi.objects.get(pk=otrosi_pk)
+    liberar_dependencias('OTROSI', otrosi_pk)
+    if otrosi.estado == 'APROBADO':
+        registrar_dependencias_otrosi(otrosi)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
