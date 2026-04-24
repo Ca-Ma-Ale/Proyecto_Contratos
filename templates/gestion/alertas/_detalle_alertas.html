@@ -560,34 +560,3 @@
     </div>
 </div>
 
-<script>
-(function() {
-  document.addEventListener('click', function(e){
-    var btn = e.target.closest('.toggle-alert');
-    if (!btn) return;
-    e.preventDefault();
-    var cardBody = btn.closest('.card-body');
-    if (!cardBody) return;
-    var container = cardBody.querySelector('.alert-collapsible');
-    if (!container) return;
-    var collapsed = container.getAttribute('data-collapsed') === 'true';
-    if (collapsed) {
-      container.style.maxHeight = '40vh';
-      container.style.overflowY = 'auto';
-      var overlay = container.querySelector('.fade-overlay');
-      if (overlay) overlay.style.display = 'none';
-      container.setAttribute('data-collapsed', 'false');
-      btn.textContent = 'Ver menos';
-      btn.setAttribute('aria-expanded', 'true');
-    } else {
-      container.style.maxHeight = '64px';
-      container.style.overflowY = 'hidden';
-      var overlay2 = container.querySelector('.fade-overlay');
-      if (overlay2) overlay2.style.display = 'block';
-      container.setAttribute('data-collapsed', 'true');
-      btn.textContent = 'Ver más';
-      btn.setAttribute('aria-expanded', 'false');
-    }
-  });
-})();
-</script>

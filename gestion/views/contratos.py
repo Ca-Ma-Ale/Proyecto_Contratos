@@ -1369,7 +1369,7 @@ def exportar_contratos(request):
                     contrato.fecha_firma or None,
                     contrato.fecha_inicial_contrato or None,
                     contrato.fecha_final_inicial or None,
-                    contrato.fecha_final_actualizada or None,
+                    fecha_final or None,
                     contrato.duracion_inicial_meses,
                     estado_texto,
                     'Sí' if contrato.prorroga_automatica else 'No',

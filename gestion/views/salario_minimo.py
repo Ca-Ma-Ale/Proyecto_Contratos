@@ -16,6 +16,7 @@ from gestion.services.chain_validation import auditar_cambio as _auditar_cambio
 from gestion.forms import SalarioMinimoHistoricoForm, CalculoSalarioMinimoForm, EditarCalculoSalarioMinimoForm
 from gestion.models import SalarioMinimoHistorico, CalculoSalarioMinimo, Contrato
 from gestion.utils_otrosi import get_ultimo_otrosi_que_modifico_campo_hasta_fecha
+from gestion.views.utils import _obtener_fecha_final_contrato
 from gestion.utils_ipc import calcular_proxima_fecha_aumento
 from gestion.utils_salario_minimo import (
     obtener_canon_base_para_salario_minimo,
@@ -48,14 +49,7 @@ def lista_salario_minimo_historico(request):
     # Preparar información de cada contrato
     contratos_info = []
     for contrato in contratos:
-        # Obtener fecha final actualizada considerando otrosí
-        otrosi_mod = get_ultimo_otrosi_que_modifico_campo_hasta_fecha(
-            contrato, 'nueva_fecha_final_actualizada', fecha_actual
-        )
-        if otrosi_mod and otrosi_mod.nueva_fecha_final_actualizada:
-            fecha_final = otrosi_mod.nueva_fecha_final_actualizada
-        else:
-            fecha_final = contrato.fecha_final_actualizada or contrato.fecha_inicial_contrato
+        fecha_final = _obtener_fecha_final_contrato(contrato, fecha_actual)
         
         # Obtener fecha de aumento considerando otrosí
         otrosi_fecha = get_ultimo_otrosi_que_modifico_campo_hasta_fecha(

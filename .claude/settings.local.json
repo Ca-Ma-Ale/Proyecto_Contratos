@@ -41,7 +41,10 @@
       "Bash(python manage.py test gestion.tests.test_dashboard --no-migrations)",
       "Bash(python manage.py test gestion.tests.test_dashboard)",
       "Bash(python manage.py test gestion.tests.test_dashboard --verbosity=2)",
-      "Bash(python manage.py test gestion.tests -v 2)"
+      "Bash(python manage.py test gestion.tests -v 2)",
+      "Bash(grep -E \"\\\\.\\(html|py\\)$\")",
+      "Bash(python manage.py shell -c ' *)",
+      "Bash(python manage.py auditar_otrosi)"
     ]
   }
 }

@@ -1190,7 +1190,13 @@ class OtroSiForm(BaseModelForm):
     
     def clean_nuevo_valor_asegurado_otra_1(self):
         return self._clean_campo_monetario('nuevo_valor_asegurado_otra_1')
-    
+
+    def clean_nuevo_plazo_meses(self):
+        value = self.cleaned_data.get('nuevo_plazo_meses')
+        if value == 0:
+            return None
+        return value
+
     def clean(self):
         cleaned_data = super().clean()
         effective_from = cleaned_data.get('effective_from')
