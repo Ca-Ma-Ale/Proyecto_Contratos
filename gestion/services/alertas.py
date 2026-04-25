@@ -114,7 +114,7 @@ def _obtener_fecha_final_contrato(contrato: Contrato, fecha_referencia: date) ->
     from gestion.models import RenovacionAutomatica
     from gestion.utils_otrosi import get_otrosi_vigente
     
-    # Primero verificar si hay una Renovación Automática vigente (tiene prioridad)
+    # Prioridad 1: Renovación Automática vigente (tiene prioridad absoluta)
     renovacion_vigente = RenovacionAutomatica.objects.filter(
         contrato=contrato,
         estado='APROBADO',
@@ -122,29 +122,28 @@ def _obtener_fecha_final_contrato(contrato: Contrato, fecha_referencia: date) ->
     ).filter(
         Q(effective_to__gte=fecha_referencia) | Q(effective_to__isnull=True)
     ).order_by('-effective_from', '-fecha_aprobacion', '-version').first()
-    
+
     if renovacion_vigente and renovacion_vigente.nueva_fecha_final_actualizada:
         return renovacion_vigente.nueva_fecha_final_actualizada
-    
-    # Si no hay renovación vigente, verificar Otro Sí vigente
-    otrosi_vigente_actual = get_otrosi_vigente(contrato, fecha_referencia)
-    
-    if otrosi_vigente_actual:
-        # Si tiene effective_to, esa es la fecha final vigente
-        if otrosi_vigente_actual.effective_to:
-            return otrosi_vigente_actual.effective_to
-        # Si no tiene effective_to pero tiene nueva_fecha_final_actualizada, usar esa
-        elif otrosi_vigente_actual.nueva_fecha_final_actualizada:
-            return otrosi_vigente_actual.nueva_fecha_final_actualizada
-    
-    # Si no hay Otro Sí vigente, usar efecto cadena para obtener fecha final vigente hasta fecha_referencia
+
+    # Prioridad 2: Efecto cadena — el último OtroSí aprobado que explícitamente
+    # modificó nueva_fecha_final_actualizada (sin importar si sigue "vigente" por fechas).
+    # Esto garantiza que un ajuste de canon temporal con effective_to no opaque una
+    # extensión de plazo anterior que sí usó nueva_fecha_final_actualizada.
     otrosi_modificador = get_ultimo_otrosi_que_modifico_campo_hasta_fecha(
         contrato, 'nueva_fecha_final_actualizada', fecha_referencia
     )
     if otrosi_modificador and otrosi_modificador.nueva_fecha_final_actualizada:
         return otrosi_modificador.nueva_fecha_final_actualizada
-    
-    # Si no hay modificaciones, usar fecha_final_actualizada del contrato si existe, sino fecha_final_inicial
+
+    # Prioridad 3: OtroSí activo en ventana (effective_from <= hoy <= effective_to).
+    # Solo como fallback para OtroSís de prórroga que usan effective_to sin llenar
+    # nueva_fecha_final_actualizada.
+    otrosi_vigente_actual = get_otrosi_vigente(contrato, fecha_referencia)
+    if otrosi_vigente_actual and otrosi_vigente_actual.effective_to:
+        return otrosi_vigente_actual.effective_to
+
+    # Prioridad 4: Campos base del contrato
     return contrato.fecha_final_actualizada or contrato.fecha_final_inicial
 
 
@@ -152,6 +151,7 @@ def obtener_alertas_expiracion_contratos(
     fecha_referencia: Optional[date] = None,
     ventana_dias: int = 90,
     tipo_contrato_cp: Optional[str] = None,
+    contratos_qs: Optional[QuerySet] = None,
 ) -> List[Contrato]:
     """
     Obtiene contratos que vencen dentro de la ventana indicada.
@@ -160,19 +160,22 @@ def obtener_alertas_expiracion_contratos(
     Args:
         fecha_referencia: Fecha base para calcular la ventana.
         ventana_dias: Ventana en días hacia adelante para evaluar vencimientos.
-        tipo_contrato_cp: Filtro opcional por tipo de contrato (CLIENTE/PROVEEDOR).
+        tipo_contrato_cp: Filtro opcional por tipo de contrato (CLIENTE/PROVEEDOR). Ignorado si se pasa contratos_qs.
+        contratos_qs: Queryset pre-filtrado. Si se provee, omite la construcción interna del QS.
     """
     fecha_base = fecha_referencia or timezone.now().date()
     fecha_limite = fecha_base + timedelta(days=ventana_dias)
-    
-    contratos_vigentes = (
-        Contrato.objects.filter(vigente=True)
-        .select_related('arrendatario', 'proveedor', 'local')
-        .prefetch_related('otrosi', 'renovaciones_automaticas')
-    )
-    
-    if tipo_contrato_cp:
-        contratos_vigentes = contratos_vigentes.filter(tipo_contrato_cliente_proveedor=tipo_contrato_cp)
+
+    if contratos_qs is not None:
+        contratos_vigentes = contratos_qs
+    else:
+        contratos_vigentes = (
+            Contrato.objects.filter(vigente=True)
+            .select_related('arrendatario', 'proveedor', 'local')
+            .prefetch_related('otrosi', 'renovaciones_automaticas')
+        )
+        if tipo_contrato_cp:
+            contratos_vigentes = contratos_vigentes.filter(tipo_contrato_cliente_proveedor=tipo_contrato_cp)
     
     alertas_con_fecha = []
     for contrato in contratos_vigentes:
@@ -195,6 +198,7 @@ def obtener_alertas_expiracion_contratos(
 def obtener_alertas_ipc(
     fecha_referencia: Optional[date] = None,
     tipo_contrato_cp: Optional[str] = None,
+    contratos_qs: Optional[QuerySet] = None,
 ) -> List[AlertaIPC]:
     """
     Calcula las alertas de IPC para contratos con configuración de ajuste.
@@ -202,23 +206,24 @@ def obtener_alertas_ipc(
 
     Args:
         fecha_referencia: Fecha base opcional para evaluar los meses restantes.
-        tipo_contrato_cp: Filtro opcional por tipo de contrato (CLIENTE/PROVEEDOR).
+        tipo_contrato_cp: Filtro opcional por tipo de contrato (CLIENTE/PROVEEDOR). Ignorado si se pasa contratos_qs.
+        contratos_qs: Queryset pre-filtrado. Si se provee, omite la construcción interna del QS.
 
     Returns:
         Lista ordenada de alertas de IPC.
     """
     fecha_base = fecha_referencia or timezone.now().date()
-    contratos_con_ipc = (
-        Contrato.objects.filter(
-            vigente=True,
+    if contratos_qs is not None:
+        contratos_con_ipc = contratos_qs.order_by('num_contrato')
+    else:
+        contratos_con_ipc = (
+            Contrato.objects.filter(vigente=True)
+            .select_related('arrendatario', 'proveedor', 'local')
+            .prefetch_related('otrosi')
+            .order_by('num_contrato')
         )
-        .select_related('arrendatario', 'proveedor', 'local')
-        .prefetch_related('otrosi')
-        .order_by('num_contrato')
-    )
-    
-    if tipo_contrato_cp:
-        contratos_con_ipc = contratos_con_ipc.filter(tipo_contrato_cliente_proveedor=tipo_contrato_cp)
+        if tipo_contrato_cp:
+            contratos_con_ipc = contratos_con_ipc.filter(tipo_contrato_cliente_proveedor=tipo_contrato_cp)
 
     alertas: List[AlertaIPC] = []
     for contrato in contratos_con_ipc:
@@ -398,6 +403,7 @@ def obtener_alertas_ipc(
 def obtener_alertas_salario_minimo(
     fecha_referencia: Optional[date] = None,
     tipo_contrato_cp: Optional[str] = None,
+    contratos_qs: Optional[QuerySet] = None,
 ) -> List[AlertaSalarioMinimo]:
     """
     Calcula las alertas de Salario Mínimo para contratos con configuración de ajuste.
@@ -405,23 +411,24 @@ def obtener_alertas_salario_minimo(
 
     Args:
         fecha_referencia: Fecha base opcional para evaluar los meses restantes.
-        tipo_contrato_cp: Filtro opcional por tipo de contrato (CLIENTE/PROVEEDOR).
+        tipo_contrato_cp: Filtro opcional por tipo de contrato (CLIENTE/PROVEEDOR). Ignorado si se pasa contratos_qs.
+        contratos_qs: Queryset pre-filtrado. Si se provee, omite la construcción interna del QS.
 
     Returns:
         Lista ordenada de alertas de Salario Mínimo.
     """
     fecha_base = fecha_referencia or timezone.now().date()
-    contratos_con_sm = (
-        Contrato.objects.filter(
-            vigente=True,
+    if contratos_qs is not None:
+        contratos_con_sm = contratos_qs.order_by('num_contrato')
+    else:
+        contratos_con_sm = (
+            Contrato.objects.filter(vigente=True)
+            .select_related('arrendatario', 'proveedor', 'local')
+            .prefetch_related('otrosi')
+            .order_by('num_contrato')
         )
-        .select_related('arrendatario', 'proveedor', 'local')
-        .prefetch_related('otrosi')
-        .order_by('num_contrato')
-    )
-    
-    if tipo_contrato_cp:
-        contratos_con_sm = contratos_con_sm.filter(tipo_contrato_cliente_proveedor=tipo_contrato_cp)
+        if tipo_contrato_cp:
+            contratos_con_sm = contratos_con_sm.filter(tipo_contrato_cliente_proveedor=tipo_contrato_cp)
 
     alertas: List[AlertaSalarioMinimo] = []
     for contrato in contratos_con_sm:
@@ -603,6 +610,7 @@ def obtener_polizas_criticas(
     fecha_referencia: Optional[date] = None,
     ventana_dias: int = 60,
     tipo_contrato_cp: Optional[str] = None,
+    contrato_filtros: Optional[dict] = None,
 ) -> List[Poliza]:
     """
     Obtiene pólizas con problemas de vigencia o pendientes de aporte.
@@ -612,19 +620,18 @@ def obtener_polizas_criticas(
     Args:
         fecha_referencia: Fecha base para evaluar vencimientos.
         ventana_dias: Ventana de evaluación para las vigencias próximas.
-        tipo_contrato_cp: Filtro opcional por tipo de contrato (CLIENTE/PROVEEDOR).
-    
+        tipo_contrato_cp: Filtro opcional por tipo de contrato (CLIENTE/PROVEEDOR). Ignorado si se pasa contrato_filtros.
+        contrato_filtros: Dict de filtros a aplicar sobre el contrato vía prefijo 'contrato__'.
+                         Ej: {'arrendatario': obj, 'tipo_contrato': obj}. Si se provee, omite tipo_contrato_cp.
+
     Returns:
         Lista de pólizas críticas ordenadas por fecha de vencimiento.
     """
     from gestion.utils_otrosi import get_otrosi_vigente
-    
+
     fecha_base = fecha_referencia or timezone.now().date()
     fecha_limite = fecha_base + timedelta(days=ventana_dias)
-    
-    # Obtener todas las pólizas que cumplen los criterios de fecha
-    # Incluir pólizas vencidas o que vencen dentro de la ventana
-    # Nota: El filtro inicial usa fecha_vencimiento, pero luego verificamos fecha_vencimiento_real si tiene colchón
+
     polizas_candidatas = (
         Poliza.objects.filter(
             fecha_vencimiento__isnull=False,
@@ -637,10 +644,15 @@ def obtener_polizas_criticas(
         .prefetch_related('contrato__otrosi', 'contrato__renovaciones_automaticas')
         .order_by('fecha_vencimiento')
     )
-    
-    if tipo_contrato_cp:
+
+    if contrato_filtros:
+        for campo, valor in contrato_filtros.items():
+            if valor:
+                polizas_candidatas = polizas_candidatas.filter(**{f'contrato__{campo}': valor})
+    elif tipo_contrato_cp:
         polizas_candidatas = polizas_candidatas.filter(contrato__tipo_contrato_cliente_proveedor=tipo_contrato_cp)
-    
+
+
     # Filtrar solo las de contratos vigentes (verificado por fechas considerando renovaciones)
     polizas_criticas = []
     for poliza in polizas_candidatas:
@@ -745,48 +757,61 @@ def obtener_polizas_criticas(
 
 def obtener_alertas_preaviso(
     fecha_referencia: Optional[date] = None,
-    ventana_dias: int = 60,
+    ventana_dias: int = 60,  # mantenido por compatibilidad; ya no es el filtro principal
     tipo_contrato_cp: Optional[str] = None,
+    contratos_qs: Optional[QuerySet] = None,
 ) -> List[Contrato]:
     """
-    Obtiene contratos que requieren preaviso de renovación.
-    Considera la fecha final actualizada y prórroga automática del último Otrosí aprobado.
+    Obtiene contratos que ya entraron en su ventana de preaviso de no renovación.
+
+    La alerta se activa cuando: hoy >= (fecha_final - dias_preaviso_no_renovacion),
+    es decir, cuando ya se debería haber enviado (o está por enviarse) el aviso.
+    Usa los días configurados en cada contrato, no una ventana global fija.
 
     Args:
         fecha_referencia: Fecha base para evaluar el preaviso.
-        ventana_dias: Ventana máxima para considerar el aviso.
-        tipo_contrato_cp: Filtro opcional por tipo de contrato (CLIENTE/PROVEEDOR).
+        ventana_dias: Ignorado (mantenido por compatibilidad de API).
+        tipo_contrato_cp: Filtro opcional por tipo de contrato (CLIENTE/PROVEEDOR). Ignorado si se pasa contratos_qs.
+        contratos_qs: Queryset pre-filtrado. Si se provee, omite la construcción interna del QS.
     """
     fecha_base = fecha_referencia or timezone.now().date()
-    fecha_limite = fecha_base + timedelta(days=ventana_dias)
-    
-    contratos_vigentes = (
-        Contrato.objects.filter(vigente=True)
-        .select_related('arrendatario', 'proveedor', 'local')
-        .prefetch_related('otrosi', 'renovaciones_automaticas')
-    )
-    
-    if tipo_contrato_cp:
-        contratos_vigentes = contratos_vigentes.filter(tipo_contrato_cliente_proveedor=tipo_contrato_cp)
-    
+
+    if contratos_qs is not None:
+        contratos_vigentes = contratos_qs
+    else:
+        contratos_vigentes = (
+            Contrato.objects.filter(vigente=True)
+            .select_related('arrendatario', 'proveedor', 'local')
+            .prefetch_related('otrosi', 'renovaciones_automaticas')
+        )
+        if tipo_contrato_cp:
+            contratos_vigentes = contratos_vigentes.filter(tipo_contrato_cliente_proveedor=tipo_contrato_cp)
+
     alertas_con_fecha = []
     for contrato in contratos_vigentes:
         try:
-            # Obtener la fecha final actualizada usando efecto cadena (considera Otrosí y Renovaciones Automáticas vigentes)
             fecha_final_actual = _obtener_fecha_final_contrato(contrato, fecha_base)
-            
-            # Usar prórroga automática del contrato (no existe campo en OtroSi para esto)
-            prorroga_automatica = contrato.prorroga_automatica
-            
-            if fecha_final_actual and fecha_final_actual <= fecha_limite and not prorroga_automatica:
+
+            # Sin fecha final o con prórroga automática no aplica preaviso
+            if not fecha_final_actual or contrato.prorroga_automatica:
+                continue
+
+            # Contrato ya expirado — no hay preaviso pendiente
+            if fecha_final_actual < fecha_base:
+                continue
+
+            dias_preaviso = contrato.dias_preaviso_no_renovacion or 0
+            if dias_preaviso <= 0:
+                continue
+
+            # La alerta se activa cuando hoy >= fecha en que debió enviarse el preaviso
+            fecha_inicio_preaviso = fecha_final_actual - timedelta(days=dias_preaviso)
+            if fecha_base >= fecha_inicio_preaviso:
                 alertas_con_fecha.append((contrato, fecha_final_actual))
         except Exception:
-            # Si hay error al obtener la fecha final, continuar con el siguiente contrato
             continue
-    
-    # Ordenar por fecha final actualizada
+
     alertas_con_fecha.sort(key=lambda x: x[1])
-    
     return [contrato for contrato, _ in alertas_con_fecha]
 
 
@@ -805,37 +830,43 @@ class AlertaPolizaRequerida:
 def obtener_alertas_polizas_requeridas_no_aportadas(
     fecha_referencia: Optional[date] = None,
     tipo_contrato_cp: Optional[str] = None,
+    contratos_qs: Optional[QuerySet] = None,
 ) -> List[AlertaPolizaRequerida]:
     """
     Obtiene alertas de contratos con pólizas requeridas no aportadas o vencidas.
     Aplica el efecto cadena para considerar modificaciones de Otrosí vigentes.
-    
+
     Args:
         fecha_referencia: Fecha base para evaluar los requisitos y vigencias.
-        tipo_contrato_cp: Filtro opcional por tipo de contrato (CLIENTE/PROVEEDOR).
-    
+        tipo_contrato_cp: Filtro opcional por tipo de contrato (CLIENTE/PROVEEDOR). Ignorado si se pasa contratos_qs.
+        contratos_qs: Queryset pre-filtrado. Si se provee, omite la construcción interna del QS.
+
     Returns:
         Lista ordenada de alertas de pólizas requeridas no aportadas.
     """
     from gestion.utils_otrosi import get_polizas_requeridas_contrato
     from gestion.utils_otrosi import get_ultimo_otrosi_que_modifico_campo_hasta_fecha
-    
+
     fecha_base = fecha_referencia or timezone.now().date()
-    
-    contratos_vigentes = (
-        Contrato.objects.filter(vigente=True)
-        .select_related('arrendatario', 'proveedor', 'local')
-        .prefetch_related(
-            'otrosi',
-            'renovaciones_automaticas',
-            'polizas',
-            'polizas__otrosi',
-            'polizas__renovacion_automatica'
+
+    if contratos_qs is not None:
+        contratos_vigentes = contratos_qs.prefetch_related(
+            'polizas', 'polizas__otrosi', 'polizas__renovacion_automatica'
         )
-    )
-    
-    if tipo_contrato_cp:
-        contratos_vigentes = contratos_vigentes.filter(tipo_contrato_cliente_proveedor=tipo_contrato_cp)
+    else:
+        contratos_vigentes = (
+            Contrato.objects.filter(vigente=True)
+            .select_related('arrendatario', 'proveedor', 'local')
+            .prefetch_related(
+                'otrosi',
+                'renovaciones_automaticas',
+                'polizas',
+                'polizas__otrosi',
+                'polizas__renovacion_automatica'
+            )
+        )
+        if tipo_contrato_cp:
+            contratos_vigentes = contratos_vigentes.filter(tipo_contrato_cliente_proveedor=tipo_contrato_cp)
     
     alertas: List[AlertaPolizaRequerida] = []
     
@@ -1237,31 +1268,35 @@ class AlertaRenovacionAutomatica:
 def obtener_alertas_terminacion_anticipada(
     fecha_referencia: Optional[date] = None,
     tipo_contrato_cp: Optional[str] = None,
+    contratos_qs: Optional[QuerySet] = None,
 ) -> List[AlertaTerminacionAnticipada]:
     """
     Obtiene alertas de contratos que están dentro del período de terminación anticipada.
     Considera la fecha final actualizada y días de terminación del último Otrosí aprobado.
-    
+
     Un contrato está dentro del período de terminación anticipada cuando:
     - Los días restantes hasta el vencimiento son menores o iguales a los días de terminación anticipada configurados.
-    
+
     Args:
         fecha_referencia: Fecha base para evaluar el período de terminación anticipada.
-        tipo_contrato_cp: Filtro opcional por tipo de contrato (CLIENTE/PROVEEDOR).
-    
+        tipo_contrato_cp: Filtro opcional por tipo de contrato (CLIENTE/PROVEEDOR). Ignorado si se pasa contratos_qs.
+        contratos_qs: Queryset pre-filtrado. Si se provee, omite la construcción interna del QS.
+
     Returns:
         Lista ordenada de alertas de terminación anticipada.
     """
     fecha_base = fecha_referencia or timezone.now().date()
-    
-    contratos_vigentes = (
-        Contrato.objects.filter(vigente=True)
-        .select_related('arrendatario', 'proveedor', 'local')
-        .prefetch_related('otrosi', 'renovaciones_automaticas')
-    )
-    
-    if tipo_contrato_cp:
-        contratos_vigentes = contratos_vigentes.filter(tipo_contrato_cliente_proveedor=tipo_contrato_cp)
+
+    if contratos_qs is not None:
+        contratos_vigentes = contratos_qs
+    else:
+        contratos_vigentes = (
+            Contrato.objects.filter(vigente=True)
+            .select_related('arrendatario', 'proveedor', 'local')
+            .prefetch_related('otrosi', 'renovaciones_automaticas')
+        )
+        if tipo_contrato_cp:
+            contratos_vigentes = contratos_vigentes.filter(tipo_contrato_cliente_proveedor=tipo_contrato_cp)
     
     alertas: List[AlertaTerminacionAnticipada] = []
     

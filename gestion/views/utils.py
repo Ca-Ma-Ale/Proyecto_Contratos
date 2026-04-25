@@ -748,6 +748,52 @@ def _es_contrato_vencido(contrato, fecha_referencia=None):
     return fecha_final < fecha_referencia
 
 
+def obtener_canon_vigente(contrato, fecha_referencia=None):
+    """
+    Devuelve el canon vigente del contrato a la fecha de referencia, aplicando la misma
+    prioridad que el resumen del contrato:
+      1. Último cálculo IPC/SMLV aplicado (si es posterior al OtroSí que modificó el canon)
+      2. Último OtroSí que modificó el campo de canon (efecto cadena)
+      3. Valor base del contrato
+
+    Para arrendatarios usa valor_canon_fijo / nuevo_valor_canon.
+    Para proveedores usa canon_minimo_garantizado / nuevo_canon_minimo_garantizado.
+    """
+    from gestion.utils_ipc import obtener_ultimo_calculo_aplicado_hasta_fecha
+    from gestion.utils_otrosi import get_ultimo_otrosi_que_modifico_campo_hasta_fecha
+
+    if fecha_referencia is None:
+        fecha_referencia = date.today()
+
+    es_proveedor = getattr(contrato, 'tipo_contrato_cliente_proveedor', None) == 'PROVEEDOR'
+    campo_otrosi = 'nuevo_canon_minimo_garantizado' if es_proveedor else 'nuevo_valor_canon'
+    campo_base = 'canon_minimo_garantizado' if es_proveedor else 'valor_canon_fijo'
+
+    otrosi_canon = get_ultimo_otrosi_que_modifico_campo_hasta_fecha(contrato, campo_otrosi, fecha_referencia)
+    ultimo_calculo = obtener_ultimo_calculo_aplicado_hasta_fecha(contrato, fecha_referencia)
+
+    if ultimo_calculo and ultimo_calculo.nuevo_canon:
+        aplicar_calculo = False
+        if not otrosi_canon:
+            aplicar_calculo = True
+        else:
+            fecha_aprobacion = getattr(otrosi_canon, 'fecha_aprobacion', None)
+            if fecha_aprobacion:
+                fecha_os = fecha_aprobacion.date() if hasattr(fecha_aprobacion, 'date') else fecha_aprobacion
+                aplicar_calculo = ultimo_calculo.fecha_aplicacion >= fecha_os
+            else:
+                aplicar_calculo = True
+        if aplicar_calculo:
+            return ultimo_calculo.nuevo_canon
+
+    if otrosi_canon:
+        valor = getattr(otrosi_canon, campo_otrosi, None)
+        if valor:
+            return valor
+
+    return getattr(contrato, campo_base, None)
+
+
 def _estado_vigente_contrato(contrato, fecha_actual=None):
     """
     Determina si el contrato está vigente en la fecha dada.

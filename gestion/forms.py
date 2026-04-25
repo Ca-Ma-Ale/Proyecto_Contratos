@@ -1703,9 +1703,18 @@ class FiltroExportacionAlertasForm(BaseForm):
     )
 
 
+class FiltroReportesAlertasForm(FiltroExportacionContratosForm):
+    """Filtros completos para reportes de alertas. Igual que FiltroExportacionContratosForm
+    pero sin el campo 'estado', ya que los reportes de alertas operan siempre sobre contratos vigentes."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields.pop('estado', None)
+
+
 class CalculoFacturacionVentasForm(BaseForm):
     """Formulario para calcular facturación por ventas"""
-    
+
     contrato = forms.ModelChoiceField(
         queryset=Contrato.objects.none(),
         required=True,

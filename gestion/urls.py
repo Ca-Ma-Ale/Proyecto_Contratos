@@ -13,6 +13,7 @@ urlpatterns = [
     path('exportaciones/alertas-vencimiento/', views.exportar_alertas_vencimiento, name='exportar_alertas_vencimiento'),
     path('exportaciones/alertas-polizas/', views.exportar_alertas_polizas, name='exportar_alertas_polizas'),
     path('exportaciones/alertas-preaviso/', views.exportar_alertas_preaviso, name='exportar_alertas_preaviso'),
+    path('exportaciones/estado-preavisos/', views.exportar_estado_preavisos, name='exportar_estado_preavisos'),
     path('exportaciones/alertas-ipc/', views.exportar_alertas_ipc, name='exportar_alertas_ipc'),
     path('exportaciones/alertas-salario-minimo/', views.exportar_alertas_salario_minimo, name='exportar_alertas_salario_minimo'),
     path('exportaciones/alertas-polizas-requeridas/', views.exportar_alertas_polizas_requeridas, name='exportar_alertas_polizas_requeridas'),

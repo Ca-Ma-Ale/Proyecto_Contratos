@@ -119,7 +119,13 @@ def nuevo_otrosi(request, contrato_id):
         if form.is_valid():
             otrosi = form.save(commit=False)
             otrosi.contrato = contrato
-            
+            # Sincronizar nueva_fecha_final_actualizada desde effective_to solo si el usuario marcó
+            # "Modificar Plazos y Vigencia" (checkbox frontend que envía modificar_plazos=1)
+            if request.POST.get('modificar_plazos') == '1' and otrosi.effective_to:
+                otrosi.nueva_fecha_final_actualizada = otrosi.effective_to
+            elif request.POST.get('modificar_plazos') == '0':
+                otrosi.nueva_fecha_final_actualizada = None
+
             # Verificar si el otro sí modifica el canon y si existe un cálculo de IPC/Salario Mínimo
             if (otrosi.nuevo_valor_canon or otrosi.nuevo_canon_minimo_garantizado) and not continuar_desde_advertencia:
                 from gestion.utils_ipc import verificar_calculo_existente_para_fecha
@@ -424,10 +430,26 @@ def editar_otrosi(request, otrosi_id):
             del request.session['otrosi_pendiente_advertencia']
         else:
             form = OtroSiForm(request.POST, instance=otrosi, contrato=contrato, contrato_id=contrato.id)
-        
+
+        # Aplicar disabled ANTES de is_valid(): el browser no envía inputs disabled,
+        # así Django usa el valor de la instancia y no falla por campo requerido ausente.
+        _bloqueos_pre = _verificar_bloqueos('OTROSI', otrosi.pk, CAMPOS_BLOQUEABLES_OTROSI)
+        _campos_bloqueados_pre = {c for c, lista in _bloqueos_pre.items() if lista}
+        if 'nuevo_plazo_meses' in _campos_bloqueados_pre:
+            _campos_bloqueados_pre.update({'effective_from', 'effective_to'})
+        for _campo in _campos_bloqueados_pre:
+            if _campo in form.fields:
+                form.fields[_campo].disabled = True
+
         if form.is_valid():
             otrosi = form.save(commit=False)
-            
+            # Sincronizar nueva_fecha_final_actualizada desde effective_to solo si el usuario marcó
+            # "Modificar Plazos y Vigencia" (checkbox frontend que envía modificar_plazos=1)
+            if request.POST.get('modificar_plazos') == '1' and otrosi.effective_to:
+                otrosi.nueva_fecha_final_actualizada = otrosi.effective_to
+            elif request.POST.get('modificar_plazos') == '0':
+                otrosi.nueva_fecha_final_actualizada = None
+
             # Verificar si el otro sí modifica el canon y si existe un cálculo de IPC/Salario Mínimo
             if (otrosi.nuevo_valor_canon or otrosi.nuevo_canon_minimo_garantizado) and not continuar_desde_advertencia:
                 from gestion.utils_ipc import verificar_calculo_existente_para_fecha

@@ -45,6 +45,7 @@ from .utils import (
     _obtener_fecha_final_contrato,
     _es_contrato_vencido,
     _respuesta_archivo_excel,
+    obtener_canon_vigente,
 )
 
 @login_required_custom
@@ -1256,8 +1257,8 @@ def exportar_contratos(request):
                 ColumnaExportacion('Días Preaviso', ancho=18, es_numerica=True, alineacion='right'),
                 ColumnaExportacion('Terminación Anticipada (Días)', ancho=28, es_numerica=True, alineacion='right'),
                 ColumnaExportacion('Modalidad Pago', ancho=25),
-                ColumnaExportacion('Canon Fijo', ancho=18, es_numerica=True, alineacion='right'),
-                ColumnaExportacion('Canon Mínimo Garantizado / Valor Mensual', ancho=35, es_numerica=True, alineacion='right'),
+                ColumnaExportacion('Canon Vigente', ancho=18, es_numerica=True, alineacion='right'),
+                ColumnaExportacion('Canon Mínimo Garantizado Vigente', ancho=35, es_numerica=True, alineacion='right'),
                 ColumnaExportacion('% Ventas', ancho=15, es_numerica=True, alineacion='right'),
                 ColumnaExportacion('Reporta Ventas', ancho=18),
                 ColumnaExportacion('Día Límite Reporte Ventas', ancho=28, es_numerica=True, alineacion='right'),
@@ -1354,7 +1355,9 @@ def exportar_contratos(request):
                 local_nombre = contrato.local.nombre_comercial_stand if contrato.local else None
                 local_ubicacion = contrato.local.ubicacion if contrato.local else None
                 local_area = float(contrato.local.total_area_m2) if contrato.local and contrato.local.total_area_m2 else None
-                
+                canon_vigente_valor = obtener_canon_vigente(contrato, fecha_actual)
+                es_proveedor = contrato.tipo_contrato_cliente_proveedor == 'PROVEEDOR'
+
                 registros.append((
                     contrato.num_contrato,
                     contrato.get_tipo_contrato_cliente_proveedor_display(),
@@ -1376,8 +1379,8 @@ def exportar_contratos(request):
                     contrato.dias_preaviso_no_renovacion or None,
                     contrato.dias_terminacion_anticipada or None,
                     contrato.get_modalidad_pago_display() if contrato.modalidad_pago else None,
-                    float(contrato.valor_canon_fijo) if contrato.valor_canon_fijo else None,
-                    float(contrato.canon_minimo_garantizado) if contrato.canon_minimo_garantizado else None,
+                    float(canon_vigente_valor) if (canon_vigente_valor and not es_proveedor) else None,
+                    float(canon_vigente_valor) if (canon_vigente_valor and es_proveedor) else None,
                     float(contrato.porcentaje_ventas) if contrato.porcentaje_ventas else None,
                     'Sí' if contrato.reporta_ventas else 'No',
                     contrato.dia_limite_reporte_ventas or None,

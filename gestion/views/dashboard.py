@@ -27,7 +27,7 @@ from gestion.services.exportes import (
     generar_excel_corporativo,
 )
 from gestion.utils_otrosi import get_ultimo_otrosi_que_modifico_campo_hasta_fecha
-from .utils import _estado_vigente_contrato, _respuesta_archivo_excel
+from .utils import _estado_vigente_contrato, _respuesta_archivo_excel, obtener_canon_vigente
 
 
 @login_required_custom
@@ -276,14 +276,7 @@ def exportaciones(request):
     Permite seleccionar el informe a descargar.
     """
     fecha_actual = timezone.now().date()
-    contratos_por_vencer = obtener_alertas_expiracion_contratos(fecha_referencia=fecha_actual, ventana_dias=90)
-    polizas_criticas = obtener_polizas_criticas(fecha_referencia=fecha_actual)
-    alertas_preaviso = obtener_alertas_preaviso(fecha_referencia=fecha_actual)
-    alertas_ipc = obtener_alertas_ipc(fecha_referencia=fecha_actual)
-    alertas_salario_minimo = obtener_alertas_salario_minimo(fecha_referencia=fecha_actual)
-    alertas_polizas_requeridas = obtener_alertas_polizas_requeridas_no_aportadas(fecha_referencia=fecha_actual)
-    alertas_terminacion = obtener_alertas_terminacion_anticipada(fecha_referencia=fecha_actual)
-
+    # Solo conteos simples (COUNT rápido). Los datos de alertas se calculan al generar cada reporte.
     total_contratos = Contrato.objects.count()
     total_terceros = Tercero.objects.count()
     total_locales = Local.objects.count()
@@ -300,49 +293,56 @@ def exportaciones(request):
             'codigo': 'alertas_vencimiento',
             'nombre': 'Alertas de Vencimiento de Contrato',
             'descripcion': 'Contratos que vencen dentro de la ventana de monitoreo.',
-            'total_registros': len(contratos_por_vencer),
+            'total_registros': None,
             'url_name': 'gestion:exportar_alertas_vencimiento',
         },
         {
             'codigo': 'alertas_polizas',
             'nombre': 'Alertas de Pólizas Críticas',
             'descripcion': 'Pólizas vencidas, próximas a vencer o sin aportar.',
-            'total_registros': len(polizas_criticas),
+            'total_registros': None,
             'url_name': 'gestion:exportar_alertas_polizas',
         },
         {
             'codigo': 'alertas_preaviso',
             'nombre': 'Alertas de Renovación (Preaviso)',
             'descripcion': 'Contratos que requieren envío de preaviso de no renovación.',
-            'total_registros': len(alertas_preaviso),
+            'total_registros': None,
             'url_name': 'gestion:exportar_alertas_preaviso',
+        },
+        {
+            'codigo': 'estado_preavisos',
+            'nombre': 'Estado de Preavisos',
+            'descripcion': 'Panorama completo de todos los contratos vigentes: cuáles están en ventana de preaviso, cuáles próximos a entrar y cuáles no aplican, con fechas y días.',
+            'total_registros': None,
+            'url_name': 'gestion:exportar_estado_preavisos',
         },
         {
             'codigo': 'alertas_ipc',
             'nombre': 'Alertas de Ajuste de IPC',
             'descripcion': 'Contratos con ajustes de canon próximos por índice IPC.',
-            'total_registros': len(alertas_ipc),
+            'total_registros': None,
             'url_name': 'gestion:exportar_alertas_ipc',
         },
         {
             'codigo': 'alertas_salario_minimo',
             'nombre': 'Alertas de Ajuste de Salario Mínimo',
             'descripcion': 'Contratos con ajustes de canon próximos por Salario Mínimo.',
-            'total_registros': len(alertas_salario_minimo),
+            'total_registros': None,
             'url_name': 'gestion:exportar_alertas_salario_minimo',
         },
         {
             'codigo': 'alertas_polizas_requeridas',
             'nombre': 'Alertas de Pólizas Requeridas No Aportadas',
             'descripcion': 'Contratos con pólizas requeridas que no han sido aportadas o están vencidas.',
-            'total_registros': len(alertas_polizas_requeridas),
+            'total_registros': None,
             'url_name': 'gestion:exportar_alertas_polizas_requeridas',
         },
         {
             'codigo': 'alertas_terminacion',
             'nombre': 'Alertas de Terminación Anticipada',
             'descripcion': 'Contratos dentro del período de terminación anticipada.',
-            'total_registros': len(alertas_terminacion),
+            'total_registros': None,
             'url_name': 'gestion:exportar_alertas_terminacion',
         },
         {
@@ -375,309 +375,266 @@ def exportaciones(request):
     return render(request, 'gestion/exportaciones/index.html', context)
 
 
+def _construir_qs_contratos_filtrado(form):
+    """Construye un queryset de contratos vigentes aplicando los filtros del formulario de reportes."""
+    from django.db.models import Q
+
+    qs = (
+        Contrato.objects.filter(vigente=True)
+        .select_related('arrendatario', 'proveedor', 'local')
+        .prefetch_related('otrosi', 'renovaciones_automaticas')
+    )
+
+    tipo_cp = form.cleaned_data.get('tipo_contrato_cliente_proveedor')
+    if tipo_cp:
+        qs = qs.filter(tipo_contrato_cliente_proveedor=tipo_cp)
+
+    tipo_contrato = form.cleaned_data.get('tipo_contrato')
+    if tipo_contrato:
+        qs = qs.filter(tipo_contrato=tipo_contrato)
+
+    arrendatario = form.cleaned_data.get('arrendatario')
+    if arrendatario:
+        qs = qs.filter(arrendatario=arrendatario)
+
+    local = form.cleaned_data.get('local')
+    if local:
+        qs = qs.filter(local=local)
+
+    modalidad = form.cleaned_data.get('modalidad_pago')
+    if modalidad:
+        qs = qs.filter(modalidad_pago=modalidad)
+
+    prorroga = form.cleaned_data.get('prorroga_automatica')
+    if prorroga == 'si':
+        qs = qs.filter(prorroga_automatica=True)
+    elif prorroga == 'no':
+        qs = qs.filter(prorroga_automatica=False)
+
+    fecha_inicio_desde = form.cleaned_data.get('fecha_inicio_desde')
+    if fecha_inicio_desde:
+        qs = qs.filter(fecha_inicial_contrato__gte=fecha_inicio_desde)
+
+    fecha_inicio_hasta = form.cleaned_data.get('fecha_inicio_hasta')
+    if fecha_inicio_hasta:
+        qs = qs.filter(fecha_inicial_contrato__lte=fecha_inicio_hasta)
+
+    fecha_final_desde = form.cleaned_data.get('fecha_final_desde')
+    if fecha_final_desde:
+        qs = qs.filter(
+            Q(fecha_final_actualizada__gte=fecha_final_desde) |
+            Q(fecha_final_actualizada__isnull=True, fecha_final_inicial__gte=fecha_final_desde)
+        )
+
+    fecha_final_hasta = form.cleaned_data.get('fecha_final_hasta')
+    if fecha_final_hasta:
+        qs = qs.filter(
+            Q(fecha_final_actualizada__lte=fecha_final_hasta) |
+            Q(fecha_final_actualizada__isnull=True, fecha_final_inicial__lte=fecha_final_hasta)
+        )
+
+    return qs
+
+
 @login_required_custom
 def exportar_alertas_ipc(request):
-    """
-    Genera el archivo Excel con las alertas de IPC vigentes.
-    """
-    from gestion.forms import FiltroExportacionAlertasForm
-    
-    tipo_contrato_cp = request.GET.get('tipo_contrato_cp', '') or request.POST.get('tipo_contrato_cliente_proveedor', '')
-    
-    # Si es GET sin parámetro tipo_contrato_cp, mostrar formulario de selección
-    if request.method == 'GET' and 'tipo_contrato_cp' not in request.GET:
-        form = FiltroExportacionAlertasForm()
-        context = {
-            'form': form,
-            'titulo': 'Exportar Alertas de IPC',
-            'descripcion': 'Seleccione el tipo de contrato para exportar las alertas de ajuste de IPC.',
-            'url_exportacion': 'gestion:exportar_alertas_ipc',
-        }
-        return render(request, 'gestion/exportaciones/seleccionar_tipo.html', context)
-    
-    alertas = obtener_alertas_ipc(tipo_contrato_cp=tipo_contrato_cp if tipo_contrato_cp else None)
+    from gestion.forms import FiltroReportesAlertasForm
 
-    try:
-        columnas = [
-            ColumnaExportacion('Número de Contrato', ancho=22),
-            ColumnaExportacion('Tercero', ancho=28),
-            ColumnaExportacion('Local', ancho=26),
-            ColumnaExportacion('Mes de Ajuste', ancho=18, alineacion='center'),
-            ColumnaExportacion('Condición IPC', ancho=26),
-            ColumnaExportacion('Meses Restantes', ancho=18, es_numerica=True, alineacion='right'),
-            ColumnaExportacion('Severidad', ancho=22),
-            ColumnaExportacion('Otrosí Modificador', ancho=25),
-        ]
+    fecha_actual = timezone.now().date()
 
-        severidades_legibles = {
-            'danger': 'Crítica (0-1 mes)',
-            'warning': 'Moderada (2 meses)',
-            'success': 'Preventiva (3+ meses)',
-        }
+    if request.method == 'POST':
+        form = FiltroReportesAlertasForm(request.POST)
+        if form.is_valid():
+            alertas = obtener_alertas_ipc(contratos_qs=_construir_qs_contratos_filtrado(form))
 
-        registros = []
-        for alerta in alertas:
-            tercero = alerta.contrato.obtener_tercero()
-            nombre_tercero = tercero.razon_social if tercero else 'Sin tercero asignado'
-            local_nombre = alerta.contrato.local.nombre_comercial_stand if alerta.contrato.local else '-'
-            registros.append((
-                alerta.contrato.num_contrato,
-                nombre_tercero,
-                local_nombre,
-                alerta.mes_ajuste,
-                alerta.condicion_ipc,
-                int(alerta.meses_restantes),
-                severidades_legibles.get(alerta.color_alerta, alerta.color_alerta),
-                alerta.otrosi_modificador or 'Contrato Original',
-            ))
-
-        archivo = generar_excel_corporativo(
-            nombre_hoja='Alertas IPC',
-            columnas=columnas,
-            registros=registros,
-        )
-    except ExportacionVaciaError as error:
-        messages.warning(request, str(error))
-        return redirect('gestion:exportaciones')
-
-    return _respuesta_archivo_excel(archivo, 'alertas_ipc')
-
-
-@login_required_custom
-def exportar_alertas_salario_minimo(request):
-    """
-    Genera el archivo Excel con las alertas de Salario Mínimo vigentes.
-    """
-    from gestion.forms import FiltroExportacionAlertasForm
-    
-    tipo_contrato_cp = request.GET.get('tipo_contrato_cp', '') or request.POST.get('tipo_contrato_cliente_proveedor', '')
-    
-    # Si es GET sin parámetro tipo_contrato_cp, mostrar formulario de selección
-    if request.method == 'GET' and 'tipo_contrato_cp' not in request.GET:
-        form = FiltroExportacionAlertasForm()
-        context = {
-            'form': form,
-            'titulo': 'Exportar Alertas de Salario Mínimo',
-            'descripcion': 'Seleccione el tipo de contrato para exportar las alertas de ajuste de Salario Mínimo.',
-            'url_exportacion': 'gestion:exportar_alertas_salario_minimo',
-        }
-        return render(request, 'gestion/exportaciones/seleccionar_tipo.html', context)
-    
-    try:
-        alertas = obtener_alertas_salario_minimo(tipo_contrato_cp=tipo_contrato_cp if tipo_contrato_cp else None)
-    except Exception as e:
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.error(f"Error al obtener alertas de salario mínimo: {str(e)}", exc_info=True)
-        messages.error(request, 'Error al obtener las alertas de Salario Mínimo. Por favor, intente nuevamente.')
-        return redirect('gestion:exportaciones')
-
-    if not alertas:
-        messages.warning(request, 'No hay alertas de Salario Mínimo para exportar.')
-        return redirect('gestion:exportaciones')
-
-    try:
-        columnas = [
-            ColumnaExportacion('Número de Contrato', ancho=22),
-            ColumnaExportacion('Tercero', ancho=28),
-            ColumnaExportacion('Local', ancho=26),
-            ColumnaExportacion('Mes de Ajuste', ancho=18, alineacion='center'),
-            ColumnaExportacion('Condición Salario Mínimo', ancho=30),
-            ColumnaExportacion('Meses Restantes', ancho=18, es_numerica=True, alineacion='right'),
-            ColumnaExportacion('Severidad', ancho=22),
-            ColumnaExportacion('Otrosí Modificador', ancho=25),
-        ]
-
-        severidades_legibles = {
-            'danger': 'Crítica (0-1 mes)',
-            'warning': 'Moderada (2 meses)',
-            'success': 'Preventiva (3+ meses)',
-        }
-
-        registros = []
-        for alerta in alertas:
-            try:
+            severidades_legibles = {
+                'danger': 'Crítica (0-1 mes)',
+                'warning': 'Moderada (2 meses)',
+                'success': 'Preventiva (3+ meses)',
+            }
+            columnas = [
+                ColumnaExportacion('Número de Contrato', ancho=22),
+                ColumnaExportacion('Tercero', ancho=28),
+                ColumnaExportacion('Local', ancho=26),
+                ColumnaExportacion('Mes de Ajuste', ancho=18, alineacion='center'),
+                ColumnaExportacion('Condición IPC', ancho=26),
+                ColumnaExportacion('Meses Restantes', ancho=18, es_numerica=True, alineacion='right'),
+                ColumnaExportacion('Severidad', ancho=22),
+                ColumnaExportacion('Canon Vigente', ancho=20, es_numerica=True, alineacion='right'),
+                ColumnaExportacion('Otrosí Modificador', ancho=25),
+            ]
+            registros = []
+            for alerta in alertas:
                 tercero = alerta.contrato.obtener_tercero()
                 nombre_tercero = tercero.razon_social if tercero else 'Sin tercero asignado'
                 local_nombre = alerta.contrato.local.nombre_comercial_stand if alerta.contrato.local else '-'
-                mes_ajuste = alerta.mes_ajuste if alerta.mes_ajuste else '-'
-                condicion_sm = alerta.condicion_salario_minimo if alerta.condicion_salario_minimo else '-'
-                meses_restantes_valor = int(alerta.meses_restantes) if alerta.meses_restantes is not None else 0
-                severidad = severidades_legibles.get(alerta.color_alerta, alerta.color_alerta) if alerta.color_alerta else 'N/A'
-                otrosi_mod = alerta.otrosi_modificador if alerta.otrosi_modificador else 'Contrato Original'
-                
+                canon = obtener_canon_vigente(alerta.contrato, fecha_actual)
                 registros.append((
                     alerta.contrato.num_contrato,
                     nombre_tercero,
                     local_nombre,
-                    mes_ajuste,
-                    condicion_sm,
-                    meses_restantes_valor,
-                    severidad,
-                    otrosi_mod,
+                    alerta.mes_ajuste,
+                    alerta.condicion_ipc,
+                    int(alerta.meses_restantes),
+                    severidades_legibles.get(alerta.color_alerta, alerta.color_alerta),
+                    float(canon) if canon else None,
+                    alerta.otrosi_modificador or 'Contrato Original',
                 ))
-            except Exception as e:
-                import logging
-                logger = logging.getLogger(__name__)
-                logger.error(f"Error al procesar alerta de salario mínimo para contrato {alerta.contrato.num_contrato}: {str(e)}", exc_info=True)
-                continue
+            try:
+                archivo = generar_excel_corporativo(nombre_hoja='Alertas IPC', columnas=columnas, registros=registros)
+            except ExportacionVaciaError as error:
+                messages.warning(request, str(error))
+                return redirect('gestion:exportaciones')
+            return _respuesta_archivo_excel(archivo, 'alertas_ipc')
+    else:
+        form = FiltroReportesAlertasForm()
 
-        if not registros:
-            messages.warning(request, 'No se pudieron procesar las alertas de Salario Mínimo para exportar.')
-            return redirect('gestion:exportaciones')
+    return render(request, 'gestion/exportaciones/filtros_reporte.html', {
+        'form': form,
+        'titulo': 'Alertas de Ajuste de IPC',
+        'descripcion': 'Aplique filtros para exportar los contratos con alertas de ajuste por IPC.',
+        'url_name': 'gestion:exportar_alertas_ipc',
+    })
 
-        archivo = generar_excel_corporativo(
-            nombre_hoja='Alertas Salario Mínimo',
-            columnas=columnas,
-            registros=registros,
-        )
 
-    except ExportacionVaciaError:
-        messages.warning(request, 'No hay alertas de Salario Mínimo para exportar.')
-        return redirect('gestion:exportaciones')
-    except ValueError as e:
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.error(f"Error de validación al exportar alertas de salario mínimo: {str(e)}", exc_info=True)
-        messages.error(request, f'Error de validación al generar el archivo Excel: {str(e)}. Por favor, verifique los datos.')
-        return redirect('gestion:exportaciones')
-    except Exception as e:
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.error(f"Error al exportar alertas de salario mínimo: {str(e)}", exc_info=True)
-        messages.error(request, f'Error al generar el archivo Excel: {str(e)}. Por favor, intente nuevamente o contacte al administrador.')
-        return redirect('gestion:exportaciones')
+@login_required_custom
+def exportar_alertas_salario_minimo(request):
+    from gestion.forms import FiltroReportesAlertasForm
 
-    return _respuesta_archivo_excel(archivo, 'alertas_salario_minimo')
+    fecha_actual = timezone.now().date()
+
+    if request.method == 'POST':
+        form = FiltroReportesAlertasForm(request.POST)
+        if form.is_valid():
+            severidades_legibles = {
+                'danger': 'Crítica (0-1 mes)',
+                'warning': 'Moderada (2 meses)',
+                'success': 'Preventiva (3+ meses)',
+            }
+            columnas = [
+                ColumnaExportacion('Número de Contrato', ancho=22),
+                ColumnaExportacion('Tercero', ancho=28),
+                ColumnaExportacion('Local', ancho=26),
+                ColumnaExportacion('Mes de Ajuste', ancho=18, alineacion='center'),
+                ColumnaExportacion('Condición Salario Mínimo', ancho=30),
+                ColumnaExportacion('Meses Restantes', ancho=18, es_numerica=True, alineacion='right'),
+                ColumnaExportacion('Severidad', ancho=22),
+                ColumnaExportacion('Canon Vigente', ancho=20, es_numerica=True, alineacion='right'),
+                ColumnaExportacion('Otrosí Modificador', ancho=25),
+            ]
+            try:
+                alertas = obtener_alertas_salario_minimo(contratos_qs=_construir_qs_contratos_filtrado(form))
+            except Exception:
+                messages.error(request, 'Error al obtener las alertas de Salario Mínimo.')
+                return redirect('gestion:exportaciones')
+            registros = []
+            for alerta in alertas:
+                try:
+                    tercero = alerta.contrato.obtener_tercero()
+                    canon = obtener_canon_vigente(alerta.contrato, fecha_actual)
+                    registros.append((
+                        alerta.contrato.num_contrato,
+                        tercero.razon_social if tercero else 'Sin tercero asignado',
+                        alerta.contrato.local.nombre_comercial_stand if alerta.contrato.local else '-',
+                        alerta.mes_ajuste or '-',
+                        alerta.condicion_salario_minimo or '-',
+                        int(alerta.meses_restantes) if alerta.meses_restantes is not None else 0,
+                        severidades_legibles.get(alerta.color_alerta, alerta.color_alerta) if alerta.color_alerta else 'N/A',
+                        float(canon) if canon else None,
+                        alerta.otrosi_modificador or 'Contrato Original',
+                    ))
+                except Exception:
+                    continue
+            try:
+                archivo = generar_excel_corporativo(nombre_hoja='Alertas Salario Mínimo', columnas=columnas, registros=registros)
+            except ExportacionVaciaError as error:
+                messages.warning(request, str(error))
+                return redirect('gestion:exportaciones')
+            return _respuesta_archivo_excel(archivo, 'alertas_salario_minimo')
+    else:
+        form = FiltroReportesAlertasForm()
+
+    return render(request, 'gestion/exportaciones/filtros_reporte.html', {
+        'form': form,
+        'titulo': 'Alertas de Ajuste de Salario Mínimo',
+        'descripcion': 'Aplique filtros para exportar los contratos con alertas de ajuste por Salario Mínimo.',
+        'url_name': 'gestion:exportar_alertas_salario_minimo',
+    })
 
 
 @login_required_custom
 def exportar_alertas_vencimiento(request):
-    from gestion.forms import FiltroExportacionAlertasForm
-    
+    from gestion.forms import FiltroReportesAlertasForm
+
     fecha_actual = timezone.now().date()
-    tipo_contrato_cp = request.GET.get('tipo_contrato_cp', '') or request.POST.get('tipo_contrato_cliente_proveedor', '')
-    
-    # Si es GET sin parámetro tipo_contrato_cp, mostrar formulario de selección
-    if request.method == 'GET' and 'tipo_contrato_cp' not in request.GET:
-        form = FiltroExportacionAlertasForm()
-        context = {
-            'form': form,
-            'titulo': 'Exportar Alertas de Vencimiento',
-            'descripcion': 'Seleccione el tipo de contrato para exportar las alertas de vencimiento de contratos.',
-            'url_exportacion': 'gestion:exportar_alertas_vencimiento',
-        }
-        return render(request, 'gestion/exportaciones/seleccionar_tipo.html', context)
-    
-    contratos = list(obtener_alertas_expiracion_contratos(
-        fecha_referencia=fecha_actual,
-        ventana_dias=90,
-        tipo_contrato_cp=tipo_contrato_cp if tipo_contrato_cp else None
-    ))
 
-    if not contratos:
-        messages.warning(request, 'No hay contratos por vencer en la ventana configurada.')
-        return redirect('gestion:exportaciones')
+    if request.method == 'POST':
+        form = FiltroReportesAlertasForm(request.POST)
+        if form.is_valid():
+            contratos = list(obtener_alertas_expiracion_contratos(
+                fecha_referencia=fecha_actual,
+                ventana_dias=90,
+                contratos_qs=_construir_qs_contratos_filtrado(form),
+            ))
+            from gestion.utils_otrosi import get_otrosi_vigente
+            columnas = [
+                ColumnaExportacion('Número de Contrato', ancho=22),
+                ColumnaExportacion('Arrendatario', ancho=30),
+                ColumnaExportacion('Local', ancho=26),
+                ColumnaExportacion('Fecha Final', ancho=18, alineacion='center'),
+                ColumnaExportacion('Días Restantes', ancho=18, es_numerica=True, alineacion='right'),
+                ColumnaExportacion('Modalidad', ancho=20),
+                ColumnaExportacion('Canon Vigente', ancho=20, es_numerica=True, alineacion='right'),
+                ColumnaExportacion('Otrosí Modificador', ancho=25),
+            ]
+            registros = []
+            for contrato in contratos:
+                fecha_final_actual = _obtener_fecha_final_contrato(contrato, fecha_actual)
+                otrosi_vigente = get_otrosi_vigente(contrato, fecha_actual)
+                otrosi_numero = None
+                if otrosi_vigente:
+                    otrosi_numero = getattr(otrosi_vigente, 'numero_otrosi', None) or getattr(otrosi_vigente, 'numero_renovacion', None)
+                otrosi_mod_modalidad = get_ultimo_otrosi_que_modifico_campo_hasta_fecha(contrato, 'nueva_modalidad_pago', fecha_actual)
+                modalidad_actual = (
+                    otrosi_mod_modalidad.nueva_modalidad_pago
+                    if otrosi_mod_modalidad and otrosi_mod_modalidad.nueva_modalidad_pago
+                    else contrato.modalidad_pago or 'Sin especificar'
+                )
+                dias_restantes = (fecha_final_actual - fecha_actual).days if fecha_final_actual else None
+                tercero = contrato.obtener_tercero()
+                canon = obtener_canon_vigente(contrato, fecha_actual)
+                registros.append((
+                    contrato.num_contrato,
+                    tercero.razon_social if tercero else 'Sin tercero asignado',
+                    contrato.local.nombre_comercial_stand if contrato.local else '-',
+                    fecha_final_actual,
+                    dias_restantes,
+                    modalidad_actual,
+                    float(canon) if canon else None,
+                    otrosi_numero or 'Contrato Original',
+                ))
+            try:
+                archivo = generar_excel_corporativo(nombre_hoja='Contratos por Vencer', columnas=columnas, registros=registros)
+            except ExportacionVaciaError as error:
+                messages.warning(request, str(error))
+                return redirect('gestion:exportaciones')
+            return _respuesta_archivo_excel(archivo, 'alertas_vencimiento_contratos')
+    else:
+        form = FiltroReportesAlertasForm()
 
-    columnas = [
-        ColumnaExportacion('Número de Contrato', ancho=22),
-        ColumnaExportacion('Arrendatario', ancho=30),
-        ColumnaExportacion('Local', ancho=26),
-        ColumnaExportacion('Fecha Final', ancho=18, alineacion='center'),
-        ColumnaExportacion('Días Restantes', ancho=18, es_numerica=True, alineacion='right'),
-        ColumnaExportacion('Modalidad', ancho=20),
-        ColumnaExportacion('Otrosí Modificador', ancho=25),
-    ]
-
-    registros = []
-    from gestion.utils_otrosi import get_otrosi_vigente
-    for contrato in contratos:
-        # Usar la función del servicio para obtener la fecha final real (considera effective_to y efecto cadena)
-        fecha_final_actual = _obtener_fecha_final_contrato(contrato, fecha_actual)
-        otrosi_vigente = get_otrosi_vigente(contrato, fecha_actual)
-        if otrosi_vigente:
-            otrosi_numero = getattr(otrosi_vigente, 'numero_otrosi', None) or getattr(otrosi_vigente, 'numero_renovacion', None)
-        else:
-            otrosi_numero = None
-
-        # Usar efecto cadena para obtener modalidad vigente hasta fecha_actual
-        otrosi_modificador_modalidad = get_ultimo_otrosi_que_modifico_campo_hasta_fecha(
-            contrato, 'nueva_modalidad_pago', fecha_actual
-        )
-        if otrosi_modificador_modalidad and otrosi_modificador_modalidad.nueva_modalidad_pago:
-            modalidad_actual = otrosi_modificador_modalidad.nueva_modalidad_pago
-        else:
-            modalidad_actual = contrato.modalidad_pago or 'Sin especificar'
-
-        dias_restantes = None
-        if fecha_final_actual:
-            dias_restantes = (fecha_final_actual - fecha_actual).days
-
-        tercero = contrato.obtener_tercero()
-        nombre_tercero = tercero.razon_social if tercero else 'Sin tercero asignado'
-        local_nombre = contrato.local.nombre_comercial_stand if contrato.local else '-'
-        registros.append(
-            (
-                contrato.num_contrato,
-                nombre_tercero,
-                local_nombre,
-                fecha_final_actual,
-                dias_restantes,
-                modalidad_actual,
-                otrosi_numero or 'Contrato Original',
-            )
-        )
-
-    try:
-        archivo = generar_excel_corporativo(
-            nombre_hoja='Contratos por Vencer',
-            columnas=columnas,
-            registros=registros,
-        )
-    except ExportacionVaciaError as error:
-        messages.warning(request, str(error))
-        return redirect('gestion:exportaciones')
-
-    return _respuesta_archivo_excel(archivo, 'alertas_vencimiento_contratos')
+    return render(request, 'gestion/exportaciones/filtros_reporte.html', {
+        'form': form,
+        'titulo': 'Alertas de Vencimiento de Contrato',
+        'descripcion': 'Aplique filtros para exportar los contratos que vencen en los próximos 90 días.',
+        'url_name': 'gestion:exportar_alertas_vencimiento',
+    })
 
 
 @login_required_custom
 def exportar_alertas_polizas(request):
-    from gestion.forms import FiltroExportacionAlertasForm
-    
+    from gestion.forms import FiltroReportesAlertasForm
+
     fecha_actual = timezone.now().date()
-    tipo_contrato_cp = request.GET.get('tipo_contrato_cp', '') or request.POST.get('tipo_contrato_cliente_proveedor', '')
-    
-    # Si es GET sin parámetro tipo_contrato_cp, mostrar formulario de selección
-    if request.method == 'GET' and 'tipo_contrato_cp' not in request.GET:
-        form = FiltroExportacionAlertasForm()
-        context = {
-            'form': form,
-            'titulo': 'Exportar Alertas de Pólizas Críticas',
-            'descripcion': 'Seleccione el tipo de contrato para exportar las alertas de pólizas críticas.',
-            'url_exportacion': 'gestion:exportar_alertas_polizas',
-        }
-        return render(request, 'gestion/exportaciones/seleccionar_tipo.html', context)
-    
-    polizas = list(obtener_polizas_criticas(
-        fecha_referencia=fecha_actual,
-        tipo_contrato_cp=tipo_contrato_cp if tipo_contrato_cp else None
-    ))
-
-    if not polizas:
-        messages.warning(request, 'No hay pólizas críticas para exportar.')
-        return redirect('gestion:exportaciones')
-
-    columnas = [
-        ColumnaExportacion('Número de Póliza', ancho=22),
-        ColumnaExportacion('Tipo', ancho=24),
-        ColumnaExportacion('Contrato', ancho=22),
-        ColumnaExportacion('Arrendatario', ancho=30),
-        ColumnaExportacion('Fecha Inicio Vigencia', ancho=20, alineacion='center'),
-        ColumnaExportacion('Fecha Fin Vigencia', ancho=20, alineacion='center'),
-        ColumnaExportacion('Días Restantes', ancho=18, es_numerica=True, alineacion='right'),
-        ColumnaExportacion('Estado', ancho=24),
-    ]
 
     TIPO_A_CAMPO_FECHA_INICIO = {
         'RCE - Responsabilidad Civil': ('nuevo_fecha_inicio_vigencia_rce', 'fecha_inicio_vigencia_rce'),
@@ -687,134 +644,272 @@ def exportar_alertas_polizas(request):
         'Otra': ('nuevo_fecha_inicio_vigencia_otra_1', 'fecha_inicio_vigencia_otra_1'),
     }
 
-    def _obtener_fecha_inicio_poliza(p):
+    def _fecha_inicio_poliza(p):
         if p.fecha_inicio_vigencia:
             return p.fecha_inicio_vigencia
         campo_otrosi, campo_contrato = TIPO_A_CAMPO_FECHA_INICIO.get(p.tipo, (None, None))
-        if p.otrosi and campo_otrosi:
-            valor = getattr(p.otrosi, campo_otrosi, None)
-            if valor:
-                return valor
-        if p.renovacion_automatica and campo_otrosi:
-            valor = getattr(p.renovacion_automatica, campo_otrosi, None)
-            if valor:
-                return valor
+        for obj in (p.otrosi, p.renovacion_automatica):
+            if obj and campo_otrosi:
+                v = getattr(obj, campo_otrosi, None)
+                if v:
+                    return v
         if campo_contrato:
-            valor = getattr(p.contrato, campo_contrato, None)
-            if valor:
-                return valor
+            v = getattr(p.contrato, campo_contrato, None)
+            if v:
+                return v
         return p.contrato.fecha_inicial_contrato
 
-    registros = []
-    for poliza in polizas:
-        dias_restantes = None
-        if poliza.fecha_vencimiento:
-            dias_restantes = (poliza.fecha_vencimiento - fecha_actual).days
-            estado_legible = poliza.obtener_estado_legible()
-        else:
-            estado_legible = 'Sin fecha registrada'
+    if request.method == 'POST':
+        form = FiltroReportesAlertasForm(request.POST)
+        if form.is_valid():
+            cd = form.cleaned_data
+            contrato_filtros = {}
+            if cd.get('tipo_contrato_cliente_proveedor'):
+                contrato_filtros['tipo_contrato_cliente_proveedor'] = cd['tipo_contrato_cliente_proveedor']
+            if cd.get('tipo_contrato'):
+                contrato_filtros['tipo_contrato'] = cd['tipo_contrato']
+            if cd.get('arrendatario'):
+                contrato_filtros['arrendatario'] = cd['arrendatario']
+            if cd.get('local'):
+                contrato_filtros['local'] = cd['local']
+            if cd.get('modalidad_pago'):
+                contrato_filtros['modalidad_pago'] = cd['modalidad_pago']
+            polizas = list(obtener_polizas_criticas(
+                fecha_referencia=fecha_actual,
+                contrato_filtros=contrato_filtros or None,
+            ))
+            columnas = [
+                ColumnaExportacion('Número de Póliza', ancho=22),
+                ColumnaExportacion('Tipo', ancho=24),
+                ColumnaExportacion('Contrato', ancho=22),
+                ColumnaExportacion('Arrendatario', ancho=30),
+                ColumnaExportacion('Fecha Inicio Vigencia', ancho=20, alineacion='center'),
+                ColumnaExportacion('Fecha Fin Vigencia', ancho=20, alineacion='center'),
+                ColumnaExportacion('Días Restantes', ancho=18, es_numerica=True, alineacion='right'),
+                ColumnaExportacion('Estado', ancho=24),
+            ]
+            registros = []
+            for poliza in polizas:
+                dias_restantes = None
+                if poliza.fecha_vencimiento:
+                    dias_restantes = (poliza.fecha_vencimiento - fecha_actual).days
+                    estado_legible = poliza.obtener_estado_legible()
+                else:
+                    estado_legible = 'Sin fecha registrada'
+                tercero = poliza.contrato.obtener_tercero()
+                registros.append((
+                    poliza.numero_poliza,
+                    poliza.get_tipo_display(),
+                    poliza.contrato.num_contrato,
+                    tercero.razon_social if tercero else 'Sin tercero asignado',
+                    _fecha_inicio_poliza(poliza),
+                    poliza.fecha_vencimiento,
+                    dias_restantes,
+                    estado_legible,
+                ))
+            try:
+                archivo = generar_excel_corporativo(nombre_hoja='Pólizas Críticas', columnas=columnas, registros=registros)
+            except ExportacionVaciaError as error:
+                messages.warning(request, str(error))
+                return redirect('gestion:exportaciones')
+            return _respuesta_archivo_excel(archivo, 'alertas_polizas_criticas')
+    else:
+        form = FiltroReportesAlertasForm()
 
-        fecha_inicio = _obtener_fecha_inicio_poliza(poliza)
-
-        tercero = poliza.contrato.obtener_tercero()
-        nombre_tercero = tercero.razon_social if tercero else 'Sin tercero asignado'
-        registros.append(
-            (
-                poliza.numero_poliza,
-                poliza.get_tipo_display(),
-                poliza.contrato.num_contrato,
-                nombre_tercero,
-                fecha_inicio,
-                poliza.fecha_vencimiento,
-                dias_restantes,
-                estado_legible,
-            )
-        )
-
-    try:
-        archivo = generar_excel_corporativo(
-            nombre_hoja='Pólizas Críticas',
-            columnas=columnas,
-            registros=registros,
-        )
-    except ExportacionVaciaError as error:
-        messages.warning(request, str(error))
-        return redirect('gestion:exportaciones')
-
-    return _respuesta_archivo_excel(archivo, 'alertas_polizas_criticas')
+    return render(request, 'gestion/exportaciones/filtros_reporte.html', {
+        'form': form,
+        'titulo': 'Alertas de Pólizas Críticas',
+        'descripcion': 'Aplique filtros para exportar pólizas vencidas o próximas a vencer de contratos vigentes.',
+        'url_name': 'gestion:exportar_alertas_polizas',
+    })
 
 
 @login_required_custom
 def exportar_alertas_preaviso(request):
-    from gestion.forms import FiltroExportacionAlertasForm
-    
+    from gestion.forms import FiltroReportesAlertasForm
+    from gestion.utils_otrosi import get_otrosi_vigente
+
     fecha_actual = timezone.now().date()
-    tipo_contrato_cp = request.GET.get('tipo_contrato_cp', '') or request.POST.get('tipo_contrato_cliente_proveedor', '')
-    
-    # Si es GET sin parámetro tipo_contrato_cp, mostrar formulario de selección
-    if request.method == 'GET' and 'tipo_contrato_cp' not in request.GET:
-        form = FiltroExportacionAlertasForm()
-        context = {
+
+    if request.method == 'POST':
+        form = FiltroReportesAlertasForm(request.POST)
+        if form.is_valid():
+            contratos = list(obtener_alertas_preaviso(
+                fecha_referencia=fecha_actual,
+                contratos_qs=_construir_qs_contratos_filtrado(form),
+            ))
+            columnas = [
+                ColumnaExportacion('Número de Contrato', ancho=22),
+                ColumnaExportacion('Arrendatario', ancho=30),
+                ColumnaExportacion('Local', ancho=26),
+                ColumnaExportacion('Fecha Final', ancho=18, alineacion='center'),
+                ColumnaExportacion('Días Preaviso Configurados', ancho=24, es_numerica=True, alineacion='right'),
+                ColumnaExportacion('Fecha Límite Preaviso', ancho=22, alineacion='center'),
+                ColumnaExportacion('Canon Vigente', ancho=20, es_numerica=True, alineacion='right'),
+                ColumnaExportacion('Otrosí Modificador', ancho=25),
+            ]
+            registros = []
+            for contrato in contratos:
+                fecha_final_actual = _obtener_fecha_final_contrato(contrato, fecha_actual)
+                ov = get_otrosi_vigente(contrato, fecha_actual)
+                otrosi_numero = (getattr(ov, 'numero_otrosi', None) or getattr(ov, 'numero_renovacion', None)) if ov else None
+                dias_preaviso = contrato.dias_preaviso_no_renovacion or 0
+                fecha_limite = (fecha_final_actual - timedelta(days=dias_preaviso)) if fecha_final_actual else None
+                tercero = contrato.obtener_tercero()
+                canon = obtener_canon_vigente(contrato, fecha_actual)
+                registros.append((
+                    contrato.num_contrato,
+                    tercero.razon_social if tercero else 'Sin tercero asignado',
+                    contrato.local.nombre_comercial_stand if contrato.local else '-',
+                    fecha_final_actual,
+                    dias_preaviso,
+                    fecha_limite,
+                    float(canon) if canon else None,
+                    otrosi_numero or 'Contrato Original',
+                ))
+            try:
+                archivo = generar_excel_corporativo(nombre_hoja='Preaviso Renovación', columnas=columnas, registros=registros)
+            except ExportacionVaciaError as error:
+                messages.warning(request, str(error))
+                return redirect('gestion:exportaciones')
+            return _respuesta_archivo_excel(archivo, 'alertas_preaviso')
+    else:
+        form = FiltroReportesAlertasForm()
+
+    return render(request, 'gestion/exportaciones/filtros_reporte.html', {
+        'form': form,
+        'titulo': 'Alertas de Renovación (Preaviso)',
+        'descripcion': 'Aplique filtros para exportar los contratos que ya entraron en ventana de preaviso de no renovación.',
+        'url_name': 'gestion:exportar_alertas_preaviso',
+    })
+
+
+@login_required_custom
+def exportar_estado_preavisos(request):
+    from gestion.forms import FiltroReportesAlertasForm
+
+    fecha_actual = timezone.now().date()
+
+    if request.method != 'POST':
+        return render(request, 'gestion/exportaciones/filtros_reporte.html', {
+            'form': FiltroReportesAlertasForm(),
+            'titulo': 'Estado de Preavisos',
+            'descripcion': 'Panorama completo de todos los contratos vigentes: estado de preaviso, fechas y días.',
+            'url_name': 'gestion:exportar_estado_preavisos',
+        })
+
+    form = FiltroReportesAlertasForm(request.POST)
+    if not form.is_valid():
+        return render(request, 'gestion/exportaciones/filtros_reporte.html', {
             'form': form,
-            'titulo': 'Exportar Alertas de Preaviso',
-            'descripcion': 'Seleccione el tipo de contrato para exportar las alertas de preaviso de renovación.',
-            'url_exportacion': 'gestion:exportar_alertas_preaviso',
-        }
-        return render(request, 'gestion/exportaciones/seleccionar_tipo.html', context)
-    
-    contratos = list(obtener_alertas_preaviso(
-        fecha_referencia=fecha_actual,
-        tipo_contrato_cp=tipo_contrato_cp if tipo_contrato_cp else None
+            'titulo': 'Estado de Preavisos',
+            'descripcion': 'Panorama completo de todos los contratos vigentes: estado de preaviso, fechas y días.',
+            'url_name': 'gestion:exportar_estado_preavisos',
+        })
+
+    contratos_qs = _construir_qs_contratos_filtrado(form).order_by('num_contrato')
+
+    ORDEN_ESTADO = {
+        'EN VENTANA': 0,
+        'PRÓXIMO': 1,
+        'EXPIRADO': 2,
+        'PRÓRROGA AUTOMÁTICA': 3,
+        'SIN DÍAS CONFIGURADOS': 4,
+        'SIN FECHA FINAL': 5,
+    }
+
+    filas = []
+    for contrato in contratos_qs:
+        try:
+            fecha_final = _obtener_fecha_final_contrato(contrato, fecha_actual)
+            tercero = contrato.obtener_tercero()
+            nombre_tercero = tercero.razon_social if tercero else 'Sin tercero asignado'
+            local_nombre = contrato.local.nombre_comercial_stand if contrato.local else '-'
+            tipo_cp = contrato.get_tipo_contrato_cliente_proveedor_display() if hasattr(contrato, 'get_tipo_contrato_cliente_proveedor_display') else (contrato.tipo_contrato_cliente_proveedor or '-')
+            canon_val = obtener_canon_vigente(contrato, fecha_actual)
+            canon_val = float(canon_val) if canon_val else None
+
+            if not fecha_final:
+                filas.append({
+                    'orden': ORDEN_ESTADO['SIN FECHA FINAL'],
+                    'fila': (contrato.num_contrato, nombre_tercero, local_nombre, tipo_cp,
+                             'SIN FECHA FINAL', None, 0, None, None, None, canon_val),
+                })
+                continue
+
+            dias_para_vencer = (fecha_final - fecha_actual).days
+            dias_preaviso = contrato.dias_preaviso_no_renovacion or 0
+
+            if contrato.prorroga_automatica:
+                filas.append({
+                    'orden': ORDEN_ESTADO['PRÓRROGA AUTOMÁTICA'],
+                    'fila': (contrato.num_contrato, nombre_tercero, local_nombre, tipo_cp,
+                             'PRÓRROGA AUTOMÁTICA', fecha_final, dias_preaviso, None, None, dias_para_vencer, canon_val),
+                })
+                continue
+
+            if fecha_final < fecha_actual:
+                filas.append({
+                    'orden': ORDEN_ESTADO['EXPIRADO'],
+                    'fila': (contrato.num_contrato, nombre_tercero, local_nombre, tipo_cp,
+                             'EXPIRADO', fecha_final, dias_preaviso, None, None, dias_para_vencer, canon_val),
+                })
+                continue
+
+            if dias_preaviso <= 0:
+                filas.append({
+                    'orden': ORDEN_ESTADO['SIN DÍAS CONFIGURADOS'],
+                    'fila': (contrato.num_contrato, nombre_tercero, local_nombre, tipo_cp,
+                             'SIN DÍAS CONFIGURADOS', fecha_final, 0, None, None, dias_para_vencer, canon_val),
+                })
+                continue
+
+            fecha_inicio_preaviso = fecha_final - timedelta(days=dias_preaviso)
+            dias_desde_inicio = (fecha_actual - fecha_inicio_preaviso).days  # positivo = en ventana
+
+            if fecha_actual >= fecha_inicio_preaviso:
+                estado = 'EN VENTANA'
+                orden = ORDEN_ESTADO['EN VENTANA']
+            else:
+                estado = 'PRÓXIMO'
+                orden = ORDEN_ESTADO['PRÓXIMO']
+
+            filas.append({
+                'orden': orden,
+                'fecha_inicio_preaviso': fecha_inicio_preaviso,
+                'fecha_final': fecha_final,
+                'fila': (contrato.num_contrato, nombre_tercero, local_nombre, tipo_cp,
+                         estado, fecha_final, dias_preaviso, fecha_inicio_preaviso,
+                         dias_desde_inicio, dias_para_vencer, canon_val),
+            })
+        except Exception:
+            continue
+
+    # Ordenar: primero por estado (EN VENTANA → PRÓXIMO → …), luego por fecha
+    filas.sort(key=lambda x: (
+        x['orden'],
+        x.get('fecha_inicio_preaviso') or x.get('fecha_final') or fecha_actual,
     ))
 
-    if not contratos:
-        messages.warning(request, 'No hay alertas de preaviso disponibles.')
-        return redirect('gestion:exportaciones')
+    registros = [f['fila'] for f in filas]
 
     columnas = [
-        ColumnaExportacion('Número de Contrato', ancho=22),
-        ColumnaExportacion('Arrendatario', ancho=30),
+        ColumnaExportacion('N° Contrato', ancho=30),
+        ColumnaExportacion('Tercero', ancho=32),
         ColumnaExportacion('Local', ancho=26),
-        ColumnaExportacion('Fecha Final', ancho=18, alineacion='center'),
-        ColumnaExportacion('Días Preaviso Configurados', ancho=24, es_numerica=True, alineacion='right'),
-        ColumnaExportacion('Fecha Límite Preaviso', ancho=22, alineacion='center'),
-        ColumnaExportacion('Otrosí Modificador', ancho=25),
+        ColumnaExportacion('Tipo', ancho=14, alineacion='center'),
+        ColumnaExportacion('Estado Preaviso', ancho=24, alineacion='center'),
+        ColumnaExportacion('Fecha Final Contrato', ancho=22, alineacion='center'),
+        ColumnaExportacion('Días Preaviso Config.', ancho=22, es_numerica=True, alineacion='right'),
+        ColumnaExportacion('Fecha Inicio Preaviso', ancho=22, alineacion='center'),
+        ColumnaExportacion('Días en Ventana / Días para Entrar', ancho=34, es_numerica=True, alineacion='right'),
+        ColumnaExportacion('Días para Vencer', ancho=18, es_numerica=True, alineacion='right'),
+        ColumnaExportacion('Canon Vigente', ancho=20, es_numerica=True, alineacion='right'),
     ]
-
-    registros = []
-    from gestion.utils_otrosi import get_otrosi_vigente
-    for contrato in contratos:
-        # Usar la función del servicio para obtener la fecha final real (considera effective_to y efecto cadena)
-        fecha_final_actual = _obtener_fecha_final_contrato(contrato, fecha_actual)
-        otrosi_vigente = get_otrosi_vigente(contrato, fecha_actual)
-        if otrosi_vigente:
-            otrosi_numero = getattr(otrosi_vigente, 'numero_otrosi', None) or getattr(otrosi_vigente, 'numero_renovacion', None)
-        else:
-            otrosi_numero = None
-
-        dias_preaviso = contrato.dias_preaviso_no_renovacion or 0
-        fecha_limite_preaviso = None
-        if fecha_final_actual:
-            fecha_limite_preaviso = fecha_final_actual - timedelta(days=dias_preaviso)
-
-        tercero = contrato.obtener_tercero()
-        nombre_tercero = tercero.razon_social if tercero else 'Sin tercero asignado'
-        local_nombre = contrato.local.nombre_comercial_stand if contrato.local else '-'
-        registros.append(
-            (
-                contrato.num_contrato,
-                nombre_tercero,
-                local_nombre,
-                fecha_final_actual,
-                dias_preaviso,
-                fecha_limite_preaviso,
-                otrosi_numero or 'Contrato Original',
-            )
-        )
 
     try:
         archivo = generar_excel_corporativo(
-            nombre_hoja='Preaviso Renovación',
+            nombre_hoja='Estado Preavisos',
             columnas=columnas,
             registros=registros,
         )
@@ -822,158 +917,120 @@ def exportar_alertas_preaviso(request):
         messages.warning(request, str(error))
         return redirect('gestion:exportaciones')
 
-    return _respuesta_archivo_excel(archivo, 'alertas_preaviso')
+    return _respuesta_archivo_excel(archivo, 'estado_preavisos')
 
 
 @login_required_custom
 def exportar_alertas_polizas_requeridas(request):
-    """
-    Genera el archivo Excel con las alertas de pólizas requeridas no aportadas.
-    """
-    from gestion.forms import FiltroExportacionAlertasForm
-    
+    from gestion.forms import FiltroReportesAlertasForm
+
     fecha_actual = timezone.now().date()
-    tipo_contrato_cp = request.GET.get('tipo_contrato_cp', '') or request.POST.get('tipo_contrato_cliente_proveedor', '')
-    
-    # Si es GET sin parámetro tipo_contrato_cp, mostrar formulario de selección
-    if request.method == 'GET' and 'tipo_contrato_cp' not in request.GET:
-        form = FiltroExportacionAlertasForm()
-        context = {
-            'form': form,
-            'titulo': 'Exportar Alertas de Pólizas Requeridas',
-            'descripcion': 'Seleccione el tipo de contrato para exportar las alertas de pólizas requeridas no aportadas.',
-            'url_exportacion': 'gestion:exportar_alertas_polizas_requeridas',
-        }
-        return render(request, 'gestion/exportaciones/seleccionar_tipo.html', context)
-    
-    alertas = obtener_alertas_polizas_requeridas_no_aportadas(
-        fecha_referencia=fecha_actual,
-        tipo_contrato_cp=tipo_contrato_cp if tipo_contrato_cp else None
-    )
 
-    if not alertas:
-        messages.warning(request, 'No hay alertas de pólizas requeridas no aportadas.')
-        return redirect('gestion:exportaciones')
-
-    columnas = [
-        ColumnaExportacion('Número de Contrato', ancho=22),
-        ColumnaExportacion('Arrendatario', ancho=30),
-        ColumnaExportacion('Local', ancho=26),
-        ColumnaExportacion('Tipo de Póliza Requerida', ancho=30),
-        ColumnaExportacion('Nombre Póliza', ancho=28),
-        ColumnaExportacion('Valor Requerido', ancho=20, es_numerica=True, alineacion='right'),
-        ColumnaExportacion('Fecha Fin Requerida', ancho=22, alineacion='center'),
-        ColumnaExportacion('Tiene Póliza', ancho=16),
-        ColumnaExportacion('Estado', ancho=20),
-        ColumnaExportacion('Otrosí Modificador', ancho=25),
-    ]
-
-    registros = []
-    for alerta in alertas:
-        estado = 'Sin póliza' if not alerta.tiene_poliza else 'Póliza vencida'
-        valor_requerido = int(round(float(alerta.valor_requerido))) if alerta.valor_requerido else None
-
-        tercero = alerta.contrato.obtener_tercero()
-        nombre_tercero = tercero.razon_social if tercero else 'Sin tercero asignado'
-        local_nombre = alerta.contrato.local.nombre_comercial_stand if alerta.contrato.local else '-'
-        registros.append(
-            (
-                alerta.contrato.num_contrato,
-                nombre_tercero,
-                local_nombre,
-                alerta.tipo_poliza,
-                alerta.nombre_poliza,
-                valor_requerido,
-                alerta.fecha_fin_requerida,
-                'Sí' if alerta.tiene_poliza else 'No',
-                estado,
-                alerta.otrosi_modificador or 'Contrato Original',
+    if request.method == 'POST':
+        form = FiltroReportesAlertasForm(request.POST)
+        if form.is_valid():
+            alertas = obtener_alertas_polizas_requeridas_no_aportadas(
+                fecha_referencia=fecha_actual,
+                contratos_qs=_construir_qs_contratos_filtrado(form),
             )
-        )
+            columnas = [
+                ColumnaExportacion('Número de Contrato', ancho=22),
+                ColumnaExportacion('Arrendatario', ancho=30),
+                ColumnaExportacion('Local', ancho=26),
+                ColumnaExportacion('Tipo de Póliza Requerida', ancho=30),
+                ColumnaExportacion('Nombre Póliza', ancho=28),
+                ColumnaExportacion('Valor Requerido', ancho=20, es_numerica=True, alineacion='right'),
+                ColumnaExportacion('Fecha Fin Requerida', ancho=22, alineacion='center'),
+                ColumnaExportacion('Tiene Póliza', ancho=16),
+                ColumnaExportacion('Estado', ancho=20),
+                ColumnaExportacion('Otrosí Modificador', ancho=25),
+            ]
+            registros = []
+            for alerta in alertas:
+                tercero = alerta.contrato.obtener_tercero()
+                registros.append((
+                    alerta.contrato.num_contrato,
+                    tercero.razon_social if tercero else 'Sin tercero asignado',
+                    alerta.contrato.local.nombre_comercial_stand if alerta.contrato.local else '-',
+                    alerta.tipo_poliza,
+                    alerta.nombre_poliza,
+                    int(round(float(alerta.valor_requerido))) if alerta.valor_requerido else None,
+                    alerta.fecha_fin_requerida,
+                    'Sí' if alerta.tiene_poliza else 'No',
+                    'Sin póliza' if not alerta.tiene_poliza else 'Póliza vencida',
+                    alerta.otrosi_modificador or 'Contrato Original',
+                ))
+            try:
+                archivo = generar_excel_corporativo(nombre_hoja='Pólizas Requeridas No Aportadas', columnas=columnas, registros=registros)
+            except ExportacionVaciaError as error:
+                messages.warning(request, str(error))
+                return redirect('gestion:exportaciones')
+            return _respuesta_archivo_excel(archivo, 'alertas_polizas_requeridas_no_aportadas')
+    else:
+        form = FiltroReportesAlertasForm()
 
-    try:
-        archivo = generar_excel_corporativo(
-            nombre_hoja='Pólizas Requeridas No Aportadas',
-            columnas=columnas,
-            registros=registros,
-        )
-    except ExportacionVaciaError as error:
-        messages.warning(request, str(error))
-        return redirect('gestion:exportaciones')
-
-    return _respuesta_archivo_excel(archivo, 'alertas_polizas_requeridas_no_aportadas')
+    return render(request, 'gestion/exportaciones/filtros_reporte.html', {
+        'form': form,
+        'titulo': 'Alertas de Pólizas Requeridas No Aportadas',
+        'descripcion': 'Aplique filtros para exportar contratos con pólizas requeridas sin aportar o vencidas.',
+        'url_name': 'gestion:exportar_alertas_polizas_requeridas',
+    })
 
 
 @login_required_custom
 def exportar_alertas_terminacion(request):
-    """
-    Genera el archivo Excel con las alertas de terminación anticipada.
-    """
-    from gestion.forms import FiltroExportacionAlertasForm
-    
+    from gestion.forms import FiltroReportesAlertasForm
+
     fecha_actual = timezone.now().date()
-    tipo_contrato_cp = request.GET.get('tipo_contrato_cp', '') or request.POST.get('tipo_contrato_cliente_proveedor', '')
-    
-    # Si es GET sin parámetro tipo_contrato_cp, mostrar formulario de selección
-    if request.method == 'GET' and 'tipo_contrato_cp' not in request.GET:
-        form = FiltroExportacionAlertasForm()
-        context = {
-            'form': form,
-            'titulo': 'Exportar Alertas de Terminación Anticipada',
-            'descripcion': 'Seleccione el tipo de contrato para exportar las alertas de terminación anticipada.',
-            'url_exportacion': 'gestion:exportar_alertas_terminacion',
-        }
-        return render(request, 'gestion/exportaciones/seleccionar_tipo.html', context)
-    
-    alertas = obtener_alertas_terminacion_anticipada(
-        fecha_referencia=fecha_actual,
-        tipo_contrato_cp=tipo_contrato_cp if tipo_contrato_cp else None
-    )
 
-    if not alertas:
-        messages.warning(request, 'No hay alertas de terminación anticipada.')
-        return redirect('gestion:exportaciones')
-
-    columnas = [
-        ColumnaExportacion('Número de Contrato', ancho=22),
-        ColumnaExportacion('Arrendatario', ancho=30),
-        ColumnaExportacion('Local', ancho=26),
-        ColumnaExportacion('Fecha Final', ancho=18, alineacion='center'),
-        ColumnaExportacion('Días Restantes', ancho=18, es_numerica=True, alineacion='right'),
-        ColumnaExportacion('Días Terminación Anticipada', ancho=28, es_numerica=True, alineacion='right'),
-        ColumnaExportacion('Fecha Límite Terminación', ancho=24, alineacion='center'),
-        ColumnaExportacion('Otrosí Modificador', ancho=25),
-    ]
-
-    registros = []
-    for alerta in alertas:
-        tercero = alerta.contrato.obtener_tercero()
-        nombre_tercero = tercero.razon_social if tercero else 'Sin tercero asignado'
-        local_nombre = alerta.contrato.local.nombre_comercial_stand if alerta.contrato.local else '-'
-        registros.append(
-            (
-                alerta.contrato.num_contrato,
-                nombre_tercero,
-                local_nombre,
-                alerta.fecha_final_actualizada,
-                alerta.dias_restantes,
-                alerta.dias_terminacion_anticipada,
-                alerta.fecha_limite_terminacion,
-                alerta.otrosi_modificador or 'Contrato Original',
+    if request.method == 'POST':
+        form = FiltroReportesAlertasForm(request.POST)
+        if form.is_valid():
+            alertas = obtener_alertas_terminacion_anticipada(
+                fecha_referencia=fecha_actual,
+                contratos_qs=_construir_qs_contratos_filtrado(form),
             )
-        )
+            columnas = [
+                ColumnaExportacion('Número de Contrato', ancho=22),
+                ColumnaExportacion('Arrendatario', ancho=30),
+                ColumnaExportacion('Local', ancho=26),
+                ColumnaExportacion('Fecha Final', ancho=18, alineacion='center'),
+                ColumnaExportacion('Días Restantes', ancho=18, es_numerica=True, alineacion='right'),
+                ColumnaExportacion('Días Terminación Anticipada', ancho=28, es_numerica=True, alineacion='right'),
+                ColumnaExportacion('Fecha Límite Terminación', ancho=24, alineacion='center'),
+                ColumnaExportacion('Canon Vigente', ancho=20, es_numerica=True, alineacion='right'),
+                ColumnaExportacion('Otrosí Modificador', ancho=25),
+            ]
+            registros = []
+            for alerta in alertas:
+                tercero = alerta.contrato.obtener_tercero()
+                canon = obtener_canon_vigente(alerta.contrato, fecha_actual)
+                registros.append((
+                    alerta.contrato.num_contrato,
+                    tercero.razon_social if tercero else 'Sin tercero asignado',
+                    alerta.contrato.local.nombre_comercial_stand if alerta.contrato.local else '-',
+                    alerta.fecha_final_actualizada,
+                    alerta.dias_restantes,
+                    alerta.dias_terminacion_anticipada,
+                    alerta.fecha_limite_terminacion,
+                    float(canon) if canon else None,
+                    alerta.otrosi_modificador or 'Contrato Original',
+                ))
+            try:
+                archivo = generar_excel_corporativo(nombre_hoja='Terminación Anticipada', columnas=columnas, registros=registros)
+            except ExportacionVaciaError as error:
+                messages.warning(request, str(error))
+                return redirect('gestion:exportaciones')
+            return _respuesta_archivo_excel(archivo, 'alertas_terminacion_anticipada')
+    else:
+        form = FiltroReportesAlertasForm()
 
-    try:
-        archivo = generar_excel_corporativo(
-            nombre_hoja='Terminación Anticipada',
-            columnas=columnas,
-            registros=registros,
-        )
-    except ExportacionVaciaError as error:
-        messages.warning(request, str(error))
-        return redirect('gestion:exportaciones')
-
-    return _respuesta_archivo_excel(archivo, 'alertas_terminacion_anticipada')
+    return render(request, 'gestion/exportaciones/filtros_reporte.html', {
+        'form': form,
+        'titulo': 'Alertas de Terminación Anticipada',
+        'descripcion': 'Aplique filtros para exportar contratos dentro del período de terminación anticipada.',
+        'url_name': 'gestion:exportar_alertas_terminacion',
+    })
 
 
 @login_required_custom

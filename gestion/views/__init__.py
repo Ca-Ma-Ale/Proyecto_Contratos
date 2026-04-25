@@ -14,6 +14,7 @@ from gestion.views.dashboard import (
     exportar_terceros,
     exportar_locales,
     exportar_recobro_polizas,
+    exportar_estado_preavisos,
 )
 from gestion.views.contratos import (
     nuevo_contrato,
@@ -163,6 +164,7 @@ __all__ = [
     'exportar_alertas_vencimiento',
     'exportar_alertas_polizas',
     'exportar_alertas_preaviso',
+    'exportar_estado_preavisos',
     'exportar_alertas_polizas_requeridas',
     'exportar_alertas_terminacion',
     'nuevo_contrato',

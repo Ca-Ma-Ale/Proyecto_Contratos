@@ -544,20 +544,31 @@ document.addEventListener('DOMContentLoaded', function() {
     function actualizarFechasPlazos() {
         const fechaInicialInput = document.getElementById('fecha_inicial_plazos');
         const fechaFinalInput = document.getElementById('fecha_final_plazos');
-        
+
         // Buscar los campos de vigencia por su atributo name
         const effectiveFromInput = document.querySelector('input[name="effective_from"]');
         const effectiveToInput = document.querySelector('input[name="effective_to"]');
-        
+        const nffaInput = document.querySelector('input[name="nueva_fecha_final_actualizada"]');
+        const plazosCheckbox = document.getElementById('modificar_plazos');
+
         if (fechaInicialInput && effectiveFromInput) {
             fechaInicialInput.value = effectiveFromInput.value || '';
         }
-        
+
         if (fechaFinalInput) {
             if (effectiveToInput && effectiveToInput.value) {
                 fechaFinalInput.value = effectiveToInput.value;
             } else {
                 fechaFinalInput.value = 'No definida';
+            }
+        }
+
+        // Sincronizar nueva_fecha_final_actualizada solo si el checkbox de plazos está marcado
+        if (nffaInput) {
+            if (plazosCheckbox && plazosCheckbox.checked && effectiveToInput && effectiveToInput.value) {
+                nffaInput.value = effectiveToInput.value;
+            } else if (plazosCheckbox && !plazosCheckbox.checked) {
+                nffaInput.value = '';
             }
         }
     }
