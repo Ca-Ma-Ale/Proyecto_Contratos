@@ -31,9 +31,19 @@ def _es_contrato_vigente_en_fecha(contrato, fecha_referencia):
 @login_required_custom
 def lista_informes_ventas(request):
     """Vista para listar contratos que reportan ventas con filtros y fecha de corte"""
-    contratos = Contrato.objects.filter(reporta_ventas=True).select_related(
-        'arrendatario', 'proveedor', 'local', 'tipo_contrato', 'tipo_servicio'
-    ).order_by('num_contrato')
+    contratos = (
+        Contrato.objects
+        .filter(reporta_ventas=True)
+        .select_related(
+            'arrendatario',
+            'proveedor',
+            'local',
+            'tipo_contrato',
+            'tipo_servicio',
+        )
+        .prefetch_related('otrosi', 'renovaciones_automaticas')
+        .order_by('num_contrato')
+    )
     
     filtro_form = FiltroContratosVentasForm(request.GET or None)
     
@@ -72,11 +82,18 @@ def lista_informes_ventas(request):
     contratos_info = []
     contratos_fuera_periodo = []
     for contrato in contratos:
-        if es_fecha_fuera_vigencia_contrato(contrato, fecha_corte):
+        fecha_inicio = getattr(contrato, 'fecha_inicial_contrato', None)
+        fecha_final = _obtener_fecha_final_contrato(contrato, fecha_corte)
+
+        if fecha_inicio and fecha_corte < fecha_inicio:
             contratos_fuera_periodo.append(contrato)
             continue
-        
-        contrato_vigente = _es_contrato_vigente_en_fecha(contrato, fecha_corte)
+
+        if fecha_final and fecha_corte > fecha_final:
+            contratos_fuera_periodo.append(contrato)
+            continue
+
+        contrato_vigente = not fecha_final or fecha_final >= fecha_corte
         if estado_vigencia == 'vigentes' and not contrato_vigente:
             continue
         if estado_vigencia == 'vencidos' and contrato_vigente:
