@@ -214,7 +214,8 @@ def obtener_alertas_ipc(
     """
     fecha_base = fecha_referencia or timezone.now().date()
     if contratos_qs is not None:
-        contratos_con_ipc = contratos_qs.order_by('num_contrato')
+        # Lista pre-evaluada (en memoria): no llamar order_by para no re-ejecutar query
+        contratos_con_ipc = contratos_qs if isinstance(contratos_qs, list) else contratos_qs.order_by('num_contrato')
     else:
         contratos_con_ipc = (
             Contrato.objects.filter(vigente=True)
@@ -419,7 +420,7 @@ def obtener_alertas_salario_minimo(
     """
     fecha_base = fecha_referencia or timezone.now().date()
     if contratos_qs is not None:
-        contratos_con_sm = contratos_qs.order_by('num_contrato')
+        contratos_con_sm = contratos_qs if isinstance(contratos_qs, list) else contratos_qs.order_by('num_contrato')
     else:
         contratos_con_sm = (
             Contrato.objects.filter(vigente=True)
@@ -850,9 +851,13 @@ def obtener_alertas_polizas_requeridas_no_aportadas(
     fecha_base = fecha_referencia or timezone.now().date()
 
     if contratos_qs is not None:
-        contratos_vigentes = contratos_qs.prefetch_related(
-            'polizas', 'polizas__otrosi', 'polizas__renovacion_automatica'
-        )
+        # Lista pre-evaluada: polizas ya prefetcheadas; QuerySet: añadir prefetch
+        if isinstance(contratos_qs, list):
+            contratos_vigentes = contratos_qs
+        else:
+            contratos_vigentes = contratos_qs.prefetch_related(
+                'polizas', 'polizas__otrosi', 'polizas__renovacion_automatica'
+            )
     else:
         contratos_vigentes = (
             Contrato.objects.filter(vigente=True)

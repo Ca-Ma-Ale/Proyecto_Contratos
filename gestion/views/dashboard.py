@@ -27,7 +27,7 @@ from gestion.services.exportes import (
     generar_excel_corporativo,
 )
 from gestion.utils_otrosi import get_ultimo_otrosi_que_modifico_campo_hasta_fecha
-from .utils import _estado_vigente_contrato, _respuesta_archivo_excel, obtener_canon_vigente
+from .utils import _respuesta_archivo_excel, obtener_canon_vigente
 
 
 @login_required_custom
@@ -67,32 +67,33 @@ def api_conteos_alertas(request):
     """
     fecha_actual = timezone.now().date()
 
-    # Stats generales (loop pesado movido aquí desde dashboard)
-    todos_los_contratos = Contrato.objects.prefetch_related('otrosi', 'renovaciones_automaticas')
-    contratos_vigentes = 0
-    contratos_vencidos = 0
-    contratos_vigentes_list = []
+    # Vigentes/vencidos directamente en DB (sin loop Python)
+    contratos_vigentes = Contrato.objects.filter(vigente=True).count()
+    contratos_vencidos = Contrato.objects.count() - contratos_vigentes
 
-    for contrato in todos_los_contratos:
-        if _estado_vigente_contrato(contrato, fecha_actual):
-            contratos_vigentes += 1
-            contratos_vigentes_list.append(contrato)
-        else:
-            contratos_vencidos += 1
+    # Única consulta con todos los datos necesarios para el resto del endpoint
+    contratos_list = list(
+        Contrato.objects.filter(vigente=True)
+        .select_related('arrendatario', 'proveedor', 'local', 'tipo_contrato', 'tipo_servicio')
+        .prefetch_related(
+            'otrosi', 'renovaciones_automaticas',
+            'polizas', 'polizas__otrosi', 'polizas__renovacion_automatica',
+        )
+    )
 
+    # Conteo de modalidades en un solo loop (usa caché de prefetch)
     contratos_fijos = 0
     contratos_variables = 0
     contratos_hibridos = 0
-
-    for contrato in contratos_vigentes_list:
+    for contrato in contratos_list:
         otrosi_modificador = get_ultimo_otrosi_que_modifico_campo_hasta_fecha(
             contrato, 'nueva_modalidad_pago', fecha_actual
         )
-        if otrosi_modificador and otrosi_modificador.nueva_modalidad_pago:
-            modalidad_actual = otrosi_modificador.nueva_modalidad_pago
-        else:
-            modalidad_actual = contrato.modalidad_pago
-
+        modalidad_actual = (
+            otrosi_modificador.nueva_modalidad_pago
+            if otrosi_modificador and otrosi_modificador.nueva_modalidad_pago
+            else contrato.modalidad_pago
+        )
         if modalidad_actual == 'Fijo':
             contratos_fijos += 1
         elif modalidad_actual == 'Variable Puro':
@@ -100,14 +101,14 @@ def api_conteos_alertas(request):
         elif modalidad_actual == 'Hibrido (Min Garantizado)':
             contratos_hibridos += 1
 
-    # Conteos de alertas (solo len — sin objetos completos)
-    vencimiento = len(obtener_alertas_expiracion_contratos(fecha_referencia=fecha_actual, ventana_dias=90))
+    # Todos los conteos de alertas usan la misma lista en memoria (0 queries adicionales)
+    vencimiento = len(obtener_alertas_expiracion_contratos(fecha_referencia=fecha_actual, ventana_dias=90, contratos_qs=contratos_list))
     polizas_criticas = len(obtener_polizas_criticas(fecha_referencia=fecha_actual))
-    preaviso = len(obtener_alertas_preaviso(fecha_referencia=fecha_actual))
-    ipc_list = obtener_alertas_ipc(fecha_referencia=fecha_actual)
-    sm_list = obtener_alertas_salario_minimo(fecha_referencia=fecha_actual)
+    preaviso = len(obtener_alertas_preaviso(fecha_referencia=fecha_actual, contratos_qs=contratos_list))
+    ipc_list = obtener_alertas_ipc(fecha_referencia=fecha_actual, contratos_qs=contratos_list)
+    sm_list = obtener_alertas_salario_minimo(fecha_referencia=fecha_actual, contratos_qs=contratos_list)
 
-    # Deduplicación IPC / Salario Mínimo (preservar lógica original)
+    # Deduplicación IPC / Salario Mínimo
     ids_en_sm = {a.contrato.id for a in sm_list}
     ids_en_ipc = {a.contrato.id for a in ipc_list}
     contratos_duplicados = ids_en_ipc & ids_en_sm
@@ -123,8 +124,8 @@ def api_conteos_alertas(request):
             or obtener_tipo_condicion_ipc_vigente(a.contrato, fecha_actual) == 'SALARIO_MINIMO'
         ]
 
-    polizas_requeridas = len(obtener_alertas_polizas_requeridas_no_aportadas(fecha_referencia=fecha_actual))
-    terminacion = len(obtener_alertas_terminacion_anticipada(fecha_referencia=fecha_actual))
+    polizas_requeridas = len(obtener_alertas_polizas_requeridas_no_aportadas(fecha_referencia=fecha_actual, contratos_qs=contratos_list))
+    terminacion = len(obtener_alertas_terminacion_anticipada(fecha_referencia=fecha_actual, contratos_qs=contratos_list))
     renovacion_automatica = len(obtener_alertas_renovacion_automatica(fecha_referencia=fecha_actual))
 
     return JsonResponse({
