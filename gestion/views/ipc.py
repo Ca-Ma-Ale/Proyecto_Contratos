@@ -128,20 +128,7 @@ def lista_ipc_historico(request):
             'periodicidad_ipc_display': obtener_nombre_periodicidad_ipc(periodicidad_ipc) if periodicidad_ipc else None,
         })
     
-    # Filtrar por estado del último cálculo
-    if estado_filtro == 'PENDIENTE':
-        contratos_info = [
-            info for info in contratos_info
-            if not info['ultimo_calculo'] or info['ultimo_calculo'].estado == 'PENDIENTE'
-        ]
-    elif estado_filtro == 'APLICADO':
-        contratos_info = [
-            info for info in contratos_info
-            if info['ultimo_calculo'] and info['ultimo_calculo'].estado == 'APLICADO'
-        ]
-    # 'TODOS': no filtrar por estado
-
-    # Marcar contratos "al día": ajuste APLICADO en el año actual y próxima fecha en año siguiente
+    # Marcar "al día" primero (sobre todos los contratos) para que el filtro PENDIENTE lo use
     for info in contratos_info:
         ultimo = info['ultimo_calculo']
         proxima = info['proxima_fecha_aumento']
@@ -155,8 +142,19 @@ def lista_ipc_historico(request):
 
     count_al_dia = sum(1 for info in contratos_info if info['es_al_dia'])
 
-    # Por defecto ocultar los "al día" — solo mostrar si el usuario lo pide
-    if not mostrar_al_dia:
+    # Filtrar por estado
+    if estado_filtro == 'PENDIENTE':
+        # Pendiente = no al día (IPC no aplicado en el año actual con próxima fecha cubierta)
+        contratos_info = [info for info in contratos_info if not info['es_al_dia']]
+    elif estado_filtro == 'APLICADO':
+        contratos_info = [
+            info for info in contratos_info
+            if info['ultimo_calculo'] and info['ultimo_calculo'].estado == 'APLICADO'
+        ]
+    # 'TODOS': no filtrar por estado
+
+    # En TODOS/APLICADO, ocultar al día por defecto salvo que el usuario lo pida
+    if estado_filtro != 'PENDIENTE' and not mostrar_al_dia:
         contratos_info = [info for info in contratos_info if not info['es_al_dia']]
 
     context = {
