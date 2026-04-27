@@ -40,7 +40,7 @@ def lista_ipc_historico(request):
     fecha_actual = date.today()
     
     tipo_filtro_activo = request.GET.get('tipo_contrato_cliente_proveedor', '')
-    estado_filtro = request.GET.get('estado_filtro', 'TODOS')
+    estado_filtro = request.GET.get('estado_filtro', 'PENDIENTE')
     mostrar_al_dia = request.GET.get('mostrar_al_dia', '') == '1'
     
     # Obtener todos los contratos activos — prefetch otrosi Y renovaciones para evitar N+1
