@@ -40,22 +40,44 @@ def lista_ipc_historico(request):
     fecha_actual = date.today()
     
     tipo_filtro_activo = request.GET.get('tipo_contrato_cliente_proveedor', '')
-    estado_filtro = request.GET.get('estado_filtro', 'PENDIENTE')  # Por defecto mostrar pendientes
+    estado_filtro = request.GET.get('estado_filtro', 'TODOS')
+    mostrar_al_dia = request.GET.get('mostrar_al_dia', '') == '1'
     
-    # Obtener todos los contratos activos
+    # Obtener todos los contratos activos — prefetch otrosi Y renovaciones para evitar N+1
     contratos = Contrato.objects.filter(vigente=True).select_related(
         'arrendatario', 'proveedor', 'local', 'tipo_contrato', 'tipo_servicio'
-    ).prefetch_related('otrosi').order_by('num_contrato')
-    
+    ).prefetch_related('otrosi', 'renovaciones_automaticas').order_by('num_contrato')
+
     # Filtrar por tipo de contrato si se especifica
     if tipo_filtro_activo:
         contratos = contratos.filter(tipo_contrato_cliente_proveedor=tipo_filtro_activo)
-    
-    # Preparar información de cada contrato
+
+    # Materializar queryset una sola vez
+    contratos_list = list(contratos)
+
+    # Bulk-fetch último CalculoIPC y CalculoSalarioMinimo por contrato (2 queries en total)
+    from gestion.models import CalculoSalarioMinimo
+    contrato_ids = [c.id for c in contratos_list]
+
+    _ultimos_ipc = {}
+    for c in CalculoIPC.objects.filter(
+        contrato_id__in=contrato_ids
+    ).order_by('contrato_id', '-fecha_aplicacion', '-fecha_calculo'):
+        if c.contrato_id not in _ultimos_ipc:
+            _ultimos_ipc[c.contrato_id] = c
+
+    _ultimos_sm = {}
+    for c in CalculoSalarioMinimo.objects.filter(
+        contrato_id__in=contrato_ids
+    ).order_by('contrato_id', '-fecha_aplicacion', '-fecha_calculo'):
+        if c.contrato_id not in _ultimos_sm:
+            _ultimos_sm[c.contrato_id] = c
+
+    # Preparar información de cada contrato (sin queries adicionales por contrato)
     contratos_info = []
-    for contrato in contratos:
+    for contrato in contratos_list:
         fecha_final = _obtener_fecha_final_contrato(contrato, fecha_actual)
-        
+
         # Obtener fecha de aumento IPC considerando otrosí
         otrosi_fecha_ipc = get_ultimo_otrosi_que_modifico_campo_hasta_fecha(
             contrato, 'nueva_fecha_aumento_ipc', fecha_actual
@@ -64,7 +86,7 @@ def lista_ipc_historico(request):
             fecha_aumento_ipc = otrosi_fecha_ipc.nueva_fecha_aumento_ipc
         else:
             fecha_aumento_ipc = contrato.fecha_aumento_ipc
-        
+
         # Obtener tipo_condicion_ipc efectivo considerando otrosí
         tipo_condicion_ipc = contrato.tipo_condicion_ipc
         otrosi_tipo_ipc = get_ultimo_otrosi_que_modifico_campo_hasta_fecha(
@@ -81,11 +103,18 @@ def lista_ipc_historico(request):
         if otrosi_periodicidad and otrosi_periodicidad.nueva_periodicidad_ipc:
             periodicidad_ipc = otrosi_periodicidad.nueva_periodicidad_ipc
 
-        # Calcular próxima fecha de aumento
-        proxima_fecha_aumento = calcular_proxima_fecha_aumento(contrato, fecha_actual)
+        # Calcular próxima fecha de aumento usando caché de cálculos (sin queries)
+        ultimo_ipc_c = _ultimos_ipc.get(contrato.id)
+        ultimo_sm_c = _ultimos_sm.get(contrato.id)
+        proxima_fecha_aumento = calcular_proxima_fecha_aumento(
+            contrato, fecha_actual, _calculos_cache=(ultimo_ipc_c, ultimo_sm_c)
+        )
 
-        # Obtener último cálculo de ajuste (IPC o Salario Mínimo)
-        ultimo_calculo = obtener_ultimo_calculo_ajuste(contrato)
+        # Determinar último cálculo desde caché (evita 2 queries adicionales)
+        if ultimo_ipc_c and ultimo_sm_c:
+            ultimo_calculo = ultimo_ipc_c if ultimo_ipc_c.fecha_aplicacion >= ultimo_sm_c.fecha_aplicacion else ultimo_sm_c
+        else:
+            ultimo_calculo = ultimo_ipc_c or ultimo_sm_c
 
         contratos_info.append({
             'contrato': contrato,
@@ -101,25 +130,43 @@ def lista_ipc_historico(request):
     
     # Filtrar por estado del último cálculo
     if estado_filtro == 'PENDIENTE':
-        # Mostrar solo contratos sin cálculos o con último cálculo pendiente
         contratos_info = [
             info for info in contratos_info
             if not info['ultimo_calculo'] or info['ultimo_calculo'].estado == 'PENDIENTE'
         ]
     elif estado_filtro == 'APLICADO':
-        # Mostrar solo contratos con último cálculo aplicado
         contratos_info = [
             info for info in contratos_info
             if info['ultimo_calculo'] and info['ultimo_calculo'].estado == 'APLICADO'
         ]
-    # Si es 'TODOS', no filtrar
-    
+    # 'TODOS': no filtrar por estado
+
+    # Marcar contratos "al día": ajuste APLICADO en el año actual y próxima fecha en año siguiente
+    for info in contratos_info:
+        ultimo = info['ultimo_calculo']
+        proxima = info['proxima_fecha_aumento']
+        info['es_al_dia'] = (
+            ultimo is not None
+            and getattr(ultimo, 'estado', None) == 'APLICADO'
+            and ultimo.fecha_aplicacion.year == fecha_actual.year
+            and proxima is not None
+            and proxima.year > fecha_actual.year
+        )
+
+    count_al_dia = sum(1 for info in contratos_info if info['es_al_dia'])
+
+    # Por defecto ocultar los "al día" — solo mostrar si el usuario lo pide
+    if not mostrar_al_dia:
+        contratos_info = [info for info in contratos_info if not info['es_al_dia']]
+
     context = {
         'contratos_info': contratos_info,
         'titulo': 'Gestión de IPC - Contratos',
         'fecha_actual': fecha_actual,
         'tipo_filtro_activo': tipo_filtro_activo,
         'estado_filtro_activo': estado_filtro,
+        'mostrar_al_dia': mostrar_al_dia,
+        'count_al_dia': count_al_dia,
     }
     return render(request, 'gestion/ipc/contratos_lista.html', context)
 

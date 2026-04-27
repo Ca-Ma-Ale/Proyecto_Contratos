@@ -325,30 +325,32 @@ def obtener_ultimo_calculo_ipc_aplicado(contrato):
     ).order_by('-fecha_aplicacion', '-fecha_calculo').first()
 
 
-def calcular_proxima_fecha_aumento(contrato, fecha_referencia=None):
+def calcular_proxima_fecha_aumento(contrato, fecha_referencia=None, _calculos_cache=None):
     """
     Calcula la próxima fecha de aumento IPC/Salario Mínimo para un contrato.
-    
+
     Si hay un último cálculo realizado, calcula desde la fecha de aplicación del último cálculo + 1 año.
     Si no hay cálculos, usa fecha_aumento_ipc del contrato como primera fecha de ajuste pendiente.
-    
+
     IMPORTANTE: Las renovaciones automáticas NO modifican las fechas de IPC. Si hay renovación
     posterior al último cálculo, solo se usa cuando HAY cálculos previos para determinar el
     siguiente ciclo; sin cálculos, se usa siempre fecha_aumento_ipc del contrato.
-    
+
     Args:
         contrato: Instancia del modelo Contrato
         fecha_referencia: date opcional, por defecto usa date.today()
-    
+        _calculos_cache: tuple (ultimo_ipc, ultimo_salario) pre-calculado para evitar queries.
+                         Cuando se provee, se omiten las queries a CalculoIPC/CalculoSalarioMinimo.
+
     Returns:
         date con la próxima fecha de aumento o None si no se puede calcular
     """
     from gestion.utils_otrosi import get_ultimo_otrosi_que_modifico_campo_hasta_fecha
     from gestion.models import CalculoSalarioMinimo, OtroSi
-    
+
     if fecha_referencia is None:
         fecha_referencia = date.today()
-    
+
     # Obtener periodicidad considerando otrosí
     otrosi_periodicidad = get_ultimo_otrosi_que_modifico_campo_hasta_fecha(
         contrato, 'nueva_periodicidad_ipc', fecha_referencia
@@ -357,18 +359,20 @@ def calcular_proxima_fecha_aumento(contrato, fecha_referencia=None):
         periodicidad = otrosi_periodicidad.nueva_periodicidad_ipc
     else:
         periodicidad = contrato.periodicidad_ipc
-    
+
     # Si es ANUAL
     if periodicidad == 'ANUAL':
-        # Obtener último cálculo realizado (IPC o Salario Mínimo)
-        ultimo_ipc = CalculoIPC.objects.filter(
-            contrato=contrato
-        ).order_by('-fecha_aplicacion', '-fecha_calculo').first()
-        
-        ultimo_salario = CalculoSalarioMinimo.objects.filter(
-            contrato=contrato
-        ).order_by('-fecha_aplicacion', '-fecha_calculo').first()
-        
+        # Obtener último cálculo — usar caché si está disponible
+        if _calculos_cache is not None:
+            ultimo_ipc, ultimo_salario = _calculos_cache
+        else:
+            ultimo_ipc = CalculoIPC.objects.filter(
+                contrato=contrato
+            ).order_by('-fecha_aplicacion', '-fecha_calculo').first()
+            ultimo_salario = CalculoSalarioMinimo.objects.filter(
+                contrato=contrato
+            ).order_by('-fecha_aplicacion', '-fecha_calculo').first()
+
         # Determinar cuál es el último cálculo más reciente
         ultimo_calculo = None
         if ultimo_ipc and ultimo_salario:
@@ -377,36 +381,37 @@ def calcular_proxima_fecha_aumento(contrato, fecha_referencia=None):
             ultimo_calculo = ultimo_ipc
         elif ultimo_salario:
             ultimo_calculo = ultimo_salario
-        
-        # Buscar renovaciones (OtroSi tipo RENEWAL o RenovacionAutomatica) que NO modificaron condiciones IPC
-        # y que puedan reiniciar el ciclo de ajustes
+
+        # Buscar renovaciones que NO modificaron condiciones IPC — filtrado en memoria
         renovacion_relevante = None
         if ultimo_calculo:
-            # Buscar OtroSi de tipo RENEWAL aprobadas posteriores al último cálculo
-            renovaciones_otrosi = OtroSi.objects.filter(
-                contrato=contrato,
-                estado='APROBADO',
-                tipo='RENEWAL',
-                effective_from__gt=ultimo_calculo.fecha_aplicacion,
-                effective_from__lte=fecha_referencia
-            ).exclude(
-                # Excluir renovaciones que modificaron condiciones IPC
-                nuevo_tipo_condicion_ipc__isnull=False
-            ).exclude(
-                nueva_periodicidad_ipc__isnull=False
-            ).exclude(
-                nueva_fecha_aumento_ipc__isnull=False
-            ).order_by('-effective_from', '-version').first()
-            
-            # Buscar Renovaciones Automáticas aprobadas posteriores al último cálculo
-            # (RenovacionAutomatica no tiene campos IPC, así que siempre mantiene condiciones del contrato)
-            from gestion.models import RenovacionAutomatica
-            renovaciones_automaticas = RenovacionAutomatica.objects.filter(
-                contrato=contrato,
-                estado='APROBADO',
-                effective_from__gt=ultimo_calculo.fecha_aplicacion,
-                effective_from__lte=fecha_referencia
-            ).order_by('-effective_from', '-version').first()
+            fecha_corte = ultimo_calculo.fecha_aplicacion
+
+            # OtroSí tipo RENEWAL sin modificaciones IPC
+            renovaciones_otrosi = sorted(
+                [o for o in contrato.otrosi.all()
+                 if o.estado == 'APROBADO'
+                 and o.tipo == 'RENEWAL'
+                 and o.effective_from > fecha_corte
+                 and o.effective_from <= fecha_referencia
+                 and o.nuevo_tipo_condicion_ipc is None
+                 and o.nueva_periodicidad_ipc is None
+                 and o.nueva_fecha_aumento_ipc is None],
+                key=lambda o: (o.effective_from, getattr(o, 'version', 0) or 0),
+                reverse=True,
+            )
+            renovaciones_otrosi = renovaciones_otrosi[0] if renovaciones_otrosi else None
+
+            # RenovacionAutomatica posterior al último cálculo — usa prefetch si disponible
+            renovaciones_automaticas = sorted(
+                [r for r in contrato.renovaciones_automaticas.all()
+                 if r.estado == 'APROBADO'
+                 and r.effective_from > fecha_corte
+                 and r.effective_from <= fecha_referencia],
+                key=lambda r: (r.effective_from, getattr(r, 'version', 0) or 0),
+                reverse=True,
+            )
+            renovaciones_automaticas = renovaciones_automaticas[0] if renovaciones_automaticas else None
             
             # Determinar cuál renovación es más reciente
             if renovaciones_otrosi and renovaciones_automaticas:
@@ -485,13 +490,16 @@ def calcular_proxima_fecha_aumento(contrato, fecha_referencia=None):
 
         if fecha_base:
             # Si hay cálculos previos, avanzar desde el último +1 año (igual que ANUAL)
-            from gestion.models import CalculoSalarioMinimo
-            ultimo_ipc = CalculoIPC.objects.filter(
-                contrato=contrato
-            ).order_by('-fecha_aplicacion', '-fecha_calculo').first()
-            ultimo_salario = CalculoSalarioMinimo.objects.filter(
-                contrato=contrato
-            ).order_by('-fecha_aplicacion', '-fecha_calculo').first()
+            if _calculos_cache is not None:
+                ultimo_ipc, ultimo_salario = _calculos_cache
+            else:
+                from gestion.models import CalculoSalarioMinimo
+                ultimo_ipc = CalculoIPC.objects.filter(
+                    contrato=contrato
+                ).order_by('-fecha_aplicacion', '-fecha_calculo').first()
+                ultimo_salario = CalculoSalarioMinimo.objects.filter(
+                    contrato=contrato
+                ).order_by('-fecha_aplicacion', '-fecha_calculo').first()
 
             ultimo_calculo = None
             if ultimo_ipc and ultimo_salario:

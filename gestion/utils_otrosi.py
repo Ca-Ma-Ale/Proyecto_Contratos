@@ -395,43 +395,41 @@ def get_ultimo_otrosi_que_modifico_campo_hasta_fecha(contrato, campo_nombre, fec
 def get_otrosi_vigente(contrato, fecha_referencia=None):
     """
     Obtiene el Otrosí o Renovación Automática vigente para un contrato en una fecha dada.
-    
+
     Reglas:
     - Estado APROBADO
     - effective_from <= fecha_referencia
     - effective_to >= fecha_referencia (o null)
     - Mayor versión en caso de empate
     - Prioriza OtroSi sobre RenovacionAutomatica si ambos están vigentes
+
+    Usa prefetch cache de contrato.otrosi / contrato.renovaciones_automaticas cuando disponible.
     """
     if fecha_referencia is None:
         fecha_referencia = date.today()
-    
-    # Importar aquí para evitar circular import
-    from .models import OtroSi, RenovacionAutomatica
-    
-    otrosis_vigentes = OtroSi.objects.filter(
-        contrato=contrato,
-        estado='APROBADO',
-        effective_from__lte=fecha_referencia
-    ).filter(
-        Q(effective_to__gte=fecha_referencia) | Q(effective_to__isnull=True)
-    ).order_by('-effective_from', '-version')
-    
-    # Si hay un OtroSi vigente, retornarlo (tiene prioridad)
-    otrosi_vigente = otrosis_vigentes.first()
-    if otrosi_vigente:
-        return otrosi_vigente
-    
-    # Si no hay OtroSi vigente, buscar Renovación Automática vigente
-    renovaciones_vigentes = RenovacionAutomatica.objects.filter(
-        contrato=contrato,
-        estado='APROBADO',
-        effective_from__lte=fecha_referencia
-    ).filter(
-        Q(effective_to__gte=fecha_referencia) | Q(effective_to__isnull=True)
-    ).order_by('-effective_from', '-version')
-    
-    return renovaciones_vigentes.first()
+
+    _key = lambda x: (x.effective_from, getattr(x, 'version', 0) or 0)
+
+    # OtroSí vigente — usa prefetch si disponible, si no emite una sola query
+    candidatos_otrosi = sorted(
+        [o for o in contrato.otrosi.all()
+         if o.estado == 'APROBADO'
+         and o.effective_from <= fecha_referencia
+         and (o.effective_to is None or o.effective_to >= fecha_referencia)],
+        key=_key, reverse=True,
+    )
+    if candidatos_otrosi:
+        return candidatos_otrosi[0]
+
+    # RenovacionAutomatica vigente
+    candidatos_renov = sorted(
+        [r for r in contrato.renovaciones_automaticas.all()
+         if r.estado == 'APROBADO'
+         and r.effective_from <= fecha_referencia
+         and (r.effective_to is None or r.effective_to >= fecha_referencia)],
+        key=_key, reverse=True,
+    )
+    return candidatos_renov[0] if candidatos_renov else None
 
 
 def get_vista_vigente_contrato(contrato, fecha_referencia=None):

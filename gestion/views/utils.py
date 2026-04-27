@@ -685,43 +685,49 @@ def _respuesta_archivo_excel(contenido: bytes, nombre_base: str) -> HttpResponse
 def _obtener_fecha_final_contrato(contrato, fecha_referencia=None):
     """Obtiene la fecha final del contrato considerando Otrosí y Renovaciones Automáticas vigentes usando efecto cadena"""
     from gestion.utils_otrosi import get_otrosi_vigente, get_ultimo_otrosi_que_modifico_campo_hasta_fecha
-    from gestion.models import RenovacionAutomatica
-    
+
     if fecha_referencia is None:
         fecha_referencia = date.today()
-    
-    # Primero verificar si hay una Renovación Automática vigente (tiene prioridad sobre Otrosí)
-    renovacion_vigente = RenovacionAutomatica.objects.filter(
-        contrato=contrato,
-        estado='APROBADO',
-        effective_from__lte=fecha_referencia
-    ).order_by('-effective_from', '-fecha_aprobacion', '-version').first()
-    
+
+    # Filtrado en memoria usando prefetch cuando disponible (evita queries por contrato)
+    _renov_key = lambda r: (r.effective_from, getattr(r, 'version', 0) or 0)
+
+    # Renovación Automática vigente con nueva_fecha_final_actualizada
+    renovacion_vigente = next(
+        iter(sorted(
+            [r for r in contrato.renovaciones_automaticas.all()
+             if r.estado == 'APROBADO' and r.effective_from <= fecha_referencia],
+            key=_renov_key, reverse=True,
+        )),
+        None,
+    )
+
     if renovacion_vigente and renovacion_vigente.nueva_fecha_final_actualizada:
         return renovacion_vigente.nueva_fecha_final_actualizada
-    
+
     # Si no hay renovación vigente, verificar Otro Sí vigente
     otrosi_vigente_actual = get_otrosi_vigente(contrato, fecha_referencia)
-    
+
     if otrosi_vigente_actual:
-        # Si tiene effective_to, esa es la fecha final vigente
         if otrosi_vigente_actual.effective_to:
             return otrosi_vigente_actual.effective_to
-        # Si no tiene effective_to pero tiene nueva_fecha_final_actualizada, usar esa
         elif otrosi_vigente_actual.nueva_fecha_final_actualizada:
             return otrosi_vigente_actual.nueva_fecha_final_actualizada
-    
-    # Si no hay Otro Sí vigente, usar efecto cadena para obtener fecha final vigente hasta fecha_referencia
-    # Considerar tanto Otrosí como Renovaciones Automáticas
+
+    # Efecto cadena: última modificación de fecha_final
     otrosi_modificador = get_ultimo_otrosi_que_modifico_campo_hasta_fecha(
         contrato, 'nueva_fecha_final_actualizada', fecha_referencia
     )
-    renovacion_modificadora = RenovacionAutomatica.objects.filter(
-        contrato=contrato,
-        estado='APROBADO',
-        nueva_fecha_final_actualizada__isnull=False,
-        effective_from__lte=fecha_referencia
-    ).order_by('-effective_from', '-fecha_aprobacion', '-version').first()
+    renovacion_modificadora = next(
+        iter(sorted(
+            [r for r in contrato.renovaciones_automaticas.all()
+             if r.estado == 'APROBADO'
+             and r.nueva_fecha_final_actualizada is not None
+             and r.effective_from <= fecha_referencia],
+            key=_renov_key, reverse=True,
+        )),
+        None,
+    )
     
     # Determinar cuál es más reciente (otrosí o renovación)
     fecha_final = None
