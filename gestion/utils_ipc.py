@@ -214,9 +214,72 @@ def calcular_ajuste_ipc(canon_anterior, valor_ipc, puntos_adicionales):
     }
 
 
+def requiere_revision_configuracion_ajuste(
+    ultimo_calculo,
+    tipo_condicion_ipc=None,
+    periodicidad_ipc=None,
+    fecha_aumento_ipc=None,
+):
+    """Detecta ajustes aplicados con datos IPC contractuales incompletos."""
+    if not ultimo_calculo or getattr(ultimo_calculo, 'estado', None) != 'APLICADO':
+        return False
+
+    datos_efectivos_incompletos = not all([
+        tipo_condicion_ipc,
+        periodicidad_ipc,
+        fecha_aumento_ipc,
+    ])
+    datos_calculo_incompletos = not all([
+        getattr(ultimo_calculo, 'periodicidad_contrato', None),
+        getattr(ultimo_calculo, 'fecha_aumento_contrato', None),
+    ])
+
+    return datos_efectivos_incompletos or datos_calculo_incompletos
+
+
+def obtener_configuracion_ajuste_efectiva(contrato, fecha_referencia):
+    """Retorna tipo, periodicidad y fecha de aumento considerando Otrosí."""
+    otrosi_fecha_ipc = get_ultimo_otrosi_que_modifico_campo_hasta_fecha(
+        contrato, 'nueva_fecha_aumento_ipc', fecha_referencia
+    )
+    fecha_aumento_ipc = contrato.fecha_aumento_ipc
+    if otrosi_fecha_ipc and otrosi_fecha_ipc.nueva_fecha_aumento_ipc:
+        fecha_aumento_ipc = otrosi_fecha_ipc.nueva_fecha_aumento_ipc
+
+    otrosi_tipo_ipc = get_ultimo_otrosi_que_modifico_campo_hasta_fecha(
+        contrato, 'nuevo_tipo_condicion_ipc', fecha_referencia
+    )
+    tipo_condicion_ipc = contrato.tipo_condicion_ipc
+    if otrosi_tipo_ipc and otrosi_tipo_ipc.nuevo_tipo_condicion_ipc:
+        tipo_condicion_ipc = otrosi_tipo_ipc.nuevo_tipo_condicion_ipc
+
+    otrosi_periodicidad = get_ultimo_otrosi_que_modifico_campo_hasta_fecha(
+        contrato, 'nueva_periodicidad_ipc', fecha_referencia
+    )
+    periodicidad_ipc = contrato.periodicidad_ipc
+    if otrosi_periodicidad and otrosi_periodicidad.nueva_periodicidad_ipc:
+        periodicidad_ipc = otrosi_periodicidad.nueva_periodicidad_ipc
+
+    return {
+        'fecha_aumento_ipc': fecha_aumento_ipc,
+        'tipo_condicion_ipc': tipo_condicion_ipc,
+        'periodicidad_ipc': periodicidad_ipc,
+    }
+
+
+def obtener_ultimo_calculo_desde_cache(ultimo_ipc, ultimo_salario):
+    """Retorna el cálculo más reciente entre IPC y Salario Mínimo ya consultados."""
+    if ultimo_ipc and ultimo_salario:
+        if ultimo_ipc.fecha_aplicacion >= ultimo_salario.fecha_aplicacion:
+            return ultimo_ipc
+        return ultimo_salario
+    return ultimo_ipc or ultimo_salario
+
+
 def obtener_contratos_pendientes_ajuste_ipc(fecha_referencia=None):
     """
-    Obtiene los contratos que requieren ajuste por IPC según su periodicidad.
+    Obtiene los contratos que requieren ajuste por IPC usando la misma regla
+    de estado pendiente/al día de la vista principal de IPC.
     
     Args:
         fecha_referencia: date opcional, por defecto usa date.today()
@@ -227,48 +290,61 @@ def obtener_contratos_pendientes_ajuste_ipc(fecha_referencia=None):
     if fecha_referencia is None:
         fecha_referencia = date.today()
     
-    # Contratos con IPC configurado
-    contratos = Contrato.objects.filter(
-        tipo_condicion_ipc='IPC',
-        vigente=True
-    ).exclude(
-        puntos_adicionales_ipc__isnull=True
+    from gestion.models import CalculoSalarioMinimo
+
+    contratos = list(
+        Contrato.objects.filter(vigente=True)
+        .select_related('arrendatario', 'proveedor', 'local')
+        .prefetch_related('otrosi', 'renovaciones_automaticas')
+        .order_by('num_contrato')
     )
-    
+    contrato_ids = [contrato.id for contrato in contratos]
+
+    ultimos_ipc = {}
+    for calculo in CalculoIPC.objects.filter(
+        contrato_id__in=contrato_ids
+    ).order_by('contrato_id', '-fecha_aplicacion', '-fecha_calculo'):
+        if calculo.contrato_id not in ultimos_ipc:
+            ultimos_ipc[calculo.contrato_id] = calculo
+
+    ultimos_salario = {}
+    for calculo in CalculoSalarioMinimo.objects.filter(
+        contrato_id__in=contrato_ids
+    ).order_by('contrato_id', '-fecha_aplicacion', '-fecha_calculo'):
+        if calculo.contrato_id not in ultimos_salario:
+            ultimos_salario[calculo.contrato_id] = calculo
+
     contratos_pendientes = []
-    
+
     for contrato in contratos:
-        if not contrato.fecha_aumento_ipc:
-            continue
-        
-        # Calcular la fecha de aumento para el año actual
-        fecha_aumento_anual = date(
-            fecha_referencia.year,
-            contrato.fecha_aumento_ipc.month,
-            contrato.fecha_aumento_ipc.day
+        config_ajuste = obtener_configuracion_ajuste_efectiva(
+            contrato, fecha_referencia
         )
-        
-        # Si la fecha de aumento ya pasó este año, calcular para el próximo año
-        if fecha_aumento_anual < fecha_referencia:
-            fecha_aumento_anual = date(
-                fecha_referencia.year + 1,
-                contrato.fecha_aumento_ipc.month,
-                contrato.fecha_aumento_ipc.day
-            )
-        
-        # Verificar si ya tiene cálculo para esta fecha exacta
-        calculo_existente = CalculoIPC.objects.filter(
-            contrato=contrato,
-            fecha_aplicacion=fecha_aumento_anual
-        ).exists()
-        
-        if calculo_existente:
+        ultimo_ipc = ultimos_ipc.get(contrato.id)
+        ultimo_salario = ultimos_salario.get(contrato.id)
+        proxima_fecha = calcular_proxima_fecha_aumento(
+            contrato, fecha_referencia, _calculos_cache=(ultimo_ipc, ultimo_salario)
+        )
+        ultimo_calculo = obtener_ultimo_calculo_desde_cache(
+            ultimo_ipc, ultimo_salario
+        )
+
+        es_al_dia = (
+            ultimo_calculo is not None
+            and getattr(ultimo_calculo, 'estado', None) == 'APLICADO'
+            and ultimo_calculo.fecha_aplicacion.year == fecha_referencia.year
+            and proxima_fecha is not None
+            and proxima_fecha.year > fecha_referencia.year
+        )
+        if es_al_dia:
             continue
-        
-        # Verificar si la fecha de aumento coincide con la fecha de referencia
-        if fecha_aumento_anual == fecha_referencia:
-            contratos_pendientes.append(contrato)
-    
+
+        contrato.requiere_revision_ipc = requiere_revision_configuracion_ajuste(
+            ultimo_calculo,
+            **config_ajuste,
+        )
+        contratos_pendientes.append(contrato)
+
     return contratos_pendientes
 
 

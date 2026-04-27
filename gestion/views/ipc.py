@@ -26,6 +26,9 @@ from gestion.utils_ipc import (
     obtener_fuente_puntos_adicionales,
     calcular_proxima_fecha_aumento,
     obtener_ultimo_calculo_ajuste,
+    obtener_configuracion_ajuste_efectiva,
+    obtener_ultimo_calculo_desde_cache,
+    requiere_revision_configuracion_ajuste,
     verificar_otrosi_vigente_para_fecha,
     verificar_calculo_existente_para_fecha,
     obtener_otrosi_para_legalizar,
@@ -79,29 +82,16 @@ def lista_ipc_historico(request):
         fecha_final = _obtener_fecha_final_contrato(contrato, fecha_actual)
 
         # Obtener fecha de aumento IPC considerando otrosí
-        otrosi_fecha_ipc = get_ultimo_otrosi_que_modifico_campo_hasta_fecha(
-            contrato, 'nueva_fecha_aumento_ipc', fecha_actual
+        config_ajuste = obtener_configuracion_ajuste_efectiva(
+            contrato, fecha_actual
         )
-        if otrosi_fecha_ipc and otrosi_fecha_ipc.nueva_fecha_aumento_ipc:
-            fecha_aumento_ipc = otrosi_fecha_ipc.nueva_fecha_aumento_ipc
-        else:
-            fecha_aumento_ipc = contrato.fecha_aumento_ipc
+        fecha_aumento_ipc = config_ajuste['fecha_aumento_ipc']
 
         # Obtener tipo_condicion_ipc efectivo considerando otrosí
-        tipo_condicion_ipc = contrato.tipo_condicion_ipc
-        otrosi_tipo_ipc = get_ultimo_otrosi_que_modifico_campo_hasta_fecha(
-            contrato, 'nuevo_tipo_condicion_ipc', fecha_actual
-        )
-        if otrosi_tipo_ipc and otrosi_tipo_ipc.nuevo_tipo_condicion_ipc:
-            tipo_condicion_ipc = otrosi_tipo_ipc.nuevo_tipo_condicion_ipc
+        tipo_condicion_ipc = config_ajuste['tipo_condicion_ipc']
 
         # Obtener periodicidad_ipc efectiva considerando otrosí
-        periodicidad_ipc = contrato.periodicidad_ipc
-        otrosi_periodicidad = get_ultimo_otrosi_que_modifico_campo_hasta_fecha(
-            contrato, 'nueva_periodicidad_ipc', fecha_actual
-        )
-        if otrosi_periodicidad and otrosi_periodicidad.nueva_periodicidad_ipc:
-            periodicidad_ipc = otrosi_periodicidad.nueva_periodicidad_ipc
+        periodicidad_ipc = config_ajuste['periodicidad_ipc']
 
         # Calcular próxima fecha de aumento usando caché de cálculos (sin queries)
         ultimo_ipc_c = _ultimos_ipc.get(contrato.id)
@@ -111,10 +101,14 @@ def lista_ipc_historico(request):
         )
 
         # Determinar último cálculo desde caché (evita 2 queries adicionales)
-        if ultimo_ipc_c and ultimo_sm_c:
-            ultimo_calculo = ultimo_ipc_c if ultimo_ipc_c.fecha_aplicacion >= ultimo_sm_c.fecha_aplicacion else ultimo_sm_c
-        else:
-            ultimo_calculo = ultimo_ipc_c or ultimo_sm_c
+        ultimo_calculo = obtener_ultimo_calculo_desde_cache(
+            ultimo_ipc_c, ultimo_sm_c
+        )
+
+        requiere_revision_ipc = requiere_revision_configuracion_ajuste(
+            ultimo_calculo,
+            **config_ajuste,
+        )
 
         contratos_info.append({
             'contrato': contrato,
@@ -126,6 +120,7 @@ def lista_ipc_historico(request):
             'tipo_condicion_ipc_display': obtener_nombre_tipo_condicion_ipc(tipo_condicion_ipc) if tipo_condicion_ipc else None,
             'periodicidad_ipc': periodicidad_ipc,
             'periodicidad_ipc_display': obtener_nombre_periodicidad_ipc(periodicidad_ipc) if periodicidad_ipc else None,
+            'requiere_revision_ipc': requiere_revision_ipc,
         })
     
     # Marcar "al día" primero (sobre todos los contratos) para que el filtro PENDIENTE lo use

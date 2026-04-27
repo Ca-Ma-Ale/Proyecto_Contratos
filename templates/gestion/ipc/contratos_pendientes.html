@@ -56,6 +56,14 @@
                                                 <a href="{% url 'gestion:detalle_contrato' contrato.id %}">
                                                     {{ contrato.num_contrato }}
                                                 </a>
+                                                {% if contrato.requiere_revision_ipc %}
+                                                    <br>
+                                                    <span class="badge bg-warning text-dark"
+                                                          title="Tiene cálculo aplicado, pero faltan condiciones IPC efectivas en el contrato u Otro Si. Revise tipo, periodicidad y fecha de aumento.">
+                                                        <i class="fas fa-exclamation-triangle"></i>
+                                                        Revisar contrato / Otro Si
+                                                    </span>
+                                                {% endif %}
                                             </td>
                                             <td>{{ contrato.obtener_nombre_tercero }}</td>
                                             <td>
