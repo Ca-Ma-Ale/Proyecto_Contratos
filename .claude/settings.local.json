@@ -44,7 +44,23 @@
       "Bash(python manage.py test gestion.tests -v 2)",
       "Bash(grep -E \"\\\\.\\(html|py\\)$\")",
       "Bash(python manage.py shell -c ' *)",
-      "Bash(python manage.py auditar_otrosi)"
+      "Bash(python manage.py auditar_otrosi)",
+      "Bash(python manage.py check --deploy)",
+      "Bash(python -c \"from gestion.forms import FiltroReportesAlertasForm; f = FiltroReportesAlertasForm\\(\\); print\\('Campos:', list\\(f.fields.keys\\(\\)\\)\\)\")",
+      "Bash(python manage.py shell -c \"from gestion.forms import FiltroReportesAlertasForm; f = FiltroReportesAlertasForm\\(\\); print\\('Campos:', list\\(f.fields.keys\\(\\)\\)\\)\")",
+      "Bash(xargs grep *)",
+      "Bash(python -c \"import django; django.setup\\(\\); from gestion.views.contratos import exportar_contratos; from gestion.views.dashboard import exportar_alertas_ipc, exportar_alertas_salario_minimo, exportar_alertas_vencimiento, exportar_alertas_preaviso, exportar_estado_preavisos, exportar_alertas_terminacion; print\\('OK'\\)\")",
+      "Bash(python -c ' *)",
+      "Bash(git add *)",
+      "Bash(git push *)",
+      "Bash(grep -r \"fetch\\\\|XMLHttpRequest\\\\|\\\\$.ajax\\\\|onClick\\\\|window.location\\\\|href=\" \"C:\\\\Users\\\\USER9\\\\OneDrive - GLOBAL ANALITICS SAS\\\\Proyecto_Contratos\\\\templates\\\\base.html\")",
+      "Bash(sed -n '150,200p' gestion/services/alertas.py)",
+      "Bash(sed -n '198,215p' gestion/services/alertas.py)",
+      "Bash(sed -n '403,420p' gestion/services/alertas.py)",
+      "Bash(sed -n '609,630p' gestion/services/alertas.py)",
+      "Bash(sed -n '758,780p' gestion/services/alertas.py)",
+      "Bash(grep -v \"^$\")",
+      "Bash(python -c \"from gestion.views.dashboard import api_conteos_alertas; from gestion.services.alertas import obtener_alertas_ipc, obtener_alertas_salario_minimo, obtener_alertas_polizas_requeridas_no_aportadas; print\\('OK'\\)\")"
     ]
   }
 }

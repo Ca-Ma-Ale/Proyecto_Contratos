@@ -242,7 +242,19 @@ def lista_contratos(request):
     """Vista para listar todos los contratos con filtros"""
     from datetime import date
     
-    contratos = Contrato.objects.select_related('arrendatario', 'proveedor', 'local', 'tipo_contrato', 'tipo_servicio').order_by('-fecha_inicial_contrato')
+    contratos = (
+        Contrato.objects
+        .select_related(
+            'arrendatario',
+            'proveedor',
+            'local',
+            'tipo_contrato',
+            'tipo_servicio',
+            'finalizacion',
+        )
+        .prefetch_related('otrosi', 'renovaciones_automaticas')
+        .order_by('-fecha_inicial_contrato')
+    )
     
     filtro_form = FiltroListaContratosForm(request.GET or None)
     
@@ -321,7 +333,7 @@ def lista_contratos(request):
                     }
         
         estado_vigente = False
-        es_vencido = _es_contrato_vencido(contrato, fecha_actual)
+        es_vencido = fecha_final_vigente < fecha_actual
 
         # ── Contratos finalizados: tienen precedencia sobre cualquier otra lógica ──
         es_terminado = False
@@ -2185,7 +2197,5 @@ def eliminar_seguimiento_poliza(request, seguimiento_id):
         'titulo': 'Eliminar Seguimiento de Póliza'
     }
     return render(request, 'gestion/seguimientos/eliminar_poliza.html', context)
-
-
 
 
