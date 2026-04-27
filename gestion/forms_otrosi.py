@@ -976,17 +976,16 @@ class OtroSiForm(BaseModelForm):
         """Limpia y convierte el campo nuevo_valor_canon"""
         valor = self.cleaned_data.get('nuevo_valor_canon')
         valor_limpio = self.limpiar_valor_numerico(valor)
-        # Convertir a Decimal para que coincida con el modelo
-        if valor_limpio is not None:
+        if valor_limpio is not None and valor_limpio != 0:
             from decimal import Decimal
             return Decimal(str(valor_limpio))
         return None
-    
+
     def clean_nuevo_canon_minimo_garantizado(self):
         """Limpia y convierte el campo nuevo_canon_minimo_garantizado"""
         valor = self.cleaned_data.get('nuevo_canon_minimo_garantizado')
         valor_limpio = self.limpiar_valor_numerico(valor)
-        if valor_limpio is not None:
+        if valor_limpio is not None and valor_limpio != 0:
             from decimal import Decimal
             return Decimal(str(valor_limpio))
         return None
