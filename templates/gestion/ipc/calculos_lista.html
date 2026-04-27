@@ -15,6 +15,9 @@
                     <a href="{% url 'gestion:contratos_pendientes_ipc' %}" class="btn btn-warning">
                         <i class="fas fa-exclamation-triangle"></i> Contratos Pendientes
                     </a>
+                    <a href="{% url 'gestion:exportar_calculos_ajustes_excel' %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}" class="btn btn-success">
+                        <i class="fas fa-file-excel"></i> Exportar Excel
+                    </a>
                     <a href="{% url 'gestion:dashboard' %}" class="btn btn-volver-inicio">
                         <i class="fas fa-home"></i> Volver al Inicio
                     </a>
@@ -47,6 +50,42 @@
                     </div>
                 </div>
                 <div class="card-body">
+                    <form method="get" class="row g-2 align-items-end mb-3">
+                        <input type="hidden" name="tipo_calculo" value="{{ request.GET.tipo_calculo }}">
+                        <input type="hidden" name="tipo_contrato_cliente_proveedor" value="{{ request.GET.tipo_contrato_cliente_proveedor }}">
+                        <div class="col-md-5">
+                            <label for="filtro-contrato" class="form-label">Contrato</label>
+                            <select name="contrato" id="filtro-contrato" class="form-select">
+                                <option value="">Todos los contratos</option>
+                                {% for contrato in contratos_filtro %}
+                                    <option value="{{ contrato.id }}" {% if request.GET.contrato == contrato.id|stringformat:"s" %}selected{% endif %}>
+                                        {{ contrato.num_contrato }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="filtro-anio" class="form-label">Año</label>
+                            <input type="number" name="año" id="filtro-anio" class="form-control" value="{{ request.GET.año }}" min="2000" max="2100">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="filtro-estado" class="form-label">Estado</label>
+                            <select name="estado" id="filtro-estado" class="form-select">
+                                <option value="">Todos</option>
+                                <option value="PENDIENTE" {% if request.GET.estado == 'PENDIENTE' %}selected{% endif %}>Pendiente</option>
+                                <option value="APLICADO" {% if request.GET.estado == 'APLICADO' %}selected{% endif %}>Aplicado</option>
+                                <option value="ANULADO" {% if request.GET.estado == 'ANULADO' %}selected{% endif %}>Anulado</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2 d-flex gap-2">
+                            <button type="submit" class="btn btn-primary flex-fill">
+                                <i class="fas fa-filter"></i> Filtrar
+                            </button>
+                            <a href="{% url 'gestion:lista_calculos_ipc' %}" class="btn btn-secondary" title="Limpiar filtros">
+                                <i class="fas fa-eraser"></i>
+                            </a>
+                        </div>
+                    </form>
                     {% if calculos_ipc or calculos_salario_minimo %}
                         <div class="table-responsive">
                             <table class="table table-hover">

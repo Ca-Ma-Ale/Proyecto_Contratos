@@ -13,10 +13,15 @@ from django.utils import timezone
 
 from gestion.decorators import admin_required, login_required_custom
 from gestion.services.chain_validation import auditar_cambio as _auditar_cambio
+from gestion.services.exportes import (
+    ColumnaExportacion,
+    ExportacionVaciaError,
+    generar_excel_corporativo,
+)
 from gestion.forms import IPCHistoricoForm, CalculoIPCForm, EditarCalculoIPCForm
 from gestion.models import IPCHistorico, CalculoIPC, Contrato
 from gestion.utils_otrosi import get_ultimo_otrosi_que_modifico_campo_hasta_fecha
-from gestion.views.utils import _obtener_fecha_final_contrato
+from gestion.views.utils import _obtener_fecha_final_contrato, _respuesta_archivo_excel
 from gestion.utils_ipc import (
     obtener_canon_base_para_ipc,
     calcular_ajuste_ipc,
@@ -988,65 +993,139 @@ def eliminar_calculo_ipc(request, calculo_id):
     return render(request, 'gestion/ipc/eliminar_calculo.html', context)
 
 
-@login_required_custom
-def lista_calculos_ipc(request):
-    """Lista todos los cálculos de IPC y Salario Mínimo realizados"""
+def _obtener_querysets_calculos_ajustes(filtros):
     from gestion.models import CalculoSalarioMinimo
-    
-    # Obtener tipo de filtro del segmentador
-    tipo_filtro = request.GET.get('tipo_calculo', '')
-    tipo_contrato_filtro = request.GET.get('tipo_contrato_cliente_proveedor', '')
-    
-    # Filtros comunes
-    contrato_id = request.GET.get('contrato')
-    año = request.GET.get('año')
-    estado = request.GET.get('estado')
-    
-    # Obtener cálculos de IPC
-    calculos_ipc = CalculoIPC.objects.all().select_related('contrato', 'ipc_historico', 'contrato__arrendatario', 'contrato__proveedor').order_by('-fecha_aplicacion', '-fecha_calculo')
-    
-    # Obtener cálculos de Salario Mínimo
-    calculos_salario_minimo = CalculoSalarioMinimo.objects.all().select_related('contrato', 'salario_minimo_historico', 'contrato__arrendatario', 'contrato__proveedor').order_by('-fecha_aplicacion', '-fecha_calculo')
-    
-    # Aplicar filtros comunes a IPC
+
+    tipo_filtro = filtros.get('tipo_calculo', '')
+    tipo_contrato_filtro = filtros.get('tipo_contrato_cliente_proveedor', '')
+    contrato_id = filtros.get('contrato')
+    año = filtros.get('año')
+    estado = filtros.get('estado')
+
+    calculos_ipc = CalculoIPC.objects.select_related(
+        'contrato', 'ipc_historico', 'contrato__arrendatario', 'contrato__proveedor'
+    ).order_by('-fecha_aplicacion', '-fecha_calculo')
+    calculos_salario_minimo = CalculoSalarioMinimo.objects.select_related(
+        'contrato', 'salario_minimo_historico', 'contrato__arrendatario', 'contrato__proveedor'
+    ).order_by('-fecha_aplicacion', '-fecha_calculo')
+
     if contrato_id:
         calculos_ipc = calculos_ipc.filter(contrato_id=contrato_id)
-    if año:
-        calculos_ipc = calculos_ipc.filter(año_aplicacion=int(año))
-    if estado:
-        calculos_ipc = calculos_ipc.filter(estado=estado)
-    
-    # Aplicar filtros comunes a Salario Mínimo
-    if contrato_id:
         calculos_salario_minimo = calculos_salario_minimo.filter(contrato_id=contrato_id)
+
     if año:
         calculos_salario_minimo = calculos_salario_minimo.filter(año_aplicacion=int(año))
+        calculos_ipc = calculos_ipc.filter(año_aplicacion=int(año))
+
     if estado:
+        calculos_ipc = calculos_ipc.filter(estado=estado)
         calculos_salario_minimo = calculos_salario_minimo.filter(estado=estado)
-    
-    # Filtrar por tipo de contrato (Cliente/Proveedor)
+
     if tipo_contrato_filtro == 'CLIENTE':
         calculos_ipc = calculos_ipc.filter(contrato__tipo_contrato_cliente_proveedor='CLIENTE')
         calculos_salario_minimo = calculos_salario_minimo.filter(contrato__tipo_contrato_cliente_proveedor='CLIENTE')
     elif tipo_contrato_filtro == 'PROVEEDOR':
         calculos_ipc = calculos_ipc.filter(contrato__tipo_contrato_cliente_proveedor='PROVEEDOR')
         calculos_salario_minimo = calculos_salario_minimo.filter(contrato__tipo_contrato_cliente_proveedor='PROVEEDOR')
-    
-    # Filtrar según el segmentador de tipo de cálculo
+
     if tipo_filtro == 'IPC':
         calculos_salario_minimo = CalculoSalarioMinimo.objects.none()
     elif tipo_filtro == 'SALARIO_MINIMO':
         calculos_ipc = CalculoIPC.objects.none()
-    # Si tipo_filtro está vacío o es 'TODOS', mostrar ambos
-    
+
+    return calculos_ipc, calculos_salario_minimo
+
+
+def _contratos_para_filtro_calculos():
+    return Contrato.objects.filter(
+        Q(calculos_ipc__isnull=False) | Q(calculos_salario_minimo__isnull=False)
+    ).distinct().order_by('num_contrato')
+
+
+@login_required_custom
+def lista_calculos_ipc(request):
+    """Lista todos los cálculos de IPC y Salario Mínimo realizados"""
+    calculos_ipc, calculos_salario_minimo = _obtener_querysets_calculos_ajustes(request.GET)
+    tipo_filtro = request.GET.get('tipo_calculo', '')
+    tipo_contrato_filtro = request.GET.get('tipo_contrato_cliente_proveedor', '')
+
     context = {
         'calculos_ipc': calculos_ipc,
         'calculos_salario_minimo': calculos_salario_minimo,
+        'contratos_filtro': _contratos_para_filtro_calculos(),
         'tipo_filtro_activo': tipo_filtro,
         'tipo_contrato_filtro_activo': tipo_contrato_filtro,
         'titulo': 'Cálculos de Ajustes',
     }
     return render(request, 'gestion/ipc/calculos_lista.html', context)
+
+
+def _fila_exportacion_calculo_ajuste(calculo, tipo, indicador):
+    return (
+        tipo,
+        calculo.contrato.num_contrato,
+        calculo.contrato.obtener_nombre_tercero(),
+        calculo.contrato.get_tipo_contrato_cliente_proveedor_display(),
+        calculo.fecha_aplicacion.strftime('%d/%m/%Y'),
+        calculo.año_aplicacion,
+        float(indicador),
+        float(calculo.canon_anterior),
+        float(calculo.valor_incremento),
+        float(calculo.nuevo_canon),
+        calculo.get_estado_display(),
+        timezone.localtime(calculo.fecha_calculo).strftime('%d/%m/%Y %H:%M'),
+    )
+
+
+def _filas_exportacion_calculos_ajustes(calculos_ipc, calculos_salario_minimo):
+    filas = [
+        _fila_exportacion_calculo_ajuste(
+            calculo, 'IPC', calculo.ipc_historico.valor_ipc
+        )
+        for calculo in calculos_ipc
+    ]
+    filas.extend(
+        _fila_exportacion_calculo_ajuste(
+            calculo, 'Salario Mínimo', calculo.porcentaje_total_aplicar
+        )
+        for calculo in calculos_salario_minimo
+    )
+    return sorted(filas, key=lambda fila: (fila[4], fila[11]), reverse=True)
+
+
+@login_required_custom
+def exportar_calculos_ajustes_excel(request):
+    """Exporta a Excel los cálculos de IPC y Salario Mínimo con los filtros activos."""
+    calculos_ipc, calculos_salario_minimo = _obtener_querysets_calculos_ajustes(request.GET)
+    columnas = [
+        ColumnaExportacion('Tipo', ancho=18),
+        ColumnaExportacion('Contrato', ancho=34),
+        ColumnaExportacion('Tercero', ancho=42),
+        ColumnaExportacion('Tipo Contrato', ancho=18),
+        ColumnaExportacion('Fecha Aplicación', ancho=18),
+        ColumnaExportacion('Año', ancho=12, es_numerica=True, alineacion='right'),
+        ColumnaExportacion('Indicador (%)', ancho=16, es_numerica=True, alineacion='right'),
+        ColumnaExportacion('Canon Anterior', ancho=18, es_numerica=True, alineacion='right'),
+        ColumnaExportacion('Incremento', ancho=18, es_numerica=True, alineacion='right'),
+        ColumnaExportacion('Nuevo Canon', ancho=18, es_numerica=True, alineacion='right'),
+        ColumnaExportacion('Estado', ancho=16),
+        ColumnaExportacion('Fecha Cálculo', ancho=20),
+    ]
+    registros = _filas_exportacion_calculos_ajustes(
+        calculos_ipc, calculos_salario_minimo
+    )
+
+    try:
+        archivo = generar_excel_corporativo(
+            nombre_hoja='Cálculos Ajustes',
+            columnas=columnas,
+            registros=registros,
+        )
+    except ExportacionVaciaError as error:
+        messages.warning(request, str(error))
+        return redirect('gestion:lista_calculos_ipc')
+
+    return _respuesta_archivo_excel(archivo, 'calculos_ajustes')
 
 
 @login_required_custom

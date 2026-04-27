@@ -106,6 +106,7 @@ from gestion.views.ipc import (
     # editar_calculo_ipc,  # Deshabilitado - no se permite editar cálculos
     eliminar_calculo_ipc,
     lista_calculos_ipc,
+    exportar_calculos_ajustes_excel,
     contratos_pendientes_ipc,
     obtener_canon_anterior_ajax,
     otrosi_legalizables_ipc_ajax,
@@ -238,6 +239,7 @@ __all__ = [
     # 'editar_calculo_ipc',  # Deshabilitado - no se permite editar cálculos
     'eliminar_calculo_ipc',
     'lista_calculos_ipc',
+    'exportar_calculos_ajustes_excel',
     'contratos_pendientes_ipc',
     'obtener_canon_anterior_ajax',
     'otrosi_legalizables_ipc_ajax',
@@ -274,4 +276,3 @@ __all__ = [
     'auditoria_clausulas_contrato',
     'guardar_clausulas_contrato',
 ]
-

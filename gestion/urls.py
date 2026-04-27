@@ -99,6 +99,7 @@ urlpatterns = [
     # path('ipc/calculo/<int:calculo_id>/editar/', views.editar_calculo_ipc, name='editar_calculo_ipc'),  # Deshabilitado - no se permite editar cálculos
     path('ipc/calculo/<int:calculo_id>/eliminar/', views.eliminar_calculo_ipc, name='eliminar_calculo_ipc'),
     path('ipc/calculos/', views.lista_calculos_ipc, name='lista_calculos_ipc'),
+    path('ipc/calculos/exportar/', views.exportar_calculos_ajustes_excel, name='exportar_calculos_ajustes_excel'),
     path('ipc/contratos-pendientes/', views.contratos_pendientes_ipc, name='contratos_pendientes_ipc'),
     path('ipc/ajax/obtener-canon-anterior/', views.obtener_canon_anterior_ajax, name='obtener_canon_anterior_ajax'),
     path('ipc/ajax/otrosi-legalizables/', views.otrosi_legalizables_ipc_ajax, name='otrosi_legalizables_ipc_ajax'),
