@@ -27,7 +27,7 @@ from gestion.services.exportes import (
     generar_excel_corporativo,
 )
 from gestion.utils_otrosi import get_ultimo_otrosi_que_modifico_campo_hasta_fecha
-from .utils import _respuesta_archivo_excel, obtener_canon_vigente
+from .utils import _estado_vigente_contrato, _respuesta_archivo_excel, obtener_canon_vigente
 
 
 @login_required_custom
@@ -67,13 +67,10 @@ def api_conteos_alertas(request):
     """
     fecha_actual = timezone.now().date()
 
-    # Vigentes/vencidos directamente en DB (sin loop Python)
-    contratos_vigentes = Contrato.objects.filter(vigente=True).count()
-    contratos_vencidos = Contrato.objects.count() - contratos_vigentes
-
-    # Única consulta con todos los datos necesarios para el resto del endpoint
-    contratos_list = list(
-        Contrato.objects.filter(vigente=True)
+    # Única consulta: todos los contratos con prefetch completo
+    # (incluye vigente=False para contar vencidos con la lógica de fechas exacta)
+    todos_los_contratos = list(
+        Contrato.objects.all()
         .select_related('arrendatario', 'proveedor', 'local', 'tipo_contrato', 'tipo_servicio')
         .prefetch_related(
             'otrosi', 'renovaciones_automaticas',
@@ -81,25 +78,34 @@ def api_conteos_alertas(request):
         )
     )
 
-    # Conteo de modalidades en un solo loop (usa caché de prefetch)
+    # Clasificar vigentes/vencidos con la lógica precisa de fechas (usa caché prefetch, 0 queries extra)
+    contratos_vigentes = 0
+    contratos_vencidos = 0
+    contratos_list = []  # solo vigentes para las funciones de alertas
     contratos_fijos = 0
     contratos_variables = 0
     contratos_hibridos = 0
-    for contrato in contratos_list:
-        otrosi_modificador = get_ultimo_otrosi_que_modifico_campo_hasta_fecha(
-            contrato, 'nueva_modalidad_pago', fecha_actual
-        )
-        modalidad_actual = (
-            otrosi_modificador.nueva_modalidad_pago
-            if otrosi_modificador and otrosi_modificador.nueva_modalidad_pago
-            else contrato.modalidad_pago
-        )
-        if modalidad_actual == 'Fijo':
-            contratos_fijos += 1
-        elif modalidad_actual == 'Variable Puro':
-            contratos_variables += 1
-        elif modalidad_actual == 'Hibrido (Min Garantizado)':
-            contratos_hibridos += 1
+
+    for contrato in todos_los_contratos:
+        if _estado_vigente_contrato(contrato, fecha_actual):
+            contratos_vigentes += 1
+            contratos_list.append(contrato)
+            otrosi_modificador = get_ultimo_otrosi_que_modifico_campo_hasta_fecha(
+                contrato, 'nueva_modalidad_pago', fecha_actual
+            )
+            modalidad_actual = (
+                otrosi_modificador.nueva_modalidad_pago
+                if otrosi_modificador and otrosi_modificador.nueva_modalidad_pago
+                else contrato.modalidad_pago
+            )
+            if modalidad_actual == 'Fijo':
+                contratos_fijos += 1
+            elif modalidad_actual == 'Variable Puro':
+                contratos_variables += 1
+            elif modalidad_actual == 'Hibrido (Min Garantizado)':
+                contratos_hibridos += 1
+        else:
+            contratos_vencidos += 1
 
     # Todos los conteos de alertas usan la misma lista en memoria (0 queries adicionales)
     vencimiento = len(obtener_alertas_expiracion_contratos(fecha_referencia=fecha_actual, ventana_dias=90, contratos_qs=contratos_list))
