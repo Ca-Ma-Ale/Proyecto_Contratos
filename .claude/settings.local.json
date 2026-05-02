@@ -60,7 +60,14 @@
       "Bash(sed -n '609,630p' gestion/services/alertas.py)",
       "Bash(sed -n '758,780p' gestion/services/alertas.py)",
       "Bash(grep -v \"^$\")",
-      "Bash(python -c \"from gestion.views.dashboard import api_conteos_alertas; from gestion.services.alertas import obtener_alertas_ipc, obtener_alertas_salario_minimo, obtener_alertas_polizas_requeridas_no_aportadas; print\\('OK'\\)\")"
+      "Bash(python -c \"from gestion.views.dashboard import api_conteos_alertas; from gestion.services.alertas import obtener_alertas_ipc, obtener_alertas_salario_minimo, obtener_alertas_polizas_requeridas_no_aportadas; print\\('OK'\\)\")",
+      "Bash(Get-ChildItem -Recurse -Filter \"*.py\")",
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "Bash(dir /s /b *.py)",
+      "Bash(git commit -m ' *)",
+      "Bash(findstr /n \"finalizado\" gestion\\\\views\\\\contratos.py)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\USER9\\\\OneDrive - GLOBAL ANALITICS SAS\\\\Proyecto_Contratos\" -Recurse -Filter \"*ipc*\" -ErrorAction SilentlyContinue)",
+      "Bash(Select-Object FullName)"
     ]
   }
 }
