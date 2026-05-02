@@ -322,6 +322,7 @@ def calcular_ipc(request):
             )
 
             from gestion.models import OtroSi
+            _cfg_leg = obtener_configuracion_ajuste_efectiva(contrato, otrosi_effective_from)
             calculo = CalculoIPC.objects.create(
                 contrato=contrato,
                 año_aplicacion=otrosi_effective_from.year,
@@ -334,8 +335,8 @@ def calcular_ipc(request):
                 porcentaje_total_aplicar=porcentaje_total.quantize(Decimal('0.01')),
                 valor_incremento=valor_incremento.quantize(Decimal('0.01')),
                 nuevo_canon=nuevo_canon_final.quantize(Decimal('0.01')),
-                periodicidad_contrato=contrato.periodicidad_ipc,
-                fecha_aumento_contrato=contrato.fecha_aumento_ipc,
+                periodicidad_contrato=_cfg_leg.get('periodicidad_ipc') or contrato.periodicidad_ipc,
+                fecha_aumento_contrato=_cfg_leg.get('fecha_aumento_ipc') or contrato.fecha_aumento_ipc,
                 observaciones=observaciones_legalizacion,
                 estado='APLICADO',
                 otrosi_referencia=otrosi,
@@ -654,6 +655,7 @@ def calcular_ipc(request):
                         nota_otrosi = f"\n[Valor ajustado por Otro Sí {otrosi_info['otrosi'].numero_otrosi}: ${otrosi_info['valor_canon']:,.2f} (Cálculo IPC: ${valor_calculado_original:,.2f})]"
                         observaciones_finales = (observaciones + nota_otrosi) if observaciones else nota_otrosi.strip()
                 
+                _cfg_calc = obtener_configuracion_ajuste_efectiva(contrato, fecha_aplicacion)
                 calculo = CalculoIPC.objects.create(
                     contrato=contrato,
                     año_aplicacion=fecha_aplicacion.year,
@@ -666,8 +668,8 @@ def calcular_ipc(request):
                     porcentaje_total_aplicar=Decimal(str(resultado['porcentaje_total'])).quantize(Decimal('0.01')),
                     valor_incremento=Decimal(str(resultado['valor_incremento'])).quantize(Decimal('0.01')),
                     nuevo_canon=Decimal(str(resultado['nuevo_canon'])).quantize(Decimal('0.01')),
-                    periodicidad_contrato=contrato.periodicidad_ipc,
-                    fecha_aumento_contrato=contrato.fecha_aumento_ipc,
+                    periodicidad_contrato=_cfg_calc.get('periodicidad_ipc') or contrato.periodicidad_ipc,
+                    fecha_aumento_contrato=_cfg_calc.get('fecha_aumento_ipc') or contrato.fecha_aumento_ipc,
                     observaciones=observaciones_finales,
                     estado=estado_calculo,
                     calculado_por=request.user.get_full_name() or request.user.username,
@@ -856,6 +858,7 @@ def confirmar_calculo_ipc(request):
                 observaciones = (observaciones + nota_otrosi) if observaciones else nota_otrosi.strip()
         
         # Crear el cálculo
+        _cfg_manual = obtener_configuracion_ajuste_efectiva(contrato, fecha_aplicacion)
         calculo = CalculoIPC.objects.create(
             contrato=contrato,
             año_aplicacion=fecha_aplicacion.year,
@@ -868,8 +871,8 @@ def confirmar_calculo_ipc(request):
             porcentaje_total_aplicar=Decimal(str(resultado['porcentaje_total'])).quantize(Decimal('0.01')),
             valor_incremento=Decimal(str(resultado['valor_incremento'])).quantize(Decimal('0.01')),
             nuevo_canon=Decimal(str(resultado['nuevo_canon'])).quantize(Decimal('0.01')),
-            periodicidad_contrato=contrato.periodicidad_ipc,
-            fecha_aumento_contrato=contrato.fecha_aumento_ipc,
+            periodicidad_contrato=_cfg_manual.get('periodicidad_ipc') or contrato.periodicidad_ipc,
+            fecha_aumento_contrato=_cfg_manual.get('fecha_aumento_ipc') or contrato.fecha_aumento_ipc,
             observaciones=observaciones,
             estado=estado_calculo,
             calculado_por=request.user.get_full_name() or request.user.username,
