@@ -161,6 +161,13 @@ def lista_ipc_historico(request):
     if estado_filtro != 'PENDIENTE' and not mostrar_al_dia:
         contratos_info = [info for info in contratos_info if not info['es_al_dia']]
 
+    # Ordenar por próxima fecha de aumento: vencidos primero (más antiguos al tope),
+    # luego futuros de más próximo a más lejano. Sin fecha al final.
+    contratos_info.sort(key=lambda x: (
+        x['proxima_fecha_aumento'] is None,
+        x['proxima_fecha_aumento'],
+    ))
+
     context = {
         'contratos_info': contratos_info,
         'titulo': 'Gestión de IPC - Contratos',
