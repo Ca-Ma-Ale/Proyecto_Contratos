@@ -229,12 +229,18 @@ def requiere_revision_configuracion_ajuste(
         periodicidad_ipc,
         fecha_aumento_ipc,
     ])
+
+    if datos_efectivos_incompletos:
+        return True
+
+    # Solo revisar datos del cálculo si la config actual está completa;
+    # evita falsos positivos en cálculos generados antes de que existieran estos campos.
     datos_calculo_incompletos = not all([
         getattr(ultimo_calculo, 'periodicidad_contrato', None),
         getattr(ultimo_calculo, 'fecha_aumento_contrato', None),
     ])
 
-    return datos_efectivos_incompletos or datos_calculo_incompletos
+    return datos_calculo_incompletos
 
 
 def obtener_configuracion_ajuste_efectiva(contrato, fecha_referencia):

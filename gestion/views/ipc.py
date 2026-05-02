@@ -95,6 +95,10 @@ def lista_ipc_historico(request):
         # Obtener tipo_condicion_ipc efectivo considerando otrosí
         tipo_condicion_ipc = config_ajuste['tipo_condicion_ipc']
 
+        # Excluir contratos sin ajuste IPC configurado (ni en contrato ni en Otro Sí)
+        if not tipo_condicion_ipc:
+            continue
+
         # Obtener periodicidad_ipc efectiva considerando otrosí
         periodicidad_ipc = config_ajuste['periodicidad_ipc']
 
