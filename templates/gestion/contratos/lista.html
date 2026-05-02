@@ -195,16 +195,18 @@
                                         </td>
                                         <td>
                                             <div class="btn-group" role="group">
-                                                <a href="{% url 'gestion:detalle_contrato' item.contrato.id %}" 
+                                                <a href="{% url 'gestion:detalle_contrato' item.contrato.id %}"
                                                    class="btn btn-sm btn-outline-primary" title="Ver detalle">
                                                     <i class="fas fa-eye"></i>
                                                 </a>
-                                                <a href="{% url 'gestion:editar_contrato' item.contrato.id %}" 
+                                                {% if not item.es_terminado %}
+                                                <a href="{% url 'gestion:editar_contrato' item.contrato.id %}"
                                                    class="btn btn-sm btn-outline-warning" title="Editar">
                                                     <i class="fas fa-edit"></i>
                                                 </a>
-                                                {% if user.is_staff %}
-                                                <a href="{% url 'gestion:eliminar_contrato' item.contrato.id %}" 
+                                                {% endif %}
+                                                {% if user.is_staff and not item.es_terminado %}
+                                                <a href="{% url 'gestion:eliminar_contrato' item.contrato.id %}"
                                                    class="btn btn-sm btn-outline-danger" title="Eliminar"
                                                    onclick="return confirm('¿Está seguro de que desea eliminar este contrato?')">
                                                     <i class="fas fa-trash-alt"></i>

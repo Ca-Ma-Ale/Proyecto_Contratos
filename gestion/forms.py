@@ -1522,11 +1522,12 @@ class FiltroContratosVentasForm(BaseForm):
 
 class FiltroListaContratosForm(BaseForm):
     """Formulario para filtrar la lista de contratos"""
-    
+
     ESTADO_VIGENCIA_CHOICES = [
         ('vigentes', 'Contratos vigentes'),
         ('todos', 'Todos los contratos'),
         ('vencidos', 'Contratos vencidos'),
+        ('terminados', 'Contratos terminados'),
     ]
     
     TIPO_CONTRATO_CHOICES = [

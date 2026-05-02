@@ -107,6 +107,11 @@ def nuevo_contrato(request):
 def editar_contrato(request, contrato_id):
     """Vista para editar un contrato existente con sus condiciones de póliza"""
     contrato = get_object_or_404(Contrato, id=contrato_id)
+
+    if contrato.finalizado:
+        messages.error(request, f'El contrato {contrato.num_contrato} está terminado formalmente y no puede ser editado.')
+        return redirect('gestion:detalle_contrato', contrato_id=contrato.id)
+
     requerimientos_poliza = contrato.requerimientos_poliza.all()
     polizas = contrato.polizas.all()
 
@@ -372,7 +377,9 @@ def lista_contratos(request):
 
         if estado_vigencia == 'vigentes' and not estado_vigente:
             continue
-        if estado_vigencia == 'vencidos' and estado_vigente:
+        if estado_vigencia == 'vencidos' and (estado_vigente or es_terminado):
+            continue
+        if estado_vigencia == 'terminados' and not es_terminado:
             continue
 
         contratos_con_estado.append({
