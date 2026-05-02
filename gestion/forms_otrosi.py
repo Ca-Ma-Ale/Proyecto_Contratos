@@ -1342,6 +1342,57 @@ class OtroSiForm(BaseModelForm):
             raise forms.ValidationError(
                 '⚠️ Debe modificar al menos un campo del contrato, especificar cláusulas modificadas, o marcar que modifica pólizas.'
             )
-        
+
         return cleaned_data
+
+
+class FiltroExportacionOtroSiForm(forms.Form):
+    """Formulario de filtros para exportar Otrosíes y Renovaciones Automáticas."""
+
+    TIPO_DOCUMENTO_CHOICES = [
+        ('', 'Todos (Otrosíes y Renovaciones)'),
+        ('otrosi', 'Solo Otrosíes'),
+        ('renovacion', 'Solo Renovaciones Automáticas'),
+    ]
+    ESTADO_CHOICES = [('', 'Todos los estados')] + OtroSi.ESTADO_CHOICES
+    TIPO_OTROSI_CHOICES = [('', 'Todos los tipos')] + OtroSi.TIPO_CHOICES
+
+    tipo_documento = forms.ChoiceField(
+        choices=TIPO_DOCUMENTO_CHOICES,
+        required=False,
+        label='Tipo de Documento',
+        widget=forms.Select(attrs={'class': 'form-select'}),
+    )
+    estado = forms.ChoiceField(
+        choices=ESTADO_CHOICES,
+        required=False,
+        label='Estado',
+        widget=forms.Select(attrs={'class': 'form-select'}),
+    )
+    tipo_otrosi = forms.ChoiceField(
+        choices=TIPO_OTROSI_CHOICES,
+        required=False,
+        label='Tipo de Otrosí (solo aplica a Otrosíes)',
+        widget=forms.Select(attrs={'class': 'form-select'}),
+    )
+    fecha_doc_desde = forms.DateField(
+        required=False,
+        label='Fecha Documento Desde',
+        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+    )
+    fecha_doc_hasta = forms.DateField(
+        required=False,
+        label='Fecha Documento Hasta',
+        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+    )
+    effective_from_desde = forms.DateField(
+        required=False,
+        label='Vigencia Desde (inicio rango)',
+        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+    )
+    effective_from_hasta = forms.DateField(
+        required=False,
+        label='Vigencia Desde (fin rango)',
+        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+    )
 

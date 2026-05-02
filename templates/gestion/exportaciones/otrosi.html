@@ -1,0 +1,141 @@
+{% extends 'base.html' %}
+
+{% block title %}Exportar Otrosíes y Renovaciones{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h1 class="display-5 mb-0">
+                    <i class="fas fa-file-excel text-primary"></i> Exportar Otrosíes y Renovaciones a Excel
+                </h1>
+                <a href="{% url 'gestion:exportaciones' %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left"></i> Volver a Reportes
+                </a>
+            </div>
+            <p class="text-muted mt-2 mb-0">
+                Configure los filtros para exportar Otrosíes y Renovaciones Automáticas. Cada fila corresponde a un documento e incluye los valores que modifica, estado, fechas, responsables y cambios en pólizas.
+            </p>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-10 col-xl-8">
+            <div class="card shadow-sm border-0">
+                <div class="card-body">
+                    <form method="post" id="form-exportacion">
+                        {% csrf_token %}
+
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label for="{{ form.tipo_documento.id_for_label }}" class="form-label">
+                                    {{ form.tipo_documento.label }}
+                                </label>
+                                {{ form.tipo_documento }}
+                                {% if form.tipo_documento.errors %}
+                                    <div class="text-danger small">{{ form.tipo_documento.errors }}</div>
+                                {% endif %}
+                            </div>
+
+                            <div class="col-md-4">
+                                <label for="{{ form.estado.id_for_label }}" class="form-label">
+                                    {{ form.estado.label }}
+                                </label>
+                                {{ form.estado }}
+                                {% if form.estado.errors %}
+                                    <div class="text-danger small">{{ form.estado.errors }}</div>
+                                {% endif %}
+                            </div>
+
+                            <div class="col-md-4">
+                                <label for="{{ form.tipo_otrosi.id_for_label }}" class="form-label">
+                                    {{ form.tipo_otrosi.label }}
+                                </label>
+                                {{ form.tipo_otrosi }}
+                                {% if form.tipo_otrosi.errors %}
+                                    <div class="text-danger small">{{ form.tipo_otrosi.errors }}</div>
+                                {% endif %}
+                            </div>
+
+                            <div class="col-12">
+                                <hr class="my-3">
+                                <h5 class="mb-3">
+                                    <i class="fas fa-calendar-alt text-primary"></i> Filtros por Fecha del Documento
+                                </h5>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label for="{{ form.fecha_doc_desde.id_for_label }}" class="form-label">
+                                    {{ form.fecha_doc_desde.label }}
+                                </label>
+                                {{ form.fecha_doc_desde }}
+                                {% if form.fecha_doc_desde.errors %}
+                                    <div class="text-danger small">{{ form.fecha_doc_desde.errors }}</div>
+                                {% endif %}
+                            </div>
+
+                            <div class="col-md-6">
+                                <label for="{{ form.fecha_doc_hasta.id_for_label }}" class="form-label">
+                                    {{ form.fecha_doc_hasta.label }}
+                                </label>
+                                {{ form.fecha_doc_hasta }}
+                                {% if form.fecha_doc_hasta.errors %}
+                                    <div class="text-danger small">{{ form.fecha_doc_hasta.errors }}</div>
+                                {% endif %}
+                            </div>
+
+                            <div class="col-12">
+                                <hr class="my-3">
+                                <h5 class="mb-3">
+                                    <i class="fas fa-calendar-check text-primary"></i> Filtros por Vigencia Desde
+                                </h5>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label for="{{ form.effective_from_desde.id_for_label }}" class="form-label">
+                                    {{ form.effective_from_desde.label }}
+                                </label>
+                                {{ form.effective_from_desde }}
+                                {% if form.effective_from_desde.errors %}
+                                    <div class="text-danger small">{{ form.effective_from_desde.errors }}</div>
+                                {% endif %}
+                            </div>
+
+                            <div class="col-md-6">
+                                <label for="{{ form.effective_from_hasta.id_for_label }}" class="form-label">
+                                    {{ form.effective_from_hasta.label }}
+                                </label>
+                                {{ form.effective_from_hasta }}
+                                {% if form.effective_from_hasta.errors %}
+                                    <div class="text-danger small">{{ form.effective_from_hasta.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="row mt-4">
+                            <div class="col-12">
+                                <div class="alert alert-info">
+                                    <i class="fas fa-info-circle"></i>
+                                    <strong>Nota:</strong> Sin filtros se exportan todos los documentos del sistema
+                                    ({{ total_otrosi }} Otrosíes + {{ total_renovaciones }} Renovaciones Automáticas).
+                                    El informe incluye los valores modificados, pólizas y notas de cada documento.
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between mt-4">
+                            <a href="{% url 'gestion:exportaciones' %}" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Volver a Reportes
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-download"></i> Exportar a Excel
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

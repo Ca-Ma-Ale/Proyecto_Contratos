@@ -7,7 +7,10 @@ from django.template.loader import render_to_string
 from django.utils import timezone
 
 from gestion.decorators import login_required_custom, ajax_login_required
-from gestion.models import Contrato, Local, Poliza, Tercero
+from gestion.models import (
+    Contrato, Local, OtroSi, Poliza, Tercero,
+    SeguimientoContrato, SeguimientoPoliza, CalculoIPC, CalculoSalarioMinimo,
+)
 from gestion.services.alertas import (
     obtener_alertas_expiracion_contratos,
     obtener_alertas_ipc,
@@ -372,6 +375,48 @@ def exportaciones(request):
             'descripcion': 'Contratos con pólizas requeridas y su estado de recobro, con filtros por tipo de póliza y recobro.',
             'total_registros': total_contratos,
             'url_name': 'gestion:exportar_recobro_polizas',
+        },
+        {
+            'codigo': 'exportar_otrosi',
+            'nombre': 'Exportar Otrosíes',
+            'descripcion': 'Todos los Otrosíes registrados con sus valores modificados, estado, fechas, responsables y cambios en pólizas. Filtros por estado, tipo y rango de fechas.',
+            'total_registros': OtroSi.objects.count(),
+            'url_name': 'gestion:exportar_otrosi',
+        },
+        {
+            'codigo': 'exportar_polizas',
+            'nombre': 'Exportar Pólizas',
+            'descripcion': 'Todas las pólizas aportadas con tipo, aseguradora, estado, valores asegurados, fechas de vigencia y días al vencimiento. Filtros por tipo, estado y rango de vencimiento.',
+            'total_registros': Poliza.objects.count(),
+            'url_name': 'gestion:exportar_polizas',
+        },
+        {
+            'codigo': 'exportar_seguimientos',
+            'nombre': 'Exportar Seguimientos',
+            'descripcion': 'Historial completo de seguimientos de contratos y pólizas: fecha, tipo, detalle y responsable. Filtros por tipo y rango de fechas.',
+            'total_registros': SeguimientoContrato.objects.count() + SeguimientoPoliza.objects.count(),
+            'url_name': 'gestion:exportar_seguimientos',
+        },
+        {
+            'codigo': 'exportar_vencimientos',
+            'nombre': 'Vencimientos por Rango',
+            'descripcion': 'Contratos filtrados por rango configurable de fecha final con días al vencimiento, prórroga, canon y estado de ajuste IPC.',
+            'total_registros': total_contratos,
+            'url_name': 'gestion:exportar_vencimientos',
+        },
+        {
+            'codigo': 'exportar_historial_ajustes',
+            'nombre': 'Historial de Ajustes IPC / SMLV',
+            'descripcion': 'Todos los cálculos de ajuste de canon por IPC y Salario Mínimo con canon anterior, porcentaje aplicado, nuevo canon y estado. Filtros por tipo, estado y año.',
+            'total_registros': CalculoIPC.objects.count() + CalculoSalarioMinimo.objects.count(),
+            'url_name': 'gestion:exportar_historial_ajustes',
+        },
+        {
+            'codigo': 'exportar_locales_ocupacion',
+            'nombre': 'Locales con Ocupación',
+            'descripcion': 'Todos los locales con su estado de ocupación: contrato vigente, tercero, canon, fechas y días al vencimiento.',
+            'total_registros': total_locales,
+            'url_name': 'gestion:exportar_locales_ocupacion',
         },
     ]
 
@@ -1253,3 +1298,512 @@ def exportar_recobro_polizas(request):
         return redirect('gestion:exportaciones')
 
     return _respuesta_archivo_excel(archivo, 'recobro_polizas')
+
+
+@login_required_custom
+def exportar_polizas(request):
+    """Exporta todas las pólizas aportadas con filtros opcionales."""
+    from gestion.forms_exportacion import FiltroExportacionPolizasForm
+
+    fecha_actual = timezone.now().date()
+
+    if request.method == 'POST':
+        form = FiltroExportacionPolizasForm(request.POST)
+        if form.is_valid():
+            tipo = form.cleaned_data.get('tipo')
+            estado = form.cleaned_data.get('estado_aportado')
+            f_desde = form.cleaned_data.get('fecha_vencimiento_desde')
+            f_hasta = form.cleaned_data.get('fecha_vencimiento_hasta')
+
+            qs = Poliza.objects.select_related(
+                'contrato', 'contrato__arrendatario', 'contrato__proveedor', 'contrato__local'
+            ).order_by('contrato__num_contrato', 'tipo')
+
+            if tipo:
+                qs = qs.filter(tipo=tipo)
+            if estado:
+                qs = qs.filter(estado_aportado=estado)
+            if f_desde:
+                qs = qs.filter(fecha_vencimiento__gte=f_desde)
+            if f_hasta:
+                qs = qs.filter(fecha_vencimiento__lte=f_hasta)
+
+            columnas = [
+                ColumnaExportacion('Número Contrato', ancho=22),
+                ColumnaExportacion('Tercero', ancho=35),
+                ColumnaExportacion('NIT', ancho=18),
+                ColumnaExportacion('Local', ancho=30),
+                ColumnaExportacion('Tipo Póliza', ancho=30),
+                ColumnaExportacion('Número Póliza', ancho=22),
+                ColumnaExportacion('Aseguradora', ancho=30),
+                ColumnaExportacion('Estado Aportado', ancho=22),
+                ColumnaExportacion('Valor Asegurado', ancho=25, es_numerica=True, alineacion='right'),
+                ColumnaExportacion('Fecha Inicio Vigencia', ancho=25, alineacion='center'),
+                ColumnaExportacion('Fecha Vencimiento', ancho=22, alineacion='center'),
+                ColumnaExportacion('Días al Vencimiento', ancho=22, es_numerica=True, alineacion='right'),
+                ColumnaExportacion('Estado Vigencia', ancho=18),
+                ColumnaExportacion('Documento Origen', ancho=25),
+                ColumnaExportacion('Tiene Colchón', ancho=18),
+                ColumnaExportacion('Meses Colchón', ancho=18, es_numerica=True, alineacion='right'),
+                ColumnaExportacion('Fecha Vencimiento Real', ancho=25, alineacion='center'),
+            ]
+
+            registros = []
+            for p in qs:
+                c = p.contrato
+                t = c.obtener_tercero()
+                dias = (p.fecha_vencimiento - fecha_actual).days if p.fecha_vencimiento else None
+                registros.append((
+                    c.num_contrato,
+                    t.razon_social if t else None,
+                    t.nit if t else None,
+                    c.local.nombre_comercial_stand if c.local else None,
+                    p.tipo,
+                    p.numero_poliza or None,
+                    p.aseguradora or None,
+                    p.estado_aportado or None,
+                    float(p.valor_asegurado) if p.valor_asegurado else None,
+                    p.fecha_inicio_vigencia or None,
+                    p.fecha_vencimiento or None,
+                    dias,
+                    p.obtener_estado_vigencia() if p.fecha_vencimiento else None,
+                    p.get_documento_origen_tipo_display(),
+                    'Sí' if p.tiene_colchon else 'No',
+                    p.meses_colchon if p.tiene_colchon else None,
+                    p.fecha_vencimiento_real or None,
+                ))
+
+            try:
+                archivo = generar_excel_corporativo(
+                    nombre_hoja='Pólizas',
+                    columnas=columnas,
+                    registros=registros,
+                )
+            except ExportacionVaciaError as error:
+                messages.warning(request, str(error))
+                return redirect('gestion:exportar_polizas')
+
+            return _respuesta_archivo_excel(archivo, 'polizas_exportadas')
+    else:
+        form = FiltroExportacionPolizasForm()
+
+    return render(request, 'gestion/exportaciones/polizas.html', {
+        'form': form,
+        'total_polizas': Poliza.objects.count(),
+    })
+
+
+@login_required_custom
+def exportar_seguimientos(request):
+    """Exporta seguimientos de contratos y pólizas combinados."""
+    from gestion.forms_exportacion import FiltroExportacionSeguimientosForm
+
+    if request.method == 'POST':
+        form = FiltroExportacionSeguimientosForm(request.POST)
+        if form.is_valid():
+            tipo = form.cleaned_data.get('tipo')
+            f_desde = form.cleaned_data.get('fecha_desde')
+            f_hasta = form.cleaned_data.get('fecha_hasta')
+
+            columnas = [
+                ColumnaExportacion('Fecha Registro', ancho=22, alineacion='center'),
+                ColumnaExportacion('Tipo Seguimiento', ancho=28),
+                ColumnaExportacion('Número Contrato', ancho=22),
+                ColumnaExportacion('Tercero', ancho=35),
+                ColumnaExportacion('NIT', ancho=18),
+                ColumnaExportacion('Local', ancho=30),
+                ColumnaExportacion('Tipo Póliza', ancho=25),
+                ColumnaExportacion('Detalle', ancho=70),
+                ColumnaExportacion('Registrado Por', ancho=28),
+            ]
+
+            filas = []
+
+            if tipo != 'poliza':
+                qs_c = SeguimientoContrato.objects.select_related(
+                    'contrato', 'contrato__arrendatario', 'contrato__proveedor', 'contrato__local'
+                ).order_by('-fecha_registro')
+                if f_desde:
+                    qs_c = qs_c.filter(fecha_registro__date__gte=f_desde)
+                if f_hasta:
+                    qs_c = qs_c.filter(fecha_registro__date__lte=f_hasta)
+                for s in qs_c:
+                    c = s.contrato
+                    t = c.obtener_tercero()
+                    filas.append((
+                        timezone.localtime(s.fecha_registro).date(),
+                        'Seguimiento Contrato',
+                        c.num_contrato,
+                        t.razon_social if t else None,
+                        t.nit if t else None,
+                        c.local.nombre_comercial_stand if c.local else None,
+                        None,
+                        s.detalle,
+                        s.registrado_por or None,
+                    ))
+
+            if tipo != 'contrato':
+                qs_p = SeguimientoPoliza.objects.select_related(
+                    'contrato', 'contrato__arrendatario', 'contrato__proveedor', 'contrato__local'
+                ).order_by('-fecha_registro')
+                if f_desde:
+                    qs_p = qs_p.filter(fecha_registro__date__gte=f_desde)
+                if f_hasta:
+                    qs_p = qs_p.filter(fecha_registro__date__lte=f_hasta)
+                for s in qs_p:
+                    c = s.contrato
+                    t = c.obtener_tercero() if c else None
+                    filas.append((
+                        timezone.localtime(s.fecha_registro).date(),
+                        'Seguimiento Póliza',
+                        c.num_contrato if c else None,
+                        t.razon_social if t else None,
+                        t.nit if t else None,
+                        c.local.nombre_comercial_stand if (c and c.local) else None,
+                        s.poliza_tipo or None,
+                        s.detalle,
+                        s.registrado_por or None,
+                    ))
+
+            from datetime import date as _date
+            filas.sort(key=lambda x: x[0] if x[0] else _date.min, reverse=True)
+
+            try:
+                archivo = generar_excel_corporativo(
+                    nombre_hoja='Seguimientos',
+                    columnas=columnas,
+                    registros=filas,
+                )
+            except ExportacionVaciaError as error:
+                messages.warning(request, str(error))
+                return redirect('gestion:exportar_seguimientos')
+
+            return _respuesta_archivo_excel(archivo, 'seguimientos_exportados')
+    else:
+        form = FiltroExportacionSeguimientosForm()
+
+    return render(request, 'gestion/exportaciones/seguimientos.html', {
+        'form': form,
+        'total_contrato': SeguimientoContrato.objects.count(),
+        'total_poliza': SeguimientoPoliza.objects.count(),
+    })
+
+
+@login_required_custom
+def exportar_vencimientos(request):
+    """Exporta contratos filtrados por rango de fecha final."""
+    from gestion.forms_exportacion import FiltroExportacionVencimientosForm
+
+    fecha_actual = timezone.now().date()
+
+    if request.method == 'POST':
+        form = FiltroExportacionVencimientosForm(request.POST)
+        if form.is_valid():
+            f_desde = form.cleaned_data.get('fecha_final_desde')
+            f_hasta = form.cleaned_data.get('fecha_final_hasta')
+            estado_filtro = form.cleaned_data.get('estado')
+
+            todos = (
+                Contrato.objects
+                .select_related('arrendatario', 'proveedor', 'local', 'tipo_contrato', 'tipo_servicio')
+                .prefetch_related('otrosi', 'renovaciones_automaticas')
+            )
+
+            contratos = []
+            for contrato in todos:
+                fecha_final = contrato.fecha_final_actualizada or contrato.fecha_final_inicial
+                if f_desde and (not fecha_final or fecha_final < f_desde):
+                    continue
+                if f_hasta and (not fecha_final or fecha_final > f_hasta):
+                    continue
+                if estado_filtro == 'vigente' and (not fecha_final or fecha_final < fecha_actual):
+                    continue
+                if estado_filtro == 'vencido' and (not fecha_final or fecha_final >= fecha_actual):
+                    continue
+                contratos.append((contrato, fecha_final))
+
+            contratos.sort(key=lambda x: x[1] or fecha_actual)
+
+            columnas = [
+                ColumnaExportacion('Número Contrato', ancho=22),
+                ColumnaExportacion('Tipo (Cliente/Proveedor)', ancho=28),
+                ColumnaExportacion('Tercero', ancho=35),
+                ColumnaExportacion('NIT', ancho=18),
+                ColumnaExportacion('Local', ancho=30),
+                ColumnaExportacion('Estado', ancho=15),
+                ColumnaExportacion('Fecha Final', ancho=20, alineacion='center'),
+                ColumnaExportacion('Días al Vencimiento', ancho=22, es_numerica=True, alineacion='right'),
+                ColumnaExportacion('Prórroga Automática', ancho=22),
+                ColumnaExportacion('Días Preaviso', ancho=18, es_numerica=True, alineacion='right'),
+                ColumnaExportacion('Canon Vigente', ancho=22, es_numerica=True, alineacion='right'),
+                ColumnaExportacion('Periodicidad IPC', ancho=22),
+                ColumnaExportacion('Tipo Condición IPC', ancho=25),
+                ColumnaExportacion('N° Otrosíes', ancho=16, es_numerica=True, alineacion='right'),
+                ColumnaExportacion('N° Renovaciones', ancho=20, es_numerica=True, alineacion='right'),
+            ]
+
+            registros = []
+            for contrato, fecha_final in contratos:
+                t = contrato.obtener_tercero()
+                dias = (fecha_final - fecha_actual).days if fecha_final else None
+                canon = obtener_canon_vigente(contrato, fecha_actual)
+                doc_prorroga = get_ultimo_otrosi_que_modifico_campo_hasta_fecha(
+                    contrato, 'nueva_prorroga_automatica', fecha_actual)
+                prorroga = doc_prorroga.nueva_prorroga_automatica if doc_prorroga is not None else contrato.prorroga_automatica
+                doc_periodicidad = get_ultimo_otrosi_que_modifico_campo_hasta_fecha(
+                    contrato, 'nueva_periodicidad_ipc', fecha_actual)
+                periodicidad_display = (
+                    doc_periodicidad.get_nueva_periodicidad_ipc_display()
+                    if doc_periodicidad else (contrato.get_periodicidad_ipc_display() if contrato.periodicidad_ipc else None)
+                )
+                doc_tipo_ipc = get_ultimo_otrosi_que_modifico_campo_hasta_fecha(
+                    contrato, 'nuevo_tipo_condicion_ipc', fecha_actual)
+                tipo_ipc_display = (
+                    doc_tipo_ipc.get_nuevo_tipo_condicion_ipc_display()
+                    if doc_tipo_ipc else (contrato.get_tipo_condicion_ipc_display() if contrato.tipo_condicion_ipc else None)
+                )
+                registros.append((
+                    contrato.num_contrato,
+                    contrato.get_tipo_contrato_cliente_proveedor_display(),
+                    t.razon_social if t else None,
+                    t.nit if t else None,
+                    contrato.local.nombre_comercial_stand if contrato.local else None,
+                    'Vigente' if _estado_vigente_contrato(contrato, fecha_actual) else 'Vencido',
+                    fecha_final or None,
+                    dias,
+                    'Sí' if prorroga else 'No',
+                    contrato.dias_preaviso_no_renovacion or None,
+                    float(canon) if canon else None,
+                    periodicidad_display,
+                    tipo_ipc_display,
+                    len(contrato.otrosi.all()),
+                    len(contrato.renovaciones_automaticas.all()),
+                ))
+
+            try:
+                archivo = generar_excel_corporativo(
+                    nombre_hoja='Vencimientos',
+                    columnas=columnas,
+                    registros=registros,
+                )
+            except ExportacionVaciaError as error:
+                messages.warning(request, str(error))
+                return redirect('gestion:exportar_vencimientos')
+
+            return _respuesta_archivo_excel(archivo, 'vencimientos_exportados')
+    else:
+        form = FiltroExportacionVencimientosForm()
+
+    return render(request, 'gestion/exportaciones/vencimientos.html', {
+        'form': form,
+        'total_contratos': Contrato.objects.count(),
+    })
+
+
+@login_required_custom
+def exportar_historial_ajustes(request):
+    """Exporta el historial de cálculos de ajuste IPC y Salario Mínimo."""
+    from gestion.forms_exportacion import FiltroExportacionHistorialAjustesForm
+
+    if request.method == 'POST':
+        form = FiltroExportacionHistorialAjustesForm(request.POST)
+        if form.is_valid():
+            tipo = form.cleaned_data.get('tipo')
+            estado = form.cleaned_data.get('estado')
+            año = form.cleaned_data.get('año')
+            f_desde = form.cleaned_data.get('fecha_desde')
+            f_hasta = form.cleaned_data.get('fecha_hasta')
+
+            columnas = [
+                ColumnaExportacion('Tipo Ajuste', ancho=18),
+                ColumnaExportacion('Número Contrato', ancho=22),
+                ColumnaExportacion('Tercero', ancho=35),
+                ColumnaExportacion('NIT', ancho=18),
+                ColumnaExportacion('Local', ancho=30),
+                ColumnaExportacion('Año Aplicación', ancho=18, es_numerica=True, alineacion='right'),
+                ColumnaExportacion('Fecha Aplicación', ancho=22, alineacion='center'),
+                ColumnaExportacion('Canon Anterior', ancho=22, es_numerica=True, alineacion='right'),
+                ColumnaExportacion('% Total Aplicado', ancho=22, es_numerica=True, alineacion='right'),
+                ColumnaExportacion('Valor Incremento', ancho=22, es_numerica=True, alineacion='right'),
+                ColumnaExportacion('Nuevo Canon', ancho=22, es_numerica=True, alineacion='right'),
+                ColumnaExportacion('Estado', ancho=15),
+                ColumnaExportacion('Calculado Por', ancho=28),
+                ColumnaExportacion('Aplicado Por', ancho=28),
+                ColumnaExportacion('Fecha Aplicación Real', ancho=25, alineacion='center'),
+                ColumnaExportacion('Legalizado vía Otrosí', ancho=25),
+                ColumnaExportacion('Otrosí Referencia', ancho=22),
+                ColumnaExportacion('Observaciones', ancho=50),
+            ]
+
+            filas = []
+
+            _select = 'contrato', 'contrato__arrendatario', 'contrato__proveedor', 'contrato__local'
+
+            if tipo != 'smlv':
+                qs_ipc = CalculoIPC.objects.select_related(*_select, 'otrosi_referencia').order_by(
+                    'contrato__num_contrato', 'fecha_aplicacion')
+                if estado:
+                    qs_ipc = qs_ipc.filter(estado=estado)
+                if año:
+                    qs_ipc = qs_ipc.filter(año_aplicacion=año)
+                if f_desde:
+                    qs_ipc = qs_ipc.filter(fecha_aplicacion__gte=f_desde)
+                if f_hasta:
+                    qs_ipc = qs_ipc.filter(fecha_aplicacion__lte=f_hasta)
+                for calc in qs_ipc:
+                    c = calc.contrato
+                    t = c.obtener_tercero()
+                    filas.append((
+                        'IPC',
+                        c.num_contrato,
+                        t.razon_social if t else None,
+                        t.nit if t else None,
+                        c.local.nombre_comercial_stand if c.local else None,
+                        calc.año_aplicacion,
+                        calc.fecha_aplicacion,
+                        float(calc.canon_anterior),
+                        float(calc.porcentaje_total_aplicar),
+                        float(calc.valor_incremento),
+                        float(calc.nuevo_canon),
+                        calc.get_estado_display(),
+                        calc.calculado_por or None,
+                        calc.aplicado_por or None,
+                        timezone.localtime(calc.fecha_aplicacion_real).date() if calc.fecha_aplicacion_real else None,
+                        'Sí' if calc.legalizado_via_otrosi else 'No',
+                        calc.otrosi_referencia.numero_otrosi if calc.otrosi_referencia else None,
+                        calc.observaciones or None,
+                    ))
+
+            if tipo != 'ipc':
+                qs_smlv = CalculoSalarioMinimo.objects.select_related(*_select, 'otrosi_referencia').order_by(
+                    'contrato__num_contrato', 'fecha_aplicacion')
+                if estado:
+                    qs_smlv = qs_smlv.filter(estado=estado)
+                if año:
+                    qs_smlv = qs_smlv.filter(año_aplicacion=año)
+                if f_desde:
+                    qs_smlv = qs_smlv.filter(fecha_aplicacion__gte=f_desde)
+                if f_hasta:
+                    qs_smlv = qs_smlv.filter(fecha_aplicacion__lte=f_hasta)
+                for calc in qs_smlv:
+                    c = calc.contrato
+                    t = c.obtener_tercero()
+                    filas.append((
+                        'SMLV',
+                        c.num_contrato,
+                        t.razon_social if t else None,
+                        t.nit if t else None,
+                        c.local.nombre_comercial_stand if c.local else None,
+                        calc.año_aplicacion,
+                        calc.fecha_aplicacion,
+                        float(calc.canon_anterior),
+                        float(calc.porcentaje_total_aplicar),
+                        float(calc.valor_incremento),
+                        float(calc.nuevo_canon),
+                        calc.get_estado_display(),
+                        calc.calculado_por or None,
+                        calc.aplicado_por or None,
+                        timezone.localtime(calc.fecha_aplicacion_real).date() if calc.fecha_aplicacion_real else None,
+                        'Sí' if calc.legalizado_via_otrosi else 'No',
+                        calc.otrosi_referencia.numero_otrosi if calc.otrosi_referencia else None,
+                        calc.observaciones or None,
+                    ))
+
+            filas.sort(key=lambda x: (x[1], x[6] or timezone.now().date()))
+
+            try:
+                archivo = generar_excel_corporativo(
+                    nombre_hoja='Historial Ajustes',
+                    columnas=columnas,
+                    registros=filas,
+                )
+            except ExportacionVaciaError as error:
+                messages.warning(request, str(error))
+                return redirect('gestion:exportar_historial_ajustes')
+
+            return _respuesta_archivo_excel(archivo, 'historial_ajustes_exportado')
+    else:
+        form = FiltroExportacionHistorialAjustesForm()
+
+    return render(request, 'gestion/exportaciones/historial_ajustes.html', {
+        'form': form,
+        'total_ipc': CalculoIPC.objects.count(),
+        'total_smlv': CalculoSalarioMinimo.objects.count(),
+    })
+
+
+@login_required_custom
+def exportar_locales_ocupacion(request):
+    """Exporta todos los locales con su contrato vigente actual."""
+    fecha_actual = timezone.now().date()
+
+    locales = Local.objects.order_by('nombre_comercial_stand')
+    contratos_vigentes = {
+        c.local_id: c
+        for c in Contrato.objects.filter(vigente=True).select_related(
+            'arrendatario', 'proveedor', 'tipo_contrato'
+        )
+        if c.local_id
+    }
+
+    columnas = [
+        ColumnaExportacion('Local', ancho=35),
+        ColumnaExportacion('Ubicación', ancho=30),
+        ColumnaExportacion('Área (m²)', ancho=15, es_numerica=True, alineacion='right'),
+        ColumnaExportacion('Ocupado', ancho=12),
+        ColumnaExportacion('Número Contrato', ancho=22),
+        ColumnaExportacion('Tipo (Cliente/Proveedor)', ancho=28),
+        ColumnaExportacion('Tipo Contrato', ancho=25),
+        ColumnaExportacion('Tercero', ancho=35),
+        ColumnaExportacion('NIT', ancho=18),
+        ColumnaExportacion('Fecha Inicio', ancho=18, alineacion='center'),
+        ColumnaExportacion('Fecha Final', ancho=18, alineacion='center'),
+        ColumnaExportacion('Días al Vencimiento', ancho=22, es_numerica=True, alineacion='right'),
+        ColumnaExportacion('Canon Vigente', ancho=22, es_numerica=True, alineacion='right'),
+        ColumnaExportacion('Estado Contrato', ancho=18),
+    ]
+
+    registros = []
+    for local in locales:
+        contrato = contratos_vigentes.get(local.pk)
+        if contrato:
+            t = contrato.obtener_tercero()
+            fecha_final = contrato.fecha_final_actualizada or contrato.fecha_final_inicial
+            dias = (fecha_final - fecha_actual).days if fecha_final else None
+            canon = obtener_canon_vigente(contrato, fecha_actual)
+            registros.append((
+                local.nombre_comercial_stand,
+                local.ubicacion or None,
+                float(local.total_area_m2) if local.total_area_m2 else None,
+                'Sí',
+                contrato.num_contrato,
+                contrato.get_tipo_contrato_cliente_proveedor_display(),
+                contrato.tipo_contrato.nombre if contrato.tipo_contrato else None,
+                t.razon_social if t else None,
+                t.nit if t else None,
+                contrato.fecha_inicial_contrato or None,
+                fecha_final or None,
+                dias,
+                float(canon) if canon else None,
+                'Vigente' if _estado_vigente_contrato(contrato, fecha_actual) else 'Vencido',
+            ))
+        else:
+            registros.append((
+                local.nombre_comercial_stand,
+                local.ubicacion or None,
+                float(local.total_area_m2) if local.total_area_m2 else None,
+                'No',
+                None, None, None, None, None, None, None, None, None, None,
+            ))
+
+    try:
+        archivo = generar_excel_corporativo(
+            nombre_hoja='Locales Ocupación',
+            columnas=columnas,
+            registros=registros,
+        )
+    except ExportacionVaciaError as error:
+        messages.warning(request, str(error))
+        return redirect('gestion:exportaciones')
+
+    return _respuesta_archivo_excel(archivo, 'locales_ocupacion')

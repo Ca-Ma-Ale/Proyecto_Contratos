@@ -36,6 +36,7 @@ from gestion.utils_otrosi import (
     get_vista_vigente_contrato,
     get_ultimo_otrosi_aprobado,
     get_otrosi_vigente,
+    get_valores_polizas_vigentes,
 )
 from gestion.utils_ipc import obtener_ultimo_calculo_ipc_aplicado, obtener_ultimo_calculo_aplicado_hasta_fecha
 from .utils import (
@@ -1027,7 +1028,7 @@ def eliminar_contrato(request, contrato_id):
     return render(request, 'gestion/contratos/eliminar.html', context)
 
 
-@admin_general_required
+@admin_required
 def finalizar_contrato(request, contrato_id):
     """
     Registra la terminación formal de un contrato.
@@ -1179,7 +1180,7 @@ def exportar_contratos(request):
         if form.is_valid():
             queryset = Contrato.objects.select_related(
                 'arrendatario', 'proveedor', 'local', 'tipo_contrato', 'tipo_servicio'
-            ).prefetch_related('otrosi').all()
+            ).prefetch_related('otrosi', 'renovaciones_automaticas').all()
             
             estado = form.cleaned_data.get('estado')
             tipo_contrato_cliente_proveedor = form.cleaned_data.get('tipo_contrato_cliente_proveedor')
@@ -1337,6 +1338,21 @@ def exportar_contratos(request):
                 ColumnaExportacion('Supervisor Concedente', ancho=28),
                 ColumnaExportacion('Supervisor Contraparte', ancho=30),
                 ColumnaExportacion('Otrosí Modificador Fecha Final', ancho=35),
+                ColumnaExportacion('N° Otrosí', ancho=15, es_numerica=True, alineacion='right'),
+                ColumnaExportacion('N° Renovaciones Automáticas', ancho=28, es_numerica=True, alineacion='right'),
+                ColumnaExportacion('Fecha Último Otrosí Aprobado', ancho=30, alineacion='center'),
+                ColumnaExportacion('Fecha Última Renovación Aprobada', ancho=34, alineacion='center'),
+                ColumnaExportacion('Doc. Pendientes Aprobación', ancho=28, es_numerica=True, alineacion='right'),
+                ColumnaExportacion('Días al Vencimiento', ancho=22, es_numerica=True, alineacion='right'),
+                ColumnaExportacion('Canon Base', ancho=20, es_numerica=True, alineacion='right'),
+                ColumnaExportacion('Canon Mínimo Garantizado Base', ancho=32, es_numerica=True, alineacion='right'),
+                ColumnaExportacion('Fecha Último IPC Aplicado', ancho=28, alineacion='center'),
+                ColumnaExportacion('% Último IPC Aplicado', ancho=24, es_numerica=True, alineacion='right'),
+                ColumnaExportacion('Recobro Póliza RCE', ancho=22),
+                ColumnaExportacion('Recobro Póliza Cumplimiento', ancho=28),
+                ColumnaExportacion('Recobro Póliza Arrendamiento', ancho=30),
+                ColumnaExportacion('Recobro Póliza Todo Riesgo', ancho=28),
+                ColumnaExportacion('Recobro Otras Pólizas', ancho=24),
             ]
             
             registros = []
@@ -1369,6 +1385,66 @@ def exportar_contratos(request):
                 local_area = float(contrato.local.total_area_m2) if contrato.local and contrato.local.total_area_m2 else None
                 canon_vigente_valor = obtener_canon_vigente(contrato, fecha_actual)
                 es_proveedor = contrato.tipo_contrato_cliente_proveedor == 'PROVEEDOR'
+                pv = get_valores_polizas_vigentes(contrato, fecha_actual)
+
+                # Efecto cadena para campos generales modificables por Otrosí
+                doc_prorroga = get_ultimo_otrosi_que_modifico_campo_hasta_fecha(
+                    contrato, 'nueva_prorroga_automatica', fecha_actual)
+                prorroga_val = doc_prorroga.nueva_prorroga_automatica if doc_prorroga is not None else contrato.prorroga_automatica
+
+                doc_modalidad = get_ultimo_otrosi_que_modifico_campo_hasta_fecha(
+                    contrato, 'nueva_modalidad_pago', fecha_actual)
+                modalidad_display = (doc_modalidad.nueva_modalidad_pago
+                    if doc_modalidad else (contrato.get_modalidad_pago_display() if contrato.modalidad_pago else None))
+
+                doc_pct_ventas = get_ultimo_otrosi_que_modifico_campo_hasta_fecha(
+                    contrato, 'nuevo_porcentaje_ventas', fecha_actual)
+                porcentaje_ventas_val = doc_pct_ventas.nuevo_porcentaje_ventas if doc_pct_ventas else contrato.porcentaje_ventas
+
+                doc_tipo_ipc = get_ultimo_otrosi_que_modifico_campo_hasta_fecha(
+                    contrato, 'nuevo_tipo_condicion_ipc', fecha_actual)
+                tipo_ipc_display = (doc_tipo_ipc.get_nuevo_tipo_condicion_ipc_display()
+                    if doc_tipo_ipc else (contrato.get_tipo_condicion_ipc_display() if contrato.tipo_condicion_ipc else None))
+
+                doc_puntos_ipc = get_ultimo_otrosi_que_modifico_campo_hasta_fecha(
+                    contrato, 'nuevos_puntos_adicionales_ipc', fecha_actual)
+                puntos_ipc_val = doc_puntos_ipc.nuevos_puntos_adicionales_ipc if doc_puntos_ipc else contrato.puntos_adicionales_ipc
+
+                doc_periodicidad = get_ultimo_otrosi_que_modifico_campo_hasta_fecha(
+                    contrato, 'nueva_periodicidad_ipc', fecha_actual)
+                periodicidad_display = (doc_periodicidad.get_nueva_periodicidad_ipc_display()
+                    if doc_periodicidad else (contrato.get_periodicidad_ipc_display() if contrato.periodicidad_ipc else None))
+
+                doc_fecha_aumento = get_ultimo_otrosi_que_modifico_campo_hasta_fecha(
+                    contrato, 'nueva_fecha_aumento_ipc', fecha_actual)
+                fecha_aumento_val = doc_fecha_aumento.nueva_fecha_aumento_ipc if doc_fecha_aumento else contrato.fecha_aumento_ipc
+
+                # Días al vencimiento (negativo = ya venció)
+                dias_vencimiento = (fecha_final - fecha_actual).days if fecha_final else None
+
+                # Canon base del contrato original
+                canon_base = float(contrato.valor_canon_fijo) if (contrato.valor_canon_fijo and not es_proveedor) else None
+                canon_minimo_base = float(contrato.canon_minimo_garantizado) if (contrato.canon_minimo_garantizado and es_proveedor) else None
+
+                # Último IPC aplicado
+                ultimo_ipc = obtener_ultimo_calculo_aplicado_hasta_fecha(contrato, fecha_actual)
+                fecha_ultimo_ipc = ultimo_ipc.fecha_aplicacion if ultimo_ipc else None
+                pct_ultimo_ipc = float(ultimo_ipc.porcentaje_total_aplicar) if (ultimo_ipc and ultimo_ipc.porcentaje_total_aplicar) else None
+
+                # Documentos pendientes de aprobación (BORRADOR + EN_REVISION)
+                estados_pendientes = {'BORRADOR', 'EN_REVISION'}
+                doc_pendientes = sum(
+                    1 for o in contrato.otrosi.all() if o.estado in estados_pendientes
+                ) + sum(
+                    1 for r in contrato.renovaciones_automaticas.all() if r.estado in estados_pendientes
+                )
+
+                # Fecha del último otrosí y renovación aprobados
+                otrosis_aprobados = [o for o in contrato.otrosi.all() if o.estado == 'APROBADO']
+                fecha_ultimo_otrosi = max((o.effective_from for o in otrosis_aprobados), default=None)
+
+                renovaciones_aprobadas = [r for r in contrato.renovaciones_automaticas.all() if r.estado == 'APROBADO']
+                fecha_ultima_renovacion = max((r.effective_from for r in renovaciones_aprobadas), default=None)
 
                 registros.append((
                     contrato.num_contrato,
@@ -1387,69 +1463,69 @@ def exportar_contratos(request):
                     fecha_final or None,
                     contrato.duracion_inicial_meses,
                     estado_texto,
-                    'Sí' if contrato.prorroga_automatica else 'No',
+                    'Sí' if prorroga_val else 'No',
                     contrato.dias_preaviso_no_renovacion or None,
                     contrato.dias_terminacion_anticipada or None,
-                    contrato.get_modalidad_pago_display() if contrato.modalidad_pago else None,
+                    modalidad_display,
                     float(canon_vigente_valor) if (canon_vigente_valor and not es_proveedor) else None,
                     float(canon_vigente_valor) if (canon_vigente_valor and es_proveedor) else None,
-                    float(contrato.porcentaje_ventas) if contrato.porcentaje_ventas else None,
+                    float(porcentaje_ventas_val) if porcentaje_ventas_val else None,
                     'Sí' if contrato.reporta_ventas else 'No',
                     contrato.dia_limite_reporte_ventas or None,
                     'Sí' if contrato.cobra_servicios_publicos_aparte else 'No',
                     'Sí' if contrato.tiene_clausula_sarlaft else 'No',
                     'Sí' if contrato.tiene_clausula_proteccion_datos else 'No',
                     contrato.interes_mora_pagos or None,
-                    contrato.get_tipo_condicion_ipc_display() if contrato.tipo_condicion_ipc else None,
-                    float(contrato.puntos_adicionales_ipc) if contrato.puntos_adicionales_ipc else None,
-                    contrato.get_periodicidad_ipc_display() if contrato.periodicidad_ipc else None,
-                    contrato.fecha_aumento_ipc.strftime('%d/%m/%Y') if contrato.fecha_aumento_ipc else None,
+                    tipo_ipc_display,
+                    float(puntos_ipc_val) if puntos_ipc_val else None,
+                    periodicidad_display,
+                    '{} de {}'.format(fecha_aumento_val.day, ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'][fecha_aumento_val.month - 1]) if fecha_aumento_val else None,
                     'Sí' if contrato.tiene_periodo_gracia else 'No',
                     contrato.fecha_inicio_periodo_gracia or None,
                     contrato.fecha_fin_periodo_gracia or None,
                     contrato.condicion_gracia or None,
-                    'Sí' if contrato.exige_poliza_rce else 'No',
-                    float(contrato.valor_asegurado_rce) if contrato.valor_asegurado_rce else None,
-                    float(contrato.valor_propietario_locatario_ocupante_rce) if contrato.valor_propietario_locatario_ocupante_rce else None,
-                    float(contrato.valor_patronal_rce) if contrato.valor_patronal_rce else None,
-                    float(contrato.valor_gastos_medicos_rce) if contrato.valor_gastos_medicos_rce else None,
-                    float(contrato.valor_vehiculos_rce) if contrato.valor_vehiculos_rce else None,
-                    float(contrato.valor_contratistas_rce) if contrato.valor_contratistas_rce else None,
-                    float(contrato.valor_perjuicios_extrapatrimoniales_rce) if contrato.valor_perjuicios_extrapatrimoniales_rce else None,
-                    float(contrato.valor_dano_moral_rce) if contrato.valor_dano_moral_rce else None,
-                    float(contrato.valor_lucro_cesante_rce) if contrato.valor_lucro_cesante_rce else None,
-                    contrato.meses_vigencia_rce or None,
-                    contrato.fecha_inicio_vigencia_rce or None,
-                    contrato.fecha_fin_vigencia_rce or None,
-                    'Sí' if contrato.exige_poliza_cumplimiento else 'No',
-                    float(contrato.valor_asegurado_cumplimiento) if contrato.valor_asegurado_cumplimiento else None,
-                    float(contrato.valor_remuneraciones_cumplimiento) if contrato.valor_remuneraciones_cumplimiento else None,
-                    float(contrato.valor_servicios_publicos_cumplimiento) if contrato.valor_servicios_publicos_cumplimiento else None,
-                    float(contrato.valor_iva_cumplimiento) if contrato.valor_iva_cumplimiento else None,
-                    float(contrato.valor_otros_cumplimiento) if contrato.valor_otros_cumplimiento else None,
-                    contrato.meses_vigencia_cumplimiento or None,
-                    contrato.fecha_inicio_vigencia_cumplimiento or None,
-                    contrato.fecha_fin_vigencia_cumplimiento or None,
-                    'Sí' if contrato.exige_poliza_arrendamiento else 'No',
-                    float(contrato.valor_asegurado_arrendamiento) if contrato.valor_asegurado_arrendamiento else None,
-                    float(contrato.valor_remuneraciones_arrendamiento) if contrato.valor_remuneraciones_arrendamiento else None,
-                    float(contrato.valor_servicios_publicos_arrendamiento) if contrato.valor_servicios_publicos_arrendamiento else None,
-                    float(contrato.valor_iva_arrendamiento) if contrato.valor_iva_arrendamiento else None,
-                    float(contrato.valor_otros_arrendamiento) if contrato.valor_otros_arrendamiento else None,
-                    contrato.meses_vigencia_arrendamiento or None,
-                    contrato.fecha_inicio_vigencia_arrendamiento or None,
-                    contrato.fecha_fin_vigencia_arrendamiento or None,
-                    'Sí' if contrato.exige_poliza_todo_riesgo else 'No',
-                    float(contrato.valor_asegurado_todo_riesgo) if contrato.valor_asegurado_todo_riesgo else None,
-                    contrato.meses_vigencia_todo_riesgo or None,
-                    contrato.fecha_inicio_vigencia_todo_riesgo or None,
-                    contrato.fecha_fin_vigencia_todo_riesgo or None,
-                    'Sí' if contrato.exige_poliza_otra_1 else 'No',
-                    contrato.nombre_poliza_otra_1 or None,
-                    float(contrato.valor_asegurado_otra_1) if contrato.valor_asegurado_otra_1 else None,
-                    contrato.meses_vigencia_otra_1 or None,
-                    contrato.fecha_inicio_vigencia_otra_1 or None,
-                    contrato.fecha_fin_vigencia_otra_1 or None,
+                    'Sí' if pv['exige_poliza_rce'] else 'No',
+                    float(pv['valor_asegurado_rce']) if pv['valor_asegurado_rce'] else None,
+                    float(pv['valor_propietario_locatario_ocupante_rce']) if pv['valor_propietario_locatario_ocupante_rce'] else None,
+                    float(pv['valor_patronal_rce']) if pv['valor_patronal_rce'] else None,
+                    float(pv['valor_gastos_medicos_rce']) if pv['valor_gastos_medicos_rce'] else None,
+                    float(pv['valor_vehiculos_rce']) if pv['valor_vehiculos_rce'] else None,
+                    float(pv['valor_contratistas_rce']) if pv['valor_contratistas_rce'] else None,
+                    float(pv['valor_perjuicios_extrapatrimoniales_rce']) if pv['valor_perjuicios_extrapatrimoniales_rce'] else None,
+                    float(pv['valor_dano_moral_rce']) if pv['valor_dano_moral_rce'] else None,
+                    float(pv['valor_lucro_cesante_rce']) if pv['valor_lucro_cesante_rce'] else None,
+                    pv['meses_vigencia_rce'] or None,
+                    pv['fecha_inicio_vigencia_rce'] or None,
+                    pv['fecha_fin_vigencia_rce'] or None,
+                    'Sí' if pv['exige_poliza_cumplimiento'] else 'No',
+                    float(pv['valor_asegurado_cumplimiento']) if pv['valor_asegurado_cumplimiento'] else None,
+                    float(pv['valor_remuneraciones_cumplimiento']) if pv['valor_remuneraciones_cumplimiento'] else None,
+                    float(pv['valor_servicios_publicos_cumplimiento']) if pv['valor_servicios_publicos_cumplimiento'] else None,
+                    float(pv['valor_iva_cumplimiento']) if pv['valor_iva_cumplimiento'] else None,
+                    float(pv['valor_otros_cumplimiento']) if pv['valor_otros_cumplimiento'] else None,
+                    pv['meses_vigencia_cumplimiento'] or None,
+                    pv['fecha_inicio_vigencia_cumplimiento'] or None,
+                    pv['fecha_fin_vigencia_cumplimiento'] or None,
+                    'Sí' if pv['exige_poliza_arrendamiento'] else 'No',
+                    float(pv['valor_asegurado_arrendamiento']) if pv['valor_asegurado_arrendamiento'] else None,
+                    float(pv['valor_remuneraciones_arrendamiento']) if pv['valor_remuneraciones_arrendamiento'] else None,
+                    float(pv['valor_servicios_publicos_arrendamiento']) if pv['valor_servicios_publicos_arrendamiento'] else None,
+                    float(pv['valor_iva_arrendamiento']) if pv['valor_iva_arrendamiento'] else None,
+                    float(pv['valor_otros_arrendamiento']) if pv['valor_otros_arrendamiento'] else None,
+                    pv['meses_vigencia_arrendamiento'] or None,
+                    pv['fecha_inicio_vigencia_arrendamiento'] or None,
+                    pv['fecha_fin_vigencia_arrendamiento'] or None,
+                    'Sí' if pv['exige_poliza_todo_riesgo'] else 'No',
+                    float(pv['valor_asegurado_todo_riesgo']) if pv['valor_asegurado_todo_riesgo'] else None,
+                    pv['meses_vigencia_todo_riesgo'] or None,
+                    pv['fecha_inicio_vigencia_todo_riesgo'] or None,
+                    pv['fecha_fin_vigencia_todo_riesgo'] or None,
+                    'Sí' if pv['exige_poliza_otra_1'] else 'No',
+                    pv['nombre_poliza_otra_1'] or None,
+                    float(pv['valor_asegurado_otra_1']) if pv['valor_asegurado_otra_1'] else None,
+                    pv['meses_vigencia_otra_1'] or None,
+                    pv['fecha_inicio_vigencia_otra_1'] or None,
+                    pv['fecha_fin_vigencia_otra_1'] or None,
                     contrato.clausula_penal_incumplimiento or None,
                     contrato.penalidad_terminacion_anticipada or None,
                     contrato.multa_mora_no_restitucion or None,
@@ -1459,6 +1535,21 @@ def exportar_contratos(request):
                     contrato.supervisor_concedente or None,
                     contrato.supervisor_contraparte or None,
                     otrosi_numero,
+                    len(contrato.otrosi.all()),
+                    len(contrato.renovaciones_automaticas.all()),
+                    fecha_ultimo_otrosi or None,
+                    fecha_ultima_renovacion or None,
+                    doc_pendientes or None,
+                    dias_vencimiento,
+                    canon_base,
+                    canon_minimo_base,
+                    fecha_ultimo_ipc or None,
+                    pct_ultimo_ipc,
+                    'Sí' if pv['recobro_poliza_rce'] else 'No',
+                    'Sí' if pv['recobro_poliza_cumplimiento'] else 'No',
+                    'Sí' if pv['recobro_poliza_arrendamiento'] else 'No',
+                    'Sí' if pv['recobro_poliza_todo_riesgo'] else 'No',
+                    'Sí' if pv['recobro_poliza_otra_1'] else 'No',
                 ))
             
             try:
@@ -1481,6 +1572,239 @@ def exportar_contratos(request):
         'total_contratos': total_contratos,
     }
     return render(request, 'gestion/exportaciones/contratos.html', context)
+
+
+@login_required_custom
+def exportar_otrosi(request):
+    """Exporta Otrosíes y Renovaciones Automáticas combinados en un solo informe."""
+    from gestion.models import OtroSi, RenovacionAutomatica
+    from gestion.forms_otrosi import FiltroExportacionOtroSiForm
+
+    MESES_ES = ['enero','febrero','marzo','abril','mayo','junio',
+                'julio','agosto','septiembre','octubre','noviembre','diciembre']
+
+    def _bool_opt(val):
+        return None if val is None else ('Sí' if val else 'No')
+
+    def _fmtf(val):
+        return '{} de {}'.format(val.day, MESES_ES[val.month - 1]) if val else None
+
+    _select = {
+        'contrato', 'contrato__arrendatario', 'contrato__proveedor', 'contrato__local'
+    }
+
+    if request.method == 'POST':
+        form = FiltroExportacionOtroSiForm(request.POST)
+        if form.is_valid():
+            tipo_doc = form.cleaned_data.get('tipo_documento')
+            estado    = form.cleaned_data.get('estado')
+            tipo_os   = form.cleaned_data.get('tipo_otrosi')
+            f_desde   = form.cleaned_data.get('fecha_doc_desde')
+            f_hasta   = form.cleaned_data.get('fecha_doc_hasta')
+            ef_desde  = form.cleaned_data.get('effective_from_desde')
+            ef_hasta  = form.cleaned_data.get('effective_from_hasta')
+
+            # ---- Otrosíes ----
+            filas = []
+            if tipo_doc != 'renovacion':
+                qs_os = OtroSi.objects.select_related(*_select).order_by(
+                    'contrato__num_contrato', 'effective_from', 'version'
+                )
+                if estado:
+                    qs_os = qs_os.filter(estado=estado)
+                if tipo_os:
+                    qs_os = qs_os.filter(tipo=tipo_os)
+                if f_desde:
+                    qs_os = qs_os.filter(fecha_otrosi__gte=f_desde)
+                if f_hasta:
+                    qs_os = qs_os.filter(fecha_otrosi__lte=f_hasta)
+                if ef_desde:
+                    qs_os = qs_os.filter(effective_from__gte=ef_desde)
+                if ef_hasta:
+                    qs_os = qs_os.filter(effective_from__lte=ef_hasta)
+
+                for o in qs_os:
+                    c = o.contrato
+                    t = c.obtener_tercero()
+                    filas.append((
+                        c.num_contrato,
+                        c.get_tipo_contrato_cliente_proveedor_display(),
+                        t.razon_social if t else None,
+                        t.nit if t else None,
+                        c.local.nombre_comercial_stand if c.local else None,
+                        'Otrosí',
+                        o.numero_otrosi,
+                        o.get_tipo_display(),
+                        o.version,
+                        o.get_estado_display(),
+                        o.fecha_otrosi or None,
+                        o.effective_from or None,
+                        o.effective_to or None,
+                        o.fecha_aprobacion.date() if o.fecha_aprobacion else None,
+                        o.creado_por or None,
+                        o.aprobado_por or None,
+                        # valores modificados por Otrosí
+                        o.nueva_fecha_final_actualizada or None,
+                        float(o.nuevo_valor_canon) if o.nuevo_valor_canon is not None else None,
+                        float(o.nuevo_canon_minimo_garantizado) if o.nuevo_canon_minimo_garantizado is not None else None,
+                        o.nueva_modalidad_pago if o.nueva_modalidad_pago else None,
+                        float(o.nuevo_porcentaje_ventas) if o.nuevo_porcentaje_ventas is not None else None,
+                        _bool_opt(o.nueva_prorroga_automatica),
+                        o.get_nuevo_tipo_condicion_ipc_display() if o.nuevo_tipo_condicion_ipc else None,
+                        float(o.nuevos_puntos_adicionales_ipc) if o.nuevos_puntos_adicionales_ipc is not None else None,
+                        o.get_nueva_periodicidad_ipc_display() if o.nueva_periodicidad_ipc else None,
+                        _fmtf(o.nueva_fecha_aumento_ipc),
+                        # exclusivos de Renovación → vacíos
+                        None, None, None,
+                        # pólizas
+                        'Sí' if o.modifica_polizas else 'No',
+                        _bool_opt(o.nuevo_exige_poliza_rce),
+                        _bool_opt(o.nuevo_recobro_poliza_rce),
+                        _bool_opt(o.nuevo_exige_poliza_cumplimiento),
+                        _bool_opt(o.nuevo_recobro_poliza_cumplimiento),
+                        _bool_opt(o.nuevo_exige_poliza_arrendamiento),
+                        _bool_opt(o.nuevo_recobro_poliza_arrendamiento),
+                        _bool_opt(o.nuevo_exige_poliza_todo_riesgo),
+                        _bool_opt(o.nuevo_recobro_poliza_todo_riesgo),
+                        _bool_opt(o.nuevo_exige_poliza_otra_1),
+                        _bool_opt(o.nuevo_recobro_poliza_otra_1),
+                        o.descripcion or None,
+                        o.observaciones or None,
+                    ))
+
+            # ---- Renovaciones Automáticas ----
+            if tipo_doc != 'otrosi':
+                qs_ra = RenovacionAutomatica.objects.select_related(*_select).order_by(
+                    'contrato__num_contrato', 'effective_from', 'version'
+                )
+                if estado:
+                    qs_ra = qs_ra.filter(estado=estado)
+                if f_desde:
+                    qs_ra = qs_ra.filter(fecha_renovacion__gte=f_desde)
+                if f_hasta:
+                    qs_ra = qs_ra.filter(fecha_renovacion__lte=f_hasta)
+                if ef_desde:
+                    qs_ra = qs_ra.filter(effective_from__gte=ef_desde)
+                if ef_hasta:
+                    qs_ra = qs_ra.filter(effective_from__lte=ef_hasta)
+
+                for r in qs_ra:
+                    c = r.contrato
+                    t = c.obtener_tercero()
+                    filas.append((
+                        c.num_contrato,
+                        c.get_tipo_contrato_cliente_proveedor_display(),
+                        t.razon_social if t else None,
+                        t.nit if t else None,
+                        c.local.nombre_comercial_stand if c.local else None,
+                        'Renovación Automática',
+                        r.numero_renovacion,
+                        None,   # tipo (solo Otrosí)
+                        r.version,
+                        r.get_estado_display(),
+                        r.fecha_renovacion or None,
+                        r.effective_from or None,
+                        r.effective_to or None,
+                        r.fecha_aprobacion.date() if r.fecha_aprobacion else None,
+                        r.creado_por or None,
+                        r.aprobado_por or None,
+                        # valores comunes
+                        r.nueva_fecha_final_actualizada or None,
+                        None, None, None, None, None, None, None, None, None,  # campos solo Otrosí
+                        # exclusivos de Renovación
+                        r.meses_renovacion,
+                        r.fecha_inicio_nueva_vigencia or None,
+                        r.fecha_final_anterior or None,
+                        # pólizas
+                        'Sí' if r.modifica_polizas else 'No',
+                        _bool_opt(r.nuevo_exige_poliza_rce),
+                        _bool_opt(r.nuevo_recobro_poliza_rce),
+                        _bool_opt(r.nuevo_exige_poliza_cumplimiento),
+                        _bool_opt(r.nuevo_recobro_poliza_cumplimiento),
+                        _bool_opt(r.nuevo_exige_poliza_arrendamiento),
+                        _bool_opt(r.nuevo_recobro_poliza_arrendamiento),
+                        _bool_opt(r.nuevo_exige_poliza_todo_riesgo),
+                        _bool_opt(r.nuevo_recobro_poliza_todo_riesgo),
+                        _bool_opt(r.nuevo_exige_poliza_otra_1),
+                        _bool_opt(r.nuevo_recobro_poliza_otra_1),
+                        r.descripcion or None,
+                        r.observaciones or None,
+                    ))
+
+            columnas = [
+                # Contrato
+                ColumnaExportacion('Número Contrato', ancho=22),
+                ColumnaExportacion('Tipo (Cliente/Proveedor)', ancho=25),
+                ColumnaExportacion('Tercero', ancho=35),
+                ColumnaExportacion('NIT Tercero', ancho=18),
+                ColumnaExportacion('Local', ancho=30),
+                # Identidad
+                ColumnaExportacion('Tipo Documento', ancho=25),
+                ColumnaExportacion('Número Documento', ancho=22),
+                ColumnaExportacion('Tipo Otrosí', ancho=25),
+                ColumnaExportacion('Versión', ancho=12, es_numerica=True, alineacion='right'),
+                ColumnaExportacion('Estado', ancho=18),
+                # Fechas y responsables
+                ColumnaExportacion('Fecha Documento', ancho=20, alineacion='center'),
+                ColumnaExportacion('Vigencia Desde', ancho=18, alineacion='center'),
+                ColumnaExportacion('Vigencia Hasta', ancho=18, alineacion='center'),
+                ColumnaExportacion('Fecha Aprobación', ancho=20, alineacion='center'),
+                ColumnaExportacion('Creado Por', ancho=25),
+                ColumnaExportacion('Aprobado Por', ancho=25),
+                # Valores comunes
+                ColumnaExportacion('Nueva Fecha Final', ancho=20, alineacion='center'),
+                # Solo Otrosí
+                ColumnaExportacion('Nuevo Canon', ancho=20, es_numerica=True, alineacion='right'),
+                ColumnaExportacion('Nuevo Canon Mínimo Garantizado', ancho=32, es_numerica=True, alineacion='right'),
+                ColumnaExportacion('Nueva Modalidad de Pago', ancho=25),
+                ColumnaExportacion('Nuevo % Ventas', ancho=18, es_numerica=True, alineacion='right'),
+                ColumnaExportacion('Nueva Prórroga Automática', ancho=26),
+                ColumnaExportacion('Nuevo Tipo Condición IPC', ancho=26),
+                ColumnaExportacion('Nuevos Puntos IPC', ancho=20, es_numerica=True, alineacion='right'),
+                ColumnaExportacion('Nueva Periodicidad IPC', ancho=24),
+                ColumnaExportacion('Nueva Fecha Aumento IPC', ancho=26, alineacion='center'),
+                # Solo Renovación
+                ColumnaExportacion('Meses Renovación', ancho=20, es_numerica=True, alineacion='right'),
+                ColumnaExportacion('Fecha Inicio Nueva Vigencia', ancho=28, alineacion='center'),
+                ColumnaExportacion('Fecha Final Anterior', ancho=22, alineacion='center'),
+                # Pólizas
+                ColumnaExportacion('Modifica Pólizas', ancho=18),
+                ColumnaExportacion('Nueva Exige Póliza RCE', ancho=24),
+                ColumnaExportacion('Nuevo Recobro Póliza RCE', ancho=26),
+                ColumnaExportacion('Nueva Exige Póliza Cumplimiento', ancho=32),
+                ColumnaExportacion('Nuevo Recobro Póliza Cumplimiento', ancho=35),
+                ColumnaExportacion('Nueva Exige Póliza Arrendamiento', ancho=34),
+                ColumnaExportacion('Nuevo Recobro Póliza Arrendamiento', ancho=36),
+                ColumnaExportacion('Nueva Exige Póliza Todo Riesgo', ancho=32),
+                ColumnaExportacion('Nuevo Recobro Póliza Todo Riesgo', ancho=34),
+                ColumnaExportacion('Nueva Exige Otras Pólizas', ancho=26),
+                ColumnaExportacion('Nuevo Recobro Otras Pólizas', ancho=28),
+                # Notas
+                ColumnaExportacion('Descripción', ancho=50),
+                ColumnaExportacion('Observaciones', ancho=50),
+            ]
+
+            try:
+                archivo = generar_excel_corporativo(
+                    nombre_hoja='Documentos',
+                    columnas=columnas,
+                    registros=filas,
+                )
+            except ExportacionVaciaError as error:
+                messages.warning(request, str(error))
+                return redirect('gestion:exportar_otrosi')
+
+            return _respuesta_archivo_excel(archivo, 'otrosi_renovaciones_exportados')
+    else:
+        form = FiltroExportacionOtroSiForm()
+
+    from gestion.models import OtroSi as _OS, RenovacionAutomatica as _RA
+    context = {
+        'form': form,
+        'total_otrosi': _OS.objects.count(),
+        'total_renovaciones': _RA.objects.count(),
+    }
+    return render(request, 'gestion/exportaciones/otrosi.html', context)
 
 
 @login_required_custom

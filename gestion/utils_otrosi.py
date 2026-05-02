@@ -392,6 +392,116 @@ def get_ultimo_otrosi_que_modifico_campo_hasta_fecha(contrato, campo_nombre, fec
     return None
 
 
+_CAMPOS_POLIZAS_EXPORTACION = [
+    ('nuevo_exige_poliza_rce', 'exige_poliza_rce'),
+    ('nuevo_recobro_poliza_rce', 'recobro_poliza_rce'),
+    ('nuevo_valor_asegurado_rce', 'valor_asegurado_rce'),
+    ('nuevo_valor_propietario_locatario_ocupante_rce', 'valor_propietario_locatario_ocupante_rce'),
+    ('nuevo_valor_patronal_rce', 'valor_patronal_rce'),
+    ('nuevo_valor_gastos_medicos_rce', 'valor_gastos_medicos_rce'),
+    ('nuevo_valor_vehiculos_rce', 'valor_vehiculos_rce'),
+    ('nuevo_valor_contratistas_rce', 'valor_contratistas_rce'),
+    ('nuevo_valor_perjuicios_extrapatrimoniales_rce', 'valor_perjuicios_extrapatrimoniales_rce'),
+    ('nuevo_valor_dano_moral_rce', 'valor_dano_moral_rce'),
+    ('nuevo_valor_lucro_cesante_rce', 'valor_lucro_cesante_rce'),
+    ('nuevo_meses_vigencia_rce', 'meses_vigencia_rce'),
+    ('nuevo_fecha_inicio_vigencia_rce', 'fecha_inicio_vigencia_rce'),
+    ('nuevo_fecha_fin_vigencia_rce', 'fecha_fin_vigencia_rce'),
+    ('nuevo_exige_poliza_cumplimiento', 'exige_poliza_cumplimiento'),
+    ('nuevo_recobro_poliza_cumplimiento', 'recobro_poliza_cumplimiento'),
+    ('nuevo_valor_asegurado_cumplimiento', 'valor_asegurado_cumplimiento'),
+    ('nuevo_valor_remuneraciones_cumplimiento', 'valor_remuneraciones_cumplimiento'),
+    ('nuevo_valor_servicios_publicos_cumplimiento', 'valor_servicios_publicos_cumplimiento'),
+    ('nuevo_valor_iva_cumplimiento', 'valor_iva_cumplimiento'),
+    ('nuevo_valor_otros_cumplimiento', 'valor_otros_cumplimiento'),
+    ('nuevo_meses_vigencia_cumplimiento', 'meses_vigencia_cumplimiento'),
+    ('nuevo_fecha_inicio_vigencia_cumplimiento', 'fecha_inicio_vigencia_cumplimiento'),
+    ('nuevo_fecha_fin_vigencia_cumplimiento', 'fecha_fin_vigencia_cumplimiento'),
+    ('nuevo_exige_poliza_arrendamiento', 'exige_poliza_arrendamiento'),
+    ('nuevo_recobro_poliza_arrendamiento', 'recobro_poliza_arrendamiento'),
+    ('nuevo_valor_asegurado_arrendamiento', 'valor_asegurado_arrendamiento'),
+    ('nuevo_valor_remuneraciones_arrendamiento', 'valor_remuneraciones_arrendamiento'),
+    ('nuevo_valor_servicios_publicos_arrendamiento', 'valor_servicios_publicos_arrendamiento'),
+    ('nuevo_valor_iva_arrendamiento', 'valor_iva_arrendamiento'),
+    ('nuevo_valor_otros_arrendamiento', 'valor_otros_arrendamiento'),
+    ('nuevo_meses_vigencia_arrendamiento', 'meses_vigencia_arrendamiento'),
+    ('nuevo_fecha_inicio_vigencia_arrendamiento', 'fecha_inicio_vigencia_arrendamiento'),
+    ('nuevo_fecha_fin_vigencia_arrendamiento', 'fecha_fin_vigencia_arrendamiento'),
+    ('nuevo_exige_poliza_todo_riesgo', 'exige_poliza_todo_riesgo'),
+    ('nuevo_recobro_poliza_todo_riesgo', 'recobro_poliza_todo_riesgo'),
+    ('nuevo_valor_asegurado_todo_riesgo', 'valor_asegurado_todo_riesgo'),
+    ('nuevo_meses_vigencia_todo_riesgo', 'meses_vigencia_todo_riesgo'),
+    ('nuevo_fecha_inicio_vigencia_todo_riesgo', 'fecha_inicio_vigencia_todo_riesgo'),
+    ('nuevo_fecha_fin_vigencia_todo_riesgo', 'fecha_fin_vigencia_todo_riesgo'),
+    ('nuevo_exige_poliza_otra_1', 'exige_poliza_otra_1'),
+    ('nuevo_recobro_poliza_otra_1', 'recobro_poliza_otra_1'),
+    ('nuevo_nombre_poliza_otra_1', 'nombre_poliza_otra_1'),
+    ('nuevo_valor_asegurado_otra_1', 'valor_asegurado_otra_1'),
+    ('nuevo_meses_vigencia_otra_1', 'meses_vigencia_otra_1'),
+    ('nuevo_fecha_inicio_vigencia_otra_1', 'fecha_inicio_vigencia_otra_1'),
+    ('nuevo_fecha_fin_vigencia_otra_1', 'fecha_fin_vigencia_otra_1'),
+]
+
+
+def get_valores_polizas_vigentes(contrato, fecha_referencia=None):
+    """
+    Resuelve el efecto cadena para todos los campos de pólizas en una sola pasada
+    sobre los eventos aprobados (Otrosí + RenovacionAutomatica).
+
+    Retorna dict {campo_base: valor_vigente}. Si ningún documento modificó el campo,
+    el valor viene del contrato base.
+    """
+    if fecha_referencia is None:
+        fecha_referencia = date.today()
+
+    eventos = []
+    for otrosi in contrato.otrosi.all():
+        if otrosi.estado == 'APROBADO' and otrosi.effective_from <= fecha_referencia:
+            eventos.append(otrosi)
+    for renovacion in contrato.renovaciones_automaticas.all():
+        if renovacion.estado == 'APROBADO' and renovacion.effective_from <= fecha_referencia:
+            eventos.append(renovacion)
+
+    eventos.sort(
+        key=lambda x: (
+            x.effective_from,
+            x.fecha_aprobacion if x.fecha_aprobacion else _FECHA_APROBACION_MIN,
+            -(x.version if hasattr(x, 'version') else 0),
+        ),
+        reverse=True,
+    )
+
+    resultado = {}
+    pendientes = dict(_CAMPOS_POLIZAS_EXPORTACION)
+
+    for evento in eventos:
+        if not pendientes:
+            break
+        resueltos = []
+        for campo_nuevo, campo_base in list(pendientes.items()):
+            valor = getattr(evento, campo_nuevo, None)
+            if valor is None:
+                continue
+            if isinstance(valor, bool):
+                resultado[campo_base] = valor
+                resueltos.append(campo_nuevo)
+            elif isinstance(valor, str):
+                if valor.strip():
+                    resultado[campo_base] = valor
+                    resueltos.append(campo_nuevo)
+            else:
+                resultado[campo_base] = valor
+                resueltos.append(campo_nuevo)
+        for c in resueltos:
+            del pendientes[c]
+
+    for _, campo_base in _CAMPOS_POLIZAS_EXPORTACION:
+        if campo_base not in resultado:
+            resultado[campo_base] = getattr(contrato, campo_base, None)
+
+    return resultado
+
+
 def get_otrosi_vigente(contrato, fecha_referencia=None):
     """
     Obtiene el Otrosí o Renovación Automática vigente para un contrato en una fecha dada.
