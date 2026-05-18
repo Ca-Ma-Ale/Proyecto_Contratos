@@ -29,6 +29,7 @@ from gestion.services.exportes import (
     ColumnaExportacion,
     ExportacionVaciaError,
     generar_excel_corporativo,
+    generar_excel_multi_hoja,
 )
 from gestion.utils_otrosi import (
     get_ultimo_otrosi_que_modifico_campo,
@@ -1256,7 +1257,7 @@ def exportar_contratos(request):
                 messages.warning(request, 'No hay contratos que coincidan con los filtros seleccionados.')
                 return redirect('gestion:exportar_contratos')
             
-            columnas = [
+            _COLS_BASE = [
                 ColumnaExportacion('Número Contrato', ancho=22),
                 ColumnaExportacion('Tipo Contrato (Cliente/Proveedor)', ancho=30),
                 ColumnaExportacion('Tipo Contrato (Cliente)', ancho=25),
@@ -1294,6 +1295,9 @@ def exportar_contratos(request):
                 ColumnaExportacion('Fecha Inicio Periodo Gracia', ancho=30, alineacion='center'),
                 ColumnaExportacion('Fecha Fin Periodo Gracia', ancho=28, alineacion='center'),
                 ColumnaExportacion('Condición Gracia', ancho=35),
+            ]
+
+            _COLS_RCE_CLIENTE = [
                 ColumnaExportacion('Exige Póliza RCE', ancho=20),
                 ColumnaExportacion('Valor Asegurado RCE', ancho=25, es_numerica=True, alineacion='right'),
                 ColumnaExportacion('PLO RCE', ancho=18, es_numerica=True, alineacion='right'),
@@ -1303,10 +1307,33 @@ def exportar_contratos(request):
                 ColumnaExportacion('Contratistas RCE', ancho=20, es_numerica=True, alineacion='right'),
                 ColumnaExportacion('Perjuicios Extrapatrimoniales RCE', ancho=35, es_numerica=True, alineacion='right'),
                 ColumnaExportacion('Daño Moral RCE', ancho=20, es_numerica=True, alineacion='right'),
-                ColumnaExportacion('Lucro Cesante RCE', ancho=22, es_numerica=True, alineacion='right'),
+                ColumnaExportacion('Lucro Cesante RCE', ancho=18, es_numerica=True, alineacion='right'),
                 ColumnaExportacion('Meses Vigencia RCE', ancho=22, es_numerica=True, alineacion='right'),
                 ColumnaExportacion('Fecha Inicio Vigencia RCE', ancho=28, alineacion='center'),
                 ColumnaExportacion('Fecha Fin Vigencia RCE', ancho=25, alineacion='center'),
+            ]
+
+            _COLS_RCE_PROVEEDOR = [
+                ColumnaExportacion('Exige Póliza RCE', ancho=20),
+                ColumnaExportacion('Valor Asegurado RCE', ancho=25, es_numerica=True, alineacion='right'),
+                ColumnaExportacion('Daños Materiales a Terceros RCE', ancho=32, es_numerica=True, alineacion='right'),
+                ColumnaExportacion('Lesiones Personales a Terceros RCE', ancho=35, es_numerica=True, alineacion='right'),
+                ColumnaExportacion('Muerte de Terceros RCE', ancho=25, es_numerica=True, alineacion='right'),
+                ColumnaExportacion('Daños a Bienes de Terceros RCE', ancho=32, es_numerica=True, alineacion='right'),
+                ColumnaExportacion('Responsabilidad Patronal RCE', ancho=30, es_numerica=True, alineacion='right'),
+                ColumnaExportacion('Responsabilidad Cruzada RCE', ancho=28, es_numerica=True, alineacion='right'),
+                ColumnaExportacion('Daños por Contratistas RCE', ancho=28, es_numerica=True, alineacion='right'),
+                ColumnaExportacion('Daños en Ejecución Contrato RCE', ancho=32, es_numerica=True, alineacion='right'),
+                ColumnaExportacion('Daños en Predios Vecinos RCE', ancho=30, es_numerica=True, alineacion='right'),
+                ColumnaExportacion('Gastos Médicos RCE', ancho=22, es_numerica=True, alineacion='right'),
+                ColumnaExportacion('Gastos de Defensa RCE', ancho=25, es_numerica=True, alineacion='right'),
+                ColumnaExportacion('Perjuicios Patrimoniales RCE', ancho=30, es_numerica=True, alineacion='right'),
+                ColumnaExportacion('Meses Vigencia RCE', ancho=22, es_numerica=True, alineacion='right'),
+                ColumnaExportacion('Fecha Inicio Vigencia RCE', ancho=28, alineacion='center'),
+                ColumnaExportacion('Fecha Fin Vigencia RCE', ancho=25, alineacion='center'),
+            ]
+
+            _COLS_CUMPLIMIENTO_CLIENTE = [
                 ColumnaExportacion('Exige Póliza Cumplimiento', ancho=30),
                 ColumnaExportacion('Valor Asegurado Cumplimiento', ancho=32, es_numerica=True, alineacion='right'),
                 ColumnaExportacion('Remuneraciones Cumplimiento', ancho=30, es_numerica=True, alineacion='right'),
@@ -1316,6 +1343,28 @@ def exportar_contratos(request):
                 ColumnaExportacion('Meses Vigencia Cumplimiento', ancho=30, es_numerica=True, alineacion='right'),
                 ColumnaExportacion('Fecha Inicio Vigencia Cumplimiento', ancho=35, alineacion='center'),
                 ColumnaExportacion('Fecha Fin Vigencia Cumplimiento', ancho=32, alineacion='center'),
+            ]
+
+            _COLS_CUMPLIMIENTO_PROVEEDOR = [
+                ColumnaExportacion('Exige Póliza Cumplimiento', ancho=30),
+                ColumnaExportacion('Valor Asegurado Cumplimiento', ancho=32, es_numerica=True, alineacion='right'),
+                ColumnaExportacion('Amparo Cumplimiento Contrato', ancho=30, es_numerica=True, alineacion='right'),
+                ColumnaExportacion('Amparo Buen Manejo Anticipo', ancho=30, es_numerica=True, alineacion='right'),
+                ColumnaExportacion('Amparo Amortización Anticipo', ancho=30, es_numerica=True, alineacion='right'),
+                ColumnaExportacion('Amparo Salarios y Prestaciones', ancho=32, es_numerica=True, alineacion='right'),
+                ColumnaExportacion('Amparo Aportes Seguridad Social', ancho=32, es_numerica=True, alineacion='right'),
+                ColumnaExportacion('Amparo Calidad Servicio', ancho=28, es_numerica=True, alineacion='right'),
+                ColumnaExportacion('Amparo Estabilidad Obra', ancho=28, es_numerica=True, alineacion='right'),
+                ColumnaExportacion('Amparo Calidad Bienes', ancho=28, es_numerica=True, alineacion='right'),
+                ColumnaExportacion('Amparo Multas', ancho=22, es_numerica=True, alineacion='right'),
+                ColumnaExportacion('Amparo Cláusula Penal', ancho=25, es_numerica=True, alineacion='right'),
+                ColumnaExportacion('Amparo Sanciones Incumplimiento', ancho=32, es_numerica=True, alineacion='right'),
+                ColumnaExportacion('Meses Vigencia Cumplimiento', ancho=30, es_numerica=True, alineacion='right'),
+                ColumnaExportacion('Fecha Inicio Vigencia Cumplimiento', ancho=35, alineacion='center'),
+                ColumnaExportacion('Fecha Fin Vigencia Cumplimiento', ancho=32, alineacion='center'),
+            ]
+
+            _COLS_ARRENDAMIENTO = [
                 ColumnaExportacion('Exige Póliza Arrendamiento', ancho=32),
                 ColumnaExportacion('Valor Asegurado Arrendamiento', ancho=35, es_numerica=True, alineacion='right'),
                 ColumnaExportacion('Remuneraciones Arrendamiento', ancho=33, es_numerica=True, alineacion='right'),
@@ -1325,17 +1374,26 @@ def exportar_contratos(request):
                 ColumnaExportacion('Meses Vigencia Arrendamiento', ancho=33, es_numerica=True, alineacion='right'),
                 ColumnaExportacion('Fecha Inicio Vigencia Arrendamiento', ancho=38, alineacion='center'),
                 ColumnaExportacion('Fecha Fin Vigencia Arrendamiento', ancho=35, alineacion='center'),
+            ]
+
+            _COLS_TODO_RIESGO = [
                 ColumnaExportacion('Exige Póliza Todo Riesgo', ancho=28),
                 ColumnaExportacion('Valor Asegurado Todo Riesgo', ancho=32, es_numerica=True, alineacion='right'),
                 ColumnaExportacion('Meses Vigencia Todo Riesgo', ancho=30, es_numerica=True, alineacion='right'),
                 ColumnaExportacion('Fecha Inicio Vigencia Todo Riesgo', ancho=35, alineacion='center'),
                 ColumnaExportacion('Fecha Fin Vigencia Todo Riesgo', ancho=32, alineacion='center'),
+            ]
+
+            _COLS_OTRA_1 = [
                 ColumnaExportacion('Exige Otras Pólizas', ancho=22),
                 ColumnaExportacion('Nombre Otras Pólizas', ancho=28),
                 ColumnaExportacion('Valor Asegurado Otras Pólizas', ancho=32, es_numerica=True, alineacion='right'),
                 ColumnaExportacion('Meses Vigencia Otras Pólizas', ancho=30, es_numerica=True, alineacion='right'),
                 ColumnaExportacion('Fecha Inicio Vigencia Otras Pólizas', ancho=38, alineacion='center'),
                 ColumnaExportacion('Fecha Fin Vigencia Otras Pólizas', ancho=35, alineacion='center'),
+            ]
+
+            _COLS_FINALES = [
                 ColumnaExportacion('Cláusula Penal Incumplimiento', ancho=32, es_numerica=True, alineacion='right'),
                 ColumnaExportacion('Penalidad Terminación Anticipada', ancho=35, es_numerica=True, alineacion='right'),
                 ColumnaExportacion('Multa Mora No Restitución', ancho=28, es_numerica=True, alineacion='right'),
@@ -1361,8 +1419,18 @@ def exportar_contratos(request):
                 ColumnaExportacion('Recobro Póliza Todo Riesgo', ancho=28),
                 ColumnaExportacion('Recobro Otras Pólizas', ancho=24),
             ]
+
+            columnas_clientes = (
+                _COLS_BASE + _COLS_RCE_CLIENTE + _COLS_CUMPLIMIENTO_CLIENTE +
+                _COLS_ARRENDAMIENTO + _COLS_TODO_RIESGO + _COLS_OTRA_1 + _COLS_FINALES
+            )
+            columnas_proveedores = (
+                _COLS_BASE + _COLS_RCE_PROVEEDOR + _COLS_CUMPLIMIENTO_PROVEEDOR +
+                _COLS_ARRENDAMIENTO + _COLS_TODO_RIESGO + _COLS_OTRA_1 + _COLS_FINALES
+            )
             
-            registros = []
+            registros_clientes = []
+            registros_proveedores = []
             for contrato in contratos_lista:
                 fecha_final = _obtener_fecha_final_contrato(contrato, fecha_actual)
                 es_vencido = _es_contrato_vencido(contrato, fecha_actual)
@@ -1453,7 +1521,8 @@ def exportar_contratos(request):
                 renovaciones_aprobadas = [r for r in contrato.renovaciones_automaticas.all() if r.estado == 'APROBADO']
                 fecha_ultima_renovacion = max((r.effective_from for r in renovaciones_aprobadas), default=None)
 
-                registros.append((
+                # ── Campos base (37 valores, iguales para ambos tipos) ──
+                _base = (
                     contrato.num_contrato,
                     contrato.get_tipo_contrato_cliente_proveedor_display(),
                     tipo_contrato_nombre,
@@ -1491,48 +1560,10 @@ def exportar_contratos(request):
                     contrato.fecha_inicio_periodo_gracia or None,
                     contrato.fecha_fin_periodo_gracia or None,
                     contrato.condicion_gracia or None,
-                    'Sí' if pv['exige_poliza_rce'] else 'No',
-                    float(pv['valor_asegurado_rce']) if (pv['exige_poliza_rce'] and pv['valor_asegurado_rce']) else None,
-                    float(pv['valor_propietario_locatario_ocupante_rce']) if (pv['exige_poliza_rce'] and pv['valor_propietario_locatario_ocupante_rce']) else None,
-                    float(pv['valor_patronal_rce']) if (pv['exige_poliza_rce'] and pv['valor_patronal_rce']) else None,
-                    float(pv['valor_gastos_medicos_rce']) if (pv['exige_poliza_rce'] and pv['valor_gastos_medicos_rce']) else None,
-                    float(pv['valor_vehiculos_rce']) if (pv['exige_poliza_rce'] and pv['valor_vehiculos_rce']) else None,
-                    float(pv['valor_contratistas_rce']) if (pv['exige_poliza_rce'] and pv['valor_contratistas_rce']) else None,
-                    float(pv['valor_perjuicios_extrapatrimoniales_rce']) if (pv['exige_poliza_rce'] and pv['valor_perjuicios_extrapatrimoniales_rce']) else None,
-                    float(pv['valor_dano_moral_rce']) if (pv['exige_poliza_rce'] and pv['valor_dano_moral_rce']) else None,
-                    float(pv['valor_lucro_cesante_rce']) if (pv['exige_poliza_rce'] and pv['valor_lucro_cesante_rce']) else None,
-                    (pv['meses_vigencia_rce'] or None) if pv['exige_poliza_rce'] else None,
-                    pv['fecha_inicio_vigencia_rce'] if pv['exige_poliza_rce'] else None,
-                    pv['fecha_fin_vigencia_rce'] if pv['exige_poliza_rce'] else None,
-                    'Sí' if pv['exige_poliza_cumplimiento'] else 'No',
-                    float(pv['valor_asegurado_cumplimiento']) if (pv['exige_poliza_cumplimiento'] and pv['valor_asegurado_cumplimiento']) else None,
-                    float(pv['valor_remuneraciones_cumplimiento']) if (pv['exige_poliza_cumplimiento'] and pv['valor_remuneraciones_cumplimiento']) else None,
-                    float(pv['valor_servicios_publicos_cumplimiento']) if (pv['exige_poliza_cumplimiento'] and pv['valor_servicios_publicos_cumplimiento']) else None,
-                    float(pv['valor_iva_cumplimiento']) if (pv['exige_poliza_cumplimiento'] and pv['valor_iva_cumplimiento']) else None,
-                    float(pv['valor_otros_cumplimiento']) if (pv['exige_poliza_cumplimiento'] and pv['valor_otros_cumplimiento']) else None,
-                    (pv['meses_vigencia_cumplimiento'] or None) if pv['exige_poliza_cumplimiento'] else None,
-                    pv['fecha_inicio_vigencia_cumplimiento'] if pv['exige_poliza_cumplimiento'] else None,
-                    pv['fecha_fin_vigencia_cumplimiento'] if pv['exige_poliza_cumplimiento'] else None,
-                    'Sí' if pv['exige_poliza_arrendamiento'] else 'No',
-                    float(pv['valor_asegurado_arrendamiento']) if (pv['exige_poliza_arrendamiento'] and pv['valor_asegurado_arrendamiento']) else None,
-                    float(pv['valor_remuneraciones_arrendamiento']) if (pv['exige_poliza_arrendamiento'] and pv['valor_remuneraciones_arrendamiento']) else None,
-                    float(pv['valor_servicios_publicos_arrendamiento']) if (pv['exige_poliza_arrendamiento'] and pv['valor_servicios_publicos_arrendamiento']) else None,
-                    float(pv['valor_iva_arrendamiento']) if (pv['exige_poliza_arrendamiento'] and pv['valor_iva_arrendamiento']) else None,
-                    float(pv['valor_otros_arrendamiento']) if (pv['exige_poliza_arrendamiento'] and pv['valor_otros_arrendamiento']) else None,
-                    (pv['meses_vigencia_arrendamiento'] or None) if pv['exige_poliza_arrendamiento'] else None,
-                    pv['fecha_inicio_vigencia_arrendamiento'] if pv['exige_poliza_arrendamiento'] else None,
-                    pv['fecha_fin_vigencia_arrendamiento'] if pv['exige_poliza_arrendamiento'] else None,
-                    'Sí' if pv['exige_poliza_todo_riesgo'] else 'No',
-                    float(pv['valor_asegurado_todo_riesgo']) if (pv['exige_poliza_todo_riesgo'] and pv['valor_asegurado_todo_riesgo']) else None,
-                    (pv['meses_vigencia_todo_riesgo'] or None) if pv['exige_poliza_todo_riesgo'] else None,
-                    pv['fecha_inicio_vigencia_todo_riesgo'] if pv['exige_poliza_todo_riesgo'] else None,
-                    pv['fecha_fin_vigencia_todo_riesgo'] if pv['exige_poliza_todo_riesgo'] else None,
-                    'Sí' if pv['exige_poliza_otra_1'] else 'No',
-                    pv['nombre_poliza_otra_1'] if pv['exige_poliza_otra_1'] else None,
-                    float(pv['valor_asegurado_otra_1']) if (pv['exige_poliza_otra_1'] and pv['valor_asegurado_otra_1']) else None,
-                    (pv['meses_vigencia_otra_1'] or None) if pv['exige_poliza_otra_1'] else None,
-                    pv['fecha_inicio_vigencia_otra_1'] if pv['exige_poliza_otra_1'] else None,
-                    pv['fecha_fin_vigencia_otra_1'] if pv['exige_poliza_otra_1'] else None,
+                )
+
+                # ── Campos finales (iguales para ambos tipos) ──
+                _finales = (
                     contrato.clausula_penal_incumplimiento or None,
                     contrato.penalidad_terminacion_anticipada or None,
                     contrato.multa_mora_no_restitucion or None,
@@ -1557,18 +1588,109 @@ def exportar_contratos(request):
                     'Sí' if pv['recobro_poliza_arrendamiento'] else 'No',
                     'Sí' if pv['recobro_poliza_todo_riesgo'] else 'No',
                     'Sí' if pv['recobro_poliza_otra_1'] else 'No',
-                ))
+                )
+
+                # ── Campos de pólizas compartidos (arrendamiento, todo riesgo, otras) ──
+                _polizas_comunes = (
+                    'Sí' if pv['exige_poliza_arrendamiento'] else 'No',
+                    float(pv['valor_asegurado_arrendamiento']) if (pv['exige_poliza_arrendamiento'] and pv['valor_asegurado_arrendamiento']) else None,
+                    float(pv['valor_remuneraciones_arrendamiento']) if (pv['exige_poliza_arrendamiento'] and pv['valor_remuneraciones_arrendamiento']) else None,
+                    float(pv['valor_servicios_publicos_arrendamiento']) if (pv['exige_poliza_arrendamiento'] and pv['valor_servicios_publicos_arrendamiento']) else None,
+                    float(pv['valor_iva_arrendamiento']) if (pv['exige_poliza_arrendamiento'] and pv['valor_iva_arrendamiento']) else None,
+                    float(pv['valor_otros_arrendamiento']) if (pv['exige_poliza_arrendamiento'] and pv['valor_otros_arrendamiento']) else None,
+                    (pv['meses_vigencia_arrendamiento'] or None) if pv['exige_poliza_arrendamiento'] else None,
+                    pv['fecha_inicio_vigencia_arrendamiento'] if pv['exige_poliza_arrendamiento'] else None,
+                    pv['fecha_fin_vigencia_arrendamiento'] if pv['exige_poliza_arrendamiento'] else None,
+                    'Sí' if pv['exige_poliza_todo_riesgo'] else 'No',
+                    float(pv['valor_asegurado_todo_riesgo']) if (pv['exige_poliza_todo_riesgo'] and pv['valor_asegurado_todo_riesgo']) else None,
+                    (pv['meses_vigencia_todo_riesgo'] or None) if pv['exige_poliza_todo_riesgo'] else None,
+                    pv['fecha_inicio_vigencia_todo_riesgo'] if pv['exige_poliza_todo_riesgo'] else None,
+                    pv['fecha_fin_vigencia_todo_riesgo'] if pv['exige_poliza_todo_riesgo'] else None,
+                    'Sí' if pv['exige_poliza_otra_1'] else 'No',
+                    pv['nombre_poliza_otra_1'] if pv['exige_poliza_otra_1'] else None,
+                    float(pv['valor_asegurado_otra_1']) if (pv['exige_poliza_otra_1'] and pv['valor_asegurado_otra_1']) else None,
+                    (pv['meses_vigencia_otra_1'] or None) if pv['exige_poliza_otra_1'] else None,
+                    pv['fecha_inicio_vigencia_otra_1'] if pv['exige_poliza_otra_1'] else None,
+                    pv['fecha_fin_vigencia_otra_1'] if pv['exige_poliza_otra_1'] else None,
+                )
+
+                if es_proveedor:
+                    _rce = (
+                        'Sí' if pv['exige_poliza_rce'] else 'No',
+                        float(pv['valor_asegurado_rce']) if (pv['exige_poliza_rce'] and pv['valor_asegurado_rce']) else None,
+                        float(pv['rce_cobertura_danos_materiales']) if (pv['exige_poliza_rce'] and pv.get('rce_cobertura_danos_materiales')) else None,
+                        float(pv['rce_cobertura_lesiones_personales']) if (pv['exige_poliza_rce'] and pv.get('rce_cobertura_lesiones_personales')) else None,
+                        float(pv['rce_cobertura_muerte_terceros']) if (pv['exige_poliza_rce'] and pv.get('rce_cobertura_muerte_terceros')) else None,
+                        float(pv['rce_cobertura_danos_bienes_terceros']) if (pv['exige_poliza_rce'] and pv.get('rce_cobertura_danos_bienes_terceros')) else None,
+                        float(pv['rce_cobertura_responsabilidad_patronal']) if (pv['exige_poliza_rce'] and pv.get('rce_cobertura_responsabilidad_patronal')) else None,
+                        float(pv['rce_cobertura_responsabilidad_cruzada']) if (pv['exige_poliza_rce'] and pv.get('rce_cobertura_responsabilidad_cruzada')) else None,
+                        float(pv['rce_cobertura_danos_contratistas']) if (pv['exige_poliza_rce'] and pv.get('rce_cobertura_danos_contratistas')) else None,
+                        float(pv['rce_cobertura_danos_ejecucion_contrato']) if (pv['exige_poliza_rce'] and pv.get('rce_cobertura_danos_ejecucion_contrato')) else None,
+                        float(pv['rce_cobertura_danos_predios_vecinos']) if (pv['exige_poliza_rce'] and pv.get('rce_cobertura_danos_predios_vecinos')) else None,
+                        float(pv['rce_cobertura_gastos_medicos']) if (pv['exige_poliza_rce'] and pv.get('rce_cobertura_gastos_medicos')) else None,
+                        float(pv['rce_cobertura_gastos_defensa']) if (pv['exige_poliza_rce'] and pv.get('rce_cobertura_gastos_defensa')) else None,
+                        float(pv['rce_cobertura_perjuicios_patrimoniales']) if (pv['exige_poliza_rce'] and pv.get('rce_cobertura_perjuicios_patrimoniales')) else None,
+                        (pv['meses_vigencia_rce'] or None) if pv['exige_poliza_rce'] else None,
+                        pv['fecha_inicio_vigencia_rce'] if pv['exige_poliza_rce'] else None,
+                        pv['fecha_fin_vigencia_rce'] if pv['exige_poliza_rce'] else None,
+                    )
+                    _cumplimiento = (
+                        'Sí' if pv['exige_poliza_cumplimiento'] else 'No',
+                        float(pv['valor_asegurado_cumplimiento']) if (pv['exige_poliza_cumplimiento'] and pv['valor_asegurado_cumplimiento']) else None,
+                        float(pv['cumplimiento_amparo_cumplimiento_contrato']) if (pv['exige_poliza_cumplimiento'] and pv.get('cumplimiento_amparo_cumplimiento_contrato')) else None,
+                        float(pv['cumplimiento_amparo_buen_manejo_anticipo']) if (pv['exige_poliza_cumplimiento'] and pv.get('cumplimiento_amparo_buen_manejo_anticipo')) else None,
+                        float(pv['cumplimiento_amparo_amortizacion_anticipo']) if (pv['exige_poliza_cumplimiento'] and pv.get('cumplimiento_amparo_amortizacion_anticipo')) else None,
+                        float(pv['cumplimiento_amparo_salarios_prestaciones']) if (pv['exige_poliza_cumplimiento'] and pv.get('cumplimiento_amparo_salarios_prestaciones')) else None,
+                        float(pv['cumplimiento_amparo_aportes_seguridad_social']) if (pv['exige_poliza_cumplimiento'] and pv.get('cumplimiento_amparo_aportes_seguridad_social')) else None,
+                        float(pv['cumplimiento_amparo_calidad_servicio']) if (pv['exige_poliza_cumplimiento'] and pv.get('cumplimiento_amparo_calidad_servicio')) else None,
+                        float(pv['cumplimiento_amparo_estabilidad_obra']) if (pv['exige_poliza_cumplimiento'] and pv.get('cumplimiento_amparo_estabilidad_obra')) else None,
+                        float(pv['cumplimiento_amparo_calidad_bienes']) if (pv['exige_poliza_cumplimiento'] and pv.get('cumplimiento_amparo_calidad_bienes')) else None,
+                        float(pv['cumplimiento_amparo_multas']) if (pv['exige_poliza_cumplimiento'] and pv.get('cumplimiento_amparo_multas')) else None,
+                        float(pv['cumplimiento_amparo_clausula_penal']) if (pv['exige_poliza_cumplimiento'] and pv.get('cumplimiento_amparo_clausula_penal')) else None,
+                        float(pv['cumplimiento_amparo_sanciones_incumplimiento']) if (pv['exige_poliza_cumplimiento'] and pv.get('cumplimiento_amparo_sanciones_incumplimiento')) else None,
+                        (pv['meses_vigencia_cumplimiento'] or None) if pv['exige_poliza_cumplimiento'] else None,
+                        pv['fecha_inicio_vigencia_cumplimiento'] if pv['exige_poliza_cumplimiento'] else None,
+                        pv['fecha_fin_vigencia_cumplimiento'] if pv['exige_poliza_cumplimiento'] else None,
+                    )
+                    registros_proveedores.append(_base + _rce + _cumplimiento + _polizas_comunes + _finales)
+                else:
+                    _rce = (
+                        'Sí' if pv['exige_poliza_rce'] else 'No',
+                        float(pv['valor_asegurado_rce']) if (pv['exige_poliza_rce'] and pv['valor_asegurado_rce']) else None,
+                        float(pv['valor_propietario_locatario_ocupante_rce']) if (pv['exige_poliza_rce'] and pv['valor_propietario_locatario_ocupante_rce']) else None,
+                        float(pv['valor_patronal_rce']) if (pv['exige_poliza_rce'] and pv['valor_patronal_rce']) else None,
+                        float(pv['valor_gastos_medicos_rce']) if (pv['exige_poliza_rce'] and pv['valor_gastos_medicos_rce']) else None,
+                        float(pv['valor_vehiculos_rce']) if (pv['exige_poliza_rce'] and pv['valor_vehiculos_rce']) else None,
+                        float(pv['valor_contratistas_rce']) if (pv['exige_poliza_rce'] and pv['valor_contratistas_rce']) else None,
+                        float(pv['valor_perjuicios_extrapatrimoniales_rce']) if (pv['exige_poliza_rce'] and pv['valor_perjuicios_extrapatrimoniales_rce']) else None,
+                        float(pv['valor_dano_moral_rce']) if (pv['exige_poliza_rce'] and pv['valor_dano_moral_rce']) else None,
+                        float(pv['valor_lucro_cesante_rce']) if (pv['exige_poliza_rce'] and pv['valor_lucro_cesante_rce']) else None,
+                        (pv['meses_vigencia_rce'] or None) if pv['exige_poliza_rce'] else None,
+                        pv['fecha_inicio_vigencia_rce'] if pv['exige_poliza_rce'] else None,
+                        pv['fecha_fin_vigencia_rce'] if pv['exige_poliza_rce'] else None,
+                    )
+                    _cumplimiento = (
+                        'Sí' if pv['exige_poliza_cumplimiento'] else 'No',
+                        float(pv['valor_asegurado_cumplimiento']) if (pv['exige_poliza_cumplimiento'] and pv['valor_asegurado_cumplimiento']) else None,
+                        float(pv['valor_remuneraciones_cumplimiento']) if (pv['exige_poliza_cumplimiento'] and pv['valor_remuneraciones_cumplimiento']) else None,
+                        float(pv['valor_servicios_publicos_cumplimiento']) if (pv['exige_poliza_cumplimiento'] and pv['valor_servicios_publicos_cumplimiento']) else None,
+                        float(pv['valor_iva_cumplimiento']) if (pv['exige_poliza_cumplimiento'] and pv['valor_iva_cumplimiento']) else None,
+                        float(pv['valor_otros_cumplimiento']) if (pv['exige_poliza_cumplimiento'] and pv['valor_otros_cumplimiento']) else None,
+                        (pv['meses_vigencia_cumplimiento'] or None) if pv['exige_poliza_cumplimiento'] else None,
+                        pv['fecha_inicio_vigencia_cumplimiento'] if pv['exige_poliza_cumplimiento'] else None,
+                        pv['fecha_fin_vigencia_cumplimiento'] if pv['exige_poliza_cumplimiento'] else None,
+                    )
+                    registros_clientes.append(_base + _rce + _cumplimiento + _polizas_comunes + _finales)
             
             try:
-                archivo = generar_excel_corporativo(
-                    nombre_hoja='Contratos',
-                    columnas=columnas,
-                    registros=registros,
-                )
+                archivo = generar_excel_multi_hoja([
+                    ('Clientes', columnas_clientes, registros_clientes),
+                    ('Proveedores', columnas_proveedores, registros_proveedores),
+                ])
             except ExportacionVaciaError as error:
                 messages.warning(request, str(error))
                 return redirect('gestion:exportar_contratos')
-            
+
             return _respuesta_archivo_excel(archivo, 'contratos_exportados')
     else:
         form = FiltroExportacionContratosForm()
