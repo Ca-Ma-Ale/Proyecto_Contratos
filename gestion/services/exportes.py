@@ -269,6 +269,88 @@ def generar_excel_corporativo(
     return buffer.getvalue()
 
 
+def generar_excel_multi_hoja(
+    hojas: list[tuple[str, list[ColumnaExportacion], list]],
+) -> bytes:
+    """
+    Construye un archivo XLSX con múltiples hojas aplicando el formato corporativo estándar.
+
+    Args:
+        hojas: Lista de tuplas (nombre_hoja, columnas, registros).
+               Si todos los registros están vacíos se lanza ExportacionVaciaError.
+               Si alguna hoja está vacía se escribe 'Sin contratos registrados'.
+    """
+    if all(not registros for _, _, registros in hojas):
+        raise ExportacionVaciaError('No hay información disponible para exportar.')
+
+    libro = Workbook()
+    libro.remove(libro.active)
+
+    ahora_local = timezone.localtime(timezone.now())
+    timestamp = f'Generado el {ahora_local.strftime("%Y-%m-%d %H:%M:%S")}'
+
+    for nombre, columnas, registros in hojas:
+        hoja = libro.create_sheet(title=limpiar_nombre_hoja_excel(nombre))
+        formateador = FormateadorExcelCorporativo(columnas)
+        num_columnas = len(columnas)
+
+        hoja.append([col.titulo for col in columnas])
+
+        if not registros:
+            hoja.append(['Sin contratos registrados'])
+            formateador.aplicar(hoja, total_filas_datos=2)
+        else:
+            for registro in registros:
+                num_valores = len(registro)
+                if num_valores != num_columnas:
+                    raise ValueError(
+                        f'El registro tiene {num_valores} valores pero se esperaban '
+                        f'{num_columnas} columnas. Registro: {registro[:5]}...'
+                    )
+                registro_procesado = []
+                for indice, valor in enumerate(registro):
+                    col_config = columnas[indice]
+                    if col_config.es_numerica:
+                        if isinstance(valor, str):
+                            registro_procesado.append(valor)
+                        elif valor is None:
+                            registro_procesado.append('N/A')
+                        else:
+                            try:
+                                registro_procesado.append(int(round(float(valor))))
+                            except (ValueError, TypeError):
+                                registro_procesado.append('N/A')
+                    else:
+                        if valor is None or valor == '' or (
+                            isinstance(valor, str) and valor.strip() == ''
+                        ):
+                            registro_procesado.append('N/A')
+                        else:
+                            registro_procesado.append(valor)
+                hoja.append(registro_procesado)
+
+            ultima_fila_datos = len(registros) + 1
+            formateador.aplicar(hoja, ultima_fila_datos)
+
+        hoja.append([])
+        hoja.append([timestamp])
+        fila_info = hoja.max_row
+        hoja.merge_cells(
+            start_row=fila_info, start_column=1,
+            end_row=fila_info, end_column=num_columnas,
+        )
+        celda_info = hoja.cell(row=fila_info, column=1)
+        celda_info.alignment = Alignment(horizontal='right', vertical='center')
+        celda_info.font = Font(
+            name='Arial', size=9, italic=True, color=PALETA_AVENIDA['oscuro']
+        )
+
+    buffer = BytesIO()
+    libro.save(buffer)
+    buffer.seek(0)
+    return buffer.getvalue()
+
+
 def generar_excel_informes_ventas(informes_queryset=None):
     """
     Genera un archivo Excel detallado con los informes de ventas especificados.
