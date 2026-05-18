@@ -95,9 +95,12 @@ def lista_ipc_historico(request):
         # Obtener tipo_condicion_ipc efectivo considerando otrosí
         tipo_condicion_ipc = config_ajuste['tipo_condicion_ipc']
 
-        # Excluir contratos sin ajuste IPC configurado (ni en contrato ni en Otro Sí)
+        # Excluir contratos sin ajuste IPC configurado, a menos que ya tengan un
+        # cálculo APLICADO — esos deben aparecer con badge de revisión.
         if not tipo_condicion_ipc:
-            continue
+            _u = _ultimos_ipc.get(contrato.id)
+            if not (_u and _u.estado == 'APLICADO'):
+                continue
 
         # Obtener periodicidad_ipc efectiva considerando otrosí
         periodicidad_ipc = config_ajuste['periodicidad_ipc']
@@ -165,7 +168,7 @@ def lista_ipc_historico(request):
     # luego futuros de más próximo a más lejano. Sin fecha al final.
     contratos_info.sort(key=lambda x: (
         x['proxima_fecha_aumento'] is None,
-        x['proxima_fecha_aumento'],
+        x['proxima_fecha_aumento'] if x['proxima_fecha_aumento'] is not None else date.max,
     ))
 
     context = {
