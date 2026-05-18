@@ -67,7 +67,9 @@
       "Bash(git commit -m ' *)",
       "Bash(findstr /n \"finalizado\" gestion\\\\views\\\\contratos.py)",
       "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\USER9\\\\OneDrive - GLOBAL ANALITICS SAS\\\\Proyecto_Contratos\" -Recurse -Filter \"*ipc*\" -ErrorAction SilentlyContinue)",
-      "Bash(Select-Object FullName)"
+      "Bash(Select-Object FullName)",
+      "Skill(superpowers:systematic-debugging)",
+      "Bash(Select-String -NotMatch \"^[0-9]+ objects\")"
     ]
   }
 }

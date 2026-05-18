@@ -1222,18 +1222,22 @@ class OtroSiForm(BaseModelForm):
                     'Debe diligenciar este campo con un valor mayor a 0 cuando tiene marcado "Modificar Plazos y Vigencia".'
                 )
 
-        # Validar que no se modifiquen plazos y vigencia si el contrato tiene renovación automática
+        # Validar que no se modifiquen plazos y vigencia si el contrato tiene renovación automática.
+        # Excepción: al editar un OtroSí existente, se permite conservar los valores ya guardados
+        # (el usuario puede estar editando otros campos sin intención de cambiar vigencia).
         if contrato and contrato.prorroga_automatica:
             nueva_fecha_final = cleaned_data.get('nueva_fecha_final_actualizada')
             nuevo_plazo_meses = cleaned_data.get('nuevo_plazo_meses')
-            
-            if nueva_fecha_final is not None and nueva_fecha_final != '':
+            fecha_guardada = getattr(self.instance, 'nueva_fecha_final_actualizada', None) if self.instance.pk else None
+            plazo_guardado = getattr(self.instance, 'nuevo_plazo_meses', None) if self.instance.pk else None
+
+            if nueva_fecha_final is not None and nueva_fecha_final != '' and nueva_fecha_final != fecha_guardada:
                 raise forms.ValidationError(
                     'No se puede modificar la fecha final actualizada en un contrato con renovación automática. '
                     'Los ajustes de vigencia se realizan automáticamente mediante el sistema de renovaciones.'
                 )
-            
-            if nuevo_plazo_meses is not None and nuevo_plazo_meses != '':
+
+            if nuevo_plazo_meses is not None and nuevo_plazo_meses != '' and nuevo_plazo_meses != plazo_guardado:
                 raise forms.ValidationError(
                     'No se puede modificar el plazo en meses en un contrato con renovación automática. '
                     'Los ajustes de vigencia se realizan automáticamente mediante el sistema de renovaciones.'

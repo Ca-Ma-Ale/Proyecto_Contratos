@@ -778,9 +778,12 @@ def obtener_canon_vigente(contrato, fecha_referencia=None):
     otrosi_canon = get_ultimo_otrosi_que_modifico_campo_hasta_fecha(contrato, campo_otrosi, fecha_referencia)
     ultimo_calculo = obtener_ultimo_calculo_aplicado_hasta_fecha(contrato, fecha_referencia)
 
+    otrosi_canon_valor = getattr(otrosi_canon, campo_otrosi, None) if otrosi_canon else None
+
     if ultimo_calculo and ultimo_calculo.nuevo_canon:
         aplicar_calculo = False
-        if not otrosi_canon:
+        if not otrosi_canon or not otrosi_canon_valor:
+            # Sin OtroSí, o el OtroSí detectado no tiene un valor real de canon (ej: 0.00)
             aplicar_calculo = True
         else:
             fecha_aprobacion = getattr(otrosi_canon, 'fecha_aprobacion', None)
@@ -792,10 +795,8 @@ def obtener_canon_vigente(contrato, fecha_referencia=None):
         if aplicar_calculo:
             return ultimo_calculo.nuevo_canon
 
-    if otrosi_canon:
-        valor = getattr(otrosi_canon, campo_otrosi, None)
-        if valor:
-            return valor
+    if otrosi_canon_valor:
+        return otrosi_canon_valor
 
     return getattr(contrato, campo_base, None)
 
