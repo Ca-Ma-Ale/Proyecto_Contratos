@@ -324,6 +324,8 @@ def calcular_ipc(request):
                 porcentaje_total = Decimal('0')
 
             otrosi_effective_from = date.fromisoformat(datos['otrosi_effective_from'])
+            _fecha_ap_str = datos.get('fecha_aplicacion_correcta')
+            fecha_aplicacion_leg = date.fromisoformat(_fecha_ap_str) if _fecha_ap_str else otrosi_effective_from
             label_valor = 'Otro Sí' if valor_elegido == 'otrosi' else 'Cálculo IPC'
             observaciones_legalizacion = (
                 f'Legalizado vía Otro Sí versión {otrosi.version} '
@@ -332,11 +334,11 @@ def calcular_ipc(request):
             )
 
             from gestion.models import OtroSi
-            _cfg_leg = obtener_configuracion_ajuste_efectiva(contrato, otrosi_effective_from)
+            _cfg_leg = obtener_configuracion_ajuste_efectiva(contrato, fecha_aplicacion_leg)
             calculo = CalculoIPC.objects.create(
                 contrato=contrato,
-                año_aplicacion=otrosi_effective_from.year,
-                fecha_aplicacion=otrosi_effective_from,
+                año_aplicacion=fecha_aplicacion_leg.year,
+                fecha_aplicacion=fecha_aplicacion_leg,
                 ipc_historico=ipc_historico,
                 canon_anterior=canon_anterior.quantize(Decimal('0.01')),
                 canon_anterior_manual=False,
@@ -386,6 +388,18 @@ def calcular_ipc(request):
                 messages.error(request, 'El Otro Sí seleccionado no es válido.')
                 return redirect('gestion:calcular_ipc')
 
+            # La fecha de aplicación usa el año del OS pero el mes/día de la fecha de aumento del contrato
+            _cfg_val = obtener_configuracion_ajuste_efectiva(contrato_leg, otrosi_sel.effective_from)
+            _fecha_aumento_ref = _cfg_val.get('fecha_aumento_ipc') or contrato_leg.fecha_aumento_ipc
+            if _fecha_aumento_ref:
+                fecha_aplicacion_leg = date(
+                    otrosi_sel.effective_from.year,
+                    _fecha_aumento_ref.month,
+                    _fecha_aumento_ref.day,
+                )
+            else:
+                fecha_aplicacion_leg = otrosi_sel.effective_from
+
             # Canon base calculado para la fecha del Otro Sí
             canon_info_leg = obtener_canon_base_para_ipc(contrato_leg, otrosi_sel.effective_from)
             canon_base = canon_info_leg['canon']
@@ -415,6 +429,7 @@ def calcular_ipc(request):
                 'ipc_historico_id': ipc_historico_leg.id,
                 'otrosi_id': otrosi_sel.id,
                 'otrosi_effective_from': otrosi_sel.effective_from.isoformat(),
+                'fecha_aplicacion_correcta': fecha_aplicacion_leg.isoformat(),
                 'canon_anterior': str(canon_base),
                 'canon_otrosi': str(canon_otrosi),
                 'nuevo_canon_ipc': str(nuevo_canon_ipc),
