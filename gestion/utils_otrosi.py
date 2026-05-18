@@ -440,6 +440,31 @@ _CAMPOS_POLIZAS_EXPORTACION = [
     ('nuevo_meses_vigencia_otra_1', 'meses_vigencia_otra_1'),
     ('nuevo_fecha_inicio_vigencia_otra_1', 'fecha_inicio_vigencia_otra_1'),
     ('nuevo_fecha_fin_vigencia_otra_1', 'fecha_fin_vigencia_otra_1'),
+    # Coberturas RCE — Proveedor (efecto cadena via OtroSí)
+    ('nuevo_rce_cobertura_danos_materiales', 'rce_cobertura_danos_materiales'),
+    ('nuevo_rce_cobertura_lesiones_personales', 'rce_cobertura_lesiones_personales'),
+    ('nuevo_rce_cobertura_muerte_terceros', 'rce_cobertura_muerte_terceros'),
+    ('nuevo_rce_cobertura_danos_bienes_terceros', 'rce_cobertura_danos_bienes_terceros'),
+    ('nuevo_rce_cobertura_responsabilidad_patronal', 'rce_cobertura_responsabilidad_patronal'),
+    ('nuevo_rce_cobertura_responsabilidad_cruzada', 'rce_cobertura_responsabilidad_cruzada'),
+    ('nuevo_rce_cobertura_danos_contratistas', 'rce_cobertura_danos_contratistas'),
+    ('nuevo_rce_cobertura_danos_ejecucion_contrato', 'rce_cobertura_danos_ejecucion_contrato'),
+    ('nuevo_rce_cobertura_danos_predios_vecinos', 'rce_cobertura_danos_predios_vecinos'),
+    ('nuevo_rce_cobertura_gastos_medicos', 'rce_cobertura_gastos_medicos'),
+    ('nuevo_rce_cobertura_gastos_defensa', 'rce_cobertura_gastos_defensa'),
+    ('nuevo_rce_cobertura_perjuicios_patrimoniales', 'rce_cobertura_perjuicios_patrimoniales'),
+    # Amparos Cumplimiento — Proveedor (efecto cadena via OtroSí)
+    ('nuevo_cumplimiento_amparo_cumplimiento_contrato', 'cumplimiento_amparo_cumplimiento_contrato'),
+    ('nuevo_cumplimiento_amparo_buen_manejo_anticipo', 'cumplimiento_amparo_buen_manejo_anticipo'),
+    ('nuevo_cumplimiento_amparo_amortizacion_anticipo', 'cumplimiento_amparo_amortizacion_anticipo'),
+    ('nuevo_cumplimiento_amparo_salarios_prestaciones', 'cumplimiento_amparo_salarios_prestaciones'),
+    ('nuevo_cumplimiento_amparo_aportes_seguridad_social', 'cumplimiento_amparo_aportes_seguridad_social'),
+    ('nuevo_cumplimiento_amparo_calidad_servicio', 'cumplimiento_amparo_calidad_servicio'),
+    ('nuevo_cumplimiento_amparo_estabilidad_obra', 'cumplimiento_amparo_estabilidad_obra'),
+    ('nuevo_cumplimiento_amparo_calidad_bienes', 'cumplimiento_amparo_calidad_bienes'),
+    ('nuevo_cumplimiento_amparo_multas', 'cumplimiento_amparo_multas'),
+    ('nuevo_cumplimiento_amparo_clausula_penal', 'cumplimiento_amparo_clausula_penal'),
+    ('nuevo_cumplimiento_amparo_sanciones_incumplimiento', 'cumplimiento_amparo_sanciones_incumplimiento'),
 ]
 
 
