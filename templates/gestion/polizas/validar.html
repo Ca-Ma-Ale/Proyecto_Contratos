@@ -103,18 +103,15 @@
                                 <p><strong>Daño Moral:</strong> ${{ detalles.dano_moral|default:0|formato_moneda }}</p>
                                 <p class="mb-0"><strong>Lucro Cesante:</strong> ${{ detalles.lucro_cesante|default:0|formato_moneda }}</p>
                                 {% elif contrato.tipo_contrato_cliente_proveedor == 'PROVEEDOR' %}
-                                <p><strong>Daños materiales a terceros:</strong> ${{ detalles.danos_materiales|default:0|formato_moneda }}</p>
-                                <p><strong>Lesiones personales a terceros:</strong> ${{ detalles.lesiones_personales|default:0|formato_moneda }}</p>
-                                <p><strong>Muerte de terceros:</strong> ${{ detalles.muerte_terceros|default:0|formato_moneda }}</p>
-                                <p><strong>Daños a bienes de terceros:</strong> ${{ detalles.danos_bienes_terceros|default:0|formato_moneda }}</p>
-                                <p><strong>Responsabilidad patronal:</strong> ${{ detalles.responsabilidad_patronal|default:0|formato_moneda }}</p>
-                                <p><strong>Responsabilidad cruzada:</strong> ${{ detalles.responsabilidad_cruzada|default:0|formato_moneda }}</p>
-                                <p><strong>Daños por contratistas:</strong> ${{ detalles.danos_contratistas|default:0|formato_moneda }}</p>
-                                <p><strong>Daños durante ejecución:</strong> ${{ detalles.danos_ejecucion_contrato|default:0|formato_moneda }}</p>
-                                <p><strong>Daños en predios vecinos:</strong> ${{ detalles.danos_predios_vecinos|default:0|formato_moneda }}</p>
+                                <p><strong>PLO (Predios, Labores y Operaciones):</strong> ${{ detalles.danos_materiales|default:0|formato_moneda }}</p>
+                                <p><strong>Patronal:</strong> ${{ detalles.responsabilidad_patronal|default:0|formato_moneda }}</p>
                                 <p><strong>Gastos médicos:</strong> ${{ detalles.gastos_medicos_cobertura|default:0|formato_moneda }}</p>
-                                <p><strong>Gastos de defensa:</strong> ${{ detalles.gastos_defensa|default:0|formato_moneda }}</p>
-                                <p class="mb-0"><strong>Perjuicios patrimoniales:</strong> ${{ detalles.perjuicios_patrimoniales|default:0|formato_moneda }}</p>
+                                <p><strong>Vehículos propios y no propios:</strong> ${{ detalles.danos_bienes_terceros|default:0|formato_moneda }}</p>
+                                <p><strong>Contratistas y subcontratistas:</strong> ${{ detalles.danos_contratistas|default:0|formato_moneda }}</p>
+                                <p><strong>Perjuicios extrapatrimoniales:</strong> ${{ detalles.perjuicios_patrimoniales|default:0|formato_moneda }}</p>
+                                <p><strong>Daño moral:</strong> ${{ detalles.danos_ejecucion_contrato|default:0|formato_moneda }}</p>
+                                <p><strong>Lucro cesante:</strong> ${{ detalles.danos_predios_vecinos|default:0|formato_moneda }}</p>
+                                <p class="mb-0"><strong>Estabilidad de la obra:</strong> ${{ detalles.muerte_terceros|default:0|formato_moneda }}</p>
                                 {% endif %}
                                 {% endwith %}
                             </div>
@@ -273,18 +270,15 @@
                         <p class="mb-1"><strong>Daño Moral:</strong> ${{ detalles.dano_moral|default:0|formato_moneda }}</p>
                         <p class="mb-0"><strong>Lucro Cesante:</strong> ${{ detalles.lucro_cesante|default:0|formato_moneda }}</p>
                         {% elif contrato.tipo_contrato_cliente_proveedor == 'PROVEEDOR' %}
-                        <p class="mb-1"><strong>Daños materiales:</strong> ${{ detalles.danos_materiales|default:0|formato_moneda }}</p>
-                        <p class="mb-1"><strong>Lesiones personales:</strong> ${{ detalles.lesiones_personales|default:0|formato_moneda }}</p>
-                        <p class="mb-1"><strong>Muerte de terceros:</strong> ${{ detalles.muerte_terceros|default:0|formato_moneda }}</p>
-                        <p class="mb-1"><strong>Daños a bienes:</strong> ${{ detalles.danos_bienes_terceros|default:0|formato_moneda }}</p>
-                        <p class="mb-1"><strong>Responsabilidad patronal:</strong> ${{ detalles.responsabilidad_patronal|default:0|formato_moneda }}</p>
-                        <p class="mb-1"><strong>Responsabilidad cruzada:</strong> ${{ detalles.responsabilidad_cruzada|default:0|formato_moneda }}</p>
-                        <p class="mb-1"><strong>Daños contratistas:</strong> ${{ detalles.danos_contratistas|default:0|formato_moneda }}</p>
-                        <p class="mb-1"><strong>Daños ejecución:</strong> ${{ detalles.danos_ejecucion_contrato|default:0|formato_moneda }}</p>
-                        <p class="mb-1"><strong>Daños predios vecinos:</strong> ${{ detalles.danos_predios_vecinos|default:0|formato_moneda }}</p>
+                        <p class="mb-1"><strong>PLO (Predios, Labores y Operaciones):</strong> ${{ detalles.danos_materiales|default:0|formato_moneda }}</p>
+                        <p class="mb-1"><strong>Patronal:</strong> ${{ detalles.responsabilidad_patronal|default:0|formato_moneda }}</p>
                         <p class="mb-1"><strong>Gastos médicos:</strong> ${{ detalles.gastos_medicos_cobertura|default:0|formato_moneda }}</p>
-                        <p class="mb-1"><strong>Gastos de defensa:</strong> ${{ detalles.gastos_defensa|default:0|formato_moneda }}</p>
-                        <p class="mb-0"><strong>Perjuicios patrimoniales:</strong> ${{ detalles.perjuicios_patrimoniales|default:0|formato_moneda }}</p>
+                        <p class="mb-1"><strong>Vehículos propios y no propios:</strong> ${{ detalles.danos_bienes_terceros|default:0|formato_moneda }}</p>
+                        <p class="mb-1"><strong>Contratistas y subcontratistas:</strong> ${{ detalles.danos_contratistas|default:0|formato_moneda }}</p>
+                        <p class="mb-1"><strong>Perjuicios extrapatrimoniales:</strong> ${{ detalles.perjuicios_patrimoniales|default:0|formato_moneda }}</p>
+                        <p class="mb-1"><strong>Daño moral:</strong> ${{ detalles.danos_ejecucion_contrato|default:0|formato_moneda }}</p>
+                        <p class="mb-1"><strong>Lucro cesante:</strong> ${{ detalles.danos_predios_vecinos|default:0|formato_moneda }}</p>
+                        <p class="mb-0"><strong>Estabilidad de la obra:</strong> ${{ detalles.muerte_terceros|default:0|formato_moneda }}</p>
                         {% endif %}
                         {% endwith %}
                     </div>

@@ -440,7 +440,7 @@ _CAMPOS_POLIZAS_EXPORTACION = [
     ('nuevo_meses_vigencia_otra_1', 'meses_vigencia_otra_1'),
     ('nuevo_fecha_inicio_vigencia_otra_1', 'fecha_inicio_vigencia_otra_1'),
     ('nuevo_fecha_fin_vigencia_otra_1', 'fecha_fin_vigencia_otra_1'),
-    # Coberturas RCE — Proveedor (efecto cadena via OtroSí)
+    # Coberturas RCE — Proveedor (efecto cadena via OtroSí, campos del modelo Contrato)
     ('nuevo_rce_cobertura_danos_materiales', 'rce_cobertura_danos_materiales'),
     ('nuevo_rce_cobertura_lesiones_personales', 'rce_cobertura_lesiones_personales'),
     ('nuevo_rce_cobertura_muerte_terceros', 'rce_cobertura_muerte_terceros'),
@@ -1441,16 +1441,13 @@ def get_polizas_requeridas_contrato(contrato, fecha_referencia=None, permitir_fu
         if contrato.tipo_contrato_cliente_proveedor == 'PROVEEDOR':
             detalles_rce.update({
                 'danos_materiales': obtener_valor('nuevo_rce_cobertura_danos_materiales', 'rce_cobertura_danos_materiales'),
-                'lesiones_personales': obtener_valor('nuevo_rce_cobertura_lesiones_personales', 'rce_cobertura_lesiones_personales'),
                 'muerte_terceros': obtener_valor('nuevo_rce_cobertura_muerte_terceros', 'rce_cobertura_muerte_terceros'),
                 'danos_bienes_terceros': obtener_valor('nuevo_rce_cobertura_danos_bienes_terceros', 'rce_cobertura_danos_bienes_terceros'),
                 'responsabilidad_patronal': obtener_valor('nuevo_rce_cobertura_responsabilidad_patronal', 'rce_cobertura_responsabilidad_patronal'),
-                'responsabilidad_cruzada': obtener_valor('nuevo_rce_cobertura_responsabilidad_cruzada', 'rce_cobertura_responsabilidad_cruzada'),
                 'danos_contratistas': obtener_valor('nuevo_rce_cobertura_danos_contratistas', 'rce_cobertura_danos_contratistas'),
                 'danos_ejecucion_contrato': obtener_valor('nuevo_rce_cobertura_danos_ejecucion_contrato', 'rce_cobertura_danos_ejecucion_contrato'),
                 'danos_predios_vecinos': obtener_valor('nuevo_rce_cobertura_danos_predios_vecinos', 'rce_cobertura_danos_predios_vecinos'),
                 'gastos_medicos_cobertura': obtener_valor('nuevo_rce_cobertura_gastos_medicos', 'rce_cobertura_gastos_medicos'),
-                'gastos_defensa': obtener_valor('nuevo_rce_cobertura_gastos_defensa', 'rce_cobertura_gastos_defensa'),
                 'perjuicios_patrimoniales': obtener_valor('nuevo_rce_cobertura_perjuicios_patrimoniales', 'rce_cobertura_perjuicios_patrimoniales'),
             })
         

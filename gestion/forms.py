@@ -886,19 +886,16 @@ class PolizaForm(BaseModelForm):
             'valor_servicios_publicos_arrendamiento': forms.TextInput(attrs={'class': 'money-input'}),
             'valor_iva_arrendamiento': forms.TextInput(attrs={'class': 'money-input'}),
             'valor_otros_arrendamiento': forms.TextInput(attrs={'class': 'money-input'}),
-            # Campos RCE - Coberturas para PROVEEDOR
-            'rce_cobertura_danos_materiales': forms.TextInput(attrs={'class': 'money-input'}),
-            'rce_cobertura_lesiones_personales': forms.TextInput(attrs={'class': 'money-input'}),
-            'rce_cobertura_muerte_terceros': forms.TextInput(attrs={'class': 'money-input'}),
-            'rce_cobertura_danos_bienes_terceros': forms.TextInput(attrs={'class': 'money-input'}),
-            'rce_cobertura_responsabilidad_patronal': forms.TextInput(attrs={'class': 'money-input'}),
-            'rce_cobertura_responsabilidad_cruzada': forms.TextInput(attrs={'class': 'money-input'}),
-            'rce_cobertura_danos_contratistas': forms.TextInput(attrs={'class': 'money-input'}),
-            'rce_cobertura_danos_ejecucion_contrato': forms.TextInput(attrs={'class': 'money-input'}),
-            'rce_cobertura_danos_predios_vecinos': forms.TextInput(attrs={'class': 'money-input'}),
-            'rce_cobertura_gastos_medicos': forms.TextInput(attrs={'class': 'money-input'}),
-            'rce_cobertura_gastos_defensa': forms.TextInput(attrs={'class': 'money-input'}),
-            'rce_cobertura_perjuicios_patrimoniales': forms.TextInput(attrs={'class': 'money-input'}),
+            # Campos RCE - Amparos para PROVEEDOR
+            'rce_amparo_plo': forms.TextInput(attrs={'class': 'money-input'}),
+            'rce_amparo_patronal': forms.TextInput(attrs={'class': 'money-input'}),
+            'rce_amparo_gastos_medicos': forms.TextInput(attrs={'class': 'money-input'}),
+            'rce_amparo_vehiculos': forms.TextInput(attrs={'class': 'money-input'}),
+            'rce_amparo_contratistas': forms.TextInput(attrs={'class': 'money-input'}),
+            'rce_amparo_perjuicios_extrapatrimoniales': forms.TextInput(attrs={'class': 'money-input'}),
+            'rce_amparo_dano_moral': forms.TextInput(attrs={'class': 'money-input'}),
+            'rce_amparo_lucro_cesante': forms.TextInput(attrs={'class': 'money-input'}),
+            'rce_amparo_estabilidad_obra': forms.TextInput(attrs={'class': 'money-input'}),
             # Campos Cumplimiento - Amparos para PROVEEDOR
             'cumplimiento_amparo_cumplimiento_contrato': forms.TextInput(attrs={'class': 'money-input'}),
             'cumplimiento_amparo_buen_manejo_anticipo': forms.TextInput(attrs={'class': 'money-input'}),
@@ -935,11 +932,10 @@ class PolizaForm(BaseModelForm):
                 'valor_iva_cumplimiento', 'valor_otros_cumplimiento',
                 'valor_asegurado_arrendamiento', 'valor_remuneraciones_arrendamiento', 'valor_servicios_publicos_arrendamiento',
                 'valor_iva_arrendamiento', 'valor_otros_arrendamiento',
-                # Campos RCE - Coberturas para PROVEEDOR
-                'rce_cobertura_danos_materiales', 'rce_cobertura_lesiones_personales', 'rce_cobertura_muerte_terceros',
-                'rce_cobertura_danos_bienes_terceros', 'rce_cobertura_responsabilidad_patronal', 'rce_cobertura_responsabilidad_cruzada',
-                'rce_cobertura_danos_contratistas', 'rce_cobertura_danos_ejecucion_contrato', 'rce_cobertura_danos_predios_vecinos',
-                'rce_cobertura_gastos_medicos', 'rce_cobertura_gastos_defensa', 'rce_cobertura_perjuicios_patrimoniales',
+                # Campos RCE - Amparos para PROVEEDOR
+                'rce_amparo_plo', 'rce_amparo_patronal', 'rce_amparo_gastos_medicos',
+                'rce_amparo_vehiculos', 'rce_amparo_contratistas', 'rce_amparo_perjuicios_extrapatrimoniales',
+                'rce_amparo_dano_moral', 'rce_amparo_lucro_cesante', 'rce_amparo_estabilidad_obra',
                 # Campos Cumplimiento - Amparos para PROVEEDOR
                 'cumplimiento_amparo_cumplimiento_contrato', 'cumplimiento_amparo_buen_manejo_anticipo', 'cumplimiento_amparo_amortizacion_anticipo',
                 'cumplimiento_amparo_salarios_prestaciones', 'cumplimiento_amparo_aportes_seguridad_social', 'cumplimiento_amparo_calidad_servicio',
@@ -1048,7 +1044,10 @@ class PolizaForm(BaseModelForm):
                 if requisitos_base.get('arrendamiento', {}).get('exigida'):
                     tipos_unicos.add('Poliza de Arrendamiento')
                 if requisitos_base.get('todo_riesgo', {}).get('exigida'):
-                    tipos_unicos.add('Arrendamiento')
+                    if self.contrato.tipo_contrato_cliente_proveedor == 'PROVEEDOR':
+                        tipos_unicos.add('Todo Riesgo')
+                    else:
+                        tipos_unicos.add('Arrendamiento')
                 if requisitos_base.get('otra', {}).get('exigida'):
                     tipos_unicos.add('Otra')
                 
@@ -1084,6 +1083,7 @@ class PolizaForm(BaseModelForm):
                     'Cumplimiento': 'Cumplimiento',
                     'Poliza de Arrendamiento': 'Póliza de Arrendamiento',
                     'Arrendamiento': 'Arrendamiento',
+                    'Todo Riesgo': 'Todo Riesgo',
                     'Otra': 'Otra'
                 }
                 
@@ -1138,7 +1138,7 @@ class PolizaForm(BaseModelForm):
                     if campo in self.fields:
                         self.fields[campo].widget = forms.HiddenInput()
                         self.fields[campo].required = False
-                
+
                 # Ocultar campos de CLIENTE para Cumplimiento
                 campos_cliente_cumplimiento = [
                     'valor_remuneraciones_cumplimiento', 'valor_servicios_publicos_cumplimiento',
@@ -1148,22 +1148,20 @@ class PolizaForm(BaseModelForm):
                     if campo in self.fields:
                         self.fields[campo].widget = forms.HiddenInput()
                         self.fields[campo].required = False
-            
+
             elif tipo_contrato == 'CLIENTE':
-                # Ocultar campos de PROVEEDOR para RCE
+                # Ocultar todos los campos de PROVEEDOR para RCE
                 campos_proveedor_rce = [
-                    'rce_cobertura_danos_materiales', 'rce_cobertura_lesiones_personales',
-                    'rce_cobertura_muerte_terceros', 'rce_cobertura_danos_bienes_terceros',
-                    'rce_cobertura_responsabilidad_patronal', 'rce_cobertura_responsabilidad_cruzada',
-                    'rce_cobertura_danos_contratistas', 'rce_cobertura_danos_ejecucion_contrato',
-                    'rce_cobertura_danos_predios_vecinos', 'rce_cobertura_gastos_medicos',
-                    'rce_cobertura_gastos_defensa', 'rce_cobertura_perjuicios_patrimoniales'
+                    'rce_amparo_plo', 'rce_amparo_patronal', 'rce_amparo_gastos_medicos',
+                    'rce_amparo_vehiculos', 'rce_amparo_contratistas',
+                    'rce_amparo_perjuicios_extrapatrimoniales', 'rce_amparo_dano_moral',
+                    'rce_amparo_lucro_cesante', 'rce_amparo_estabilidad_obra',
                 ]
                 for campo in campos_proveedor_rce:
                     if campo in self.fields:
                         self.fields[campo].widget = forms.HiddenInput()
                         self.fields[campo].required = False
-                
+
                 # Ocultar campos de PROVEEDOR para Cumplimiento
                 campos_proveedor_cumplimiento = [
                     'cumplimiento_amparo_cumplimiento_contrato', 'cumplimiento_amparo_buen_manejo_anticipo',

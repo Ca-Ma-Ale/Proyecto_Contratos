@@ -163,13 +163,24 @@ def gestionar_polizas(request, contrato_id):
     if requisitos_contrato['arrendamiento']['exigida']:
         pólizas_requeridas.append('Poliza de Arrendamiento')
     if requisitos_contrato['todo_riesgo']['exigida']:
-        pólizas_requeridas.append('Arrendamiento')
+        if contrato.tipo_contrato_cliente_proveedor == 'PROVEEDOR':
+            pólizas_requeridas.append('Todo Riesgo')
+        else:
+            pólizas_requeridas.append('Arrendamiento')
     if requisitos_contrato['otra']['exigida']:
         nombre_otra = requisitos_contrato['otra'].get('nombre') or 'Otra'
         pólizas_requeridas.append(nombre_otra)
     
     pólizas_aportadas_tipos = [p.tipo for p in polizas]
-    pólizas_faltantes = [tipo for tipo in pólizas_requeridas if tipo not in pólizas_aportadas_tipos]
+    otra_nombre_req = (requisitos_contrato.get('otra', {}).get('nombre') or 'Otra') if requisitos_contrato.get('otra', {}).get('exigida') else None
+    pólizas_faltantes = []
+    for tipo in pólizas_requeridas:
+        if tipo in pólizas_aportadas_tipos:
+            continue
+        # "Otra" con nombre personalizado: el tipo guardado en BD es siempre 'Otra'
+        if tipo == otra_nombre_req and 'Otra' in pólizas_aportadas_tipos:
+            continue
+        pólizas_faltantes.append(tipo)
     
     # Verificar estado de vigencia del contrato
     hoy = date.today()

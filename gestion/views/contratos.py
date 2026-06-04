@@ -268,25 +268,27 @@ def lista_contratos(request):
     fecha_actual = date.today()
     estado_vigencia = 'vigentes'
     
-    tipo_filtro_activo = request.GET.get('tipo_contrato_cliente_proveedor', '')
-    
+    _TIPOS_CP_VALIDOS = {'CLIENTE', 'PROVEEDOR'}
+    _raw_tipo = request.GET.get('tipo_contrato_cliente_proveedor', '')
+    tipo_filtro_activo = _raw_tipo if _raw_tipo in _TIPOS_CP_VALIDOS else ''
+
     if filtro_form.is_valid():
         tipo_contrato_cliente_proveedor = filtro_form.cleaned_data.get('tipo_contrato_cliente_proveedor')
         tipo_contrato = filtro_form.cleaned_data.get('tipo_contrato')
         tipo_servicio = filtro_form.cleaned_data.get('tipo_servicio')
         buscar = filtro_form.cleaned_data.get('buscar')
         estado_vigencia = filtro_form.cleaned_data.get('estado_vigencia') or estado_vigencia
-        
+
         if tipo_contrato_cliente_proveedor:
             contratos = contratos.filter(tipo_contrato_cliente_proveedor=tipo_contrato_cliente_proveedor)
             tipo_filtro_activo = tipo_contrato_cliente_proveedor
-        
+
         if tipo_contrato:
             contratos = contratos.filter(tipo_contrato=tipo_contrato)
-        
+
         if tipo_servicio:
             contratos = contratos.filter(tipo_servicio=tipo_servicio)
-        
+
         if buscar:
             contratos = contratos.filter(
                 Q(arrendatario__razon_social__icontains=buscar) |

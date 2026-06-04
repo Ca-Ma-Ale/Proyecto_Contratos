@@ -216,20 +216,17 @@
                                     </h6>
                                     <div class="row">
                                         <div class="col-md-6">
-                                            {% if detalles.danos_materiales %}<p class="mb-1"><strong>Daños materiales a terceros:</strong> ${{ detalles.danos_materiales|formato_moneda }}</p>{% endif %}
-                                            {% if detalles.lesiones_personales %}<p class="mb-1"><strong>Lesiones personales a terceros:</strong> ${{ detalles.lesiones_personales|formato_moneda }}</p>{% endif %}
-                                            {% if detalles.muerte_terceros %}<p class="mb-1"><strong>Muerte de terceros:</strong> ${{ detalles.muerte_terceros|formato_moneda }}</p>{% endif %}
-                                            {% if detalles.danos_bienes_terceros %}<p class="mb-1"><strong>Daños a bienes de terceros:</strong> ${{ detalles.danos_bienes_terceros|formato_moneda }}</p>{% endif %}
-                                            {% if detalles.responsabilidad_patronal %}<p class="mb-1"><strong>Responsabilidad patronal:</strong> ${{ detalles.responsabilidad_patronal|formato_moneda }}</p>{% endif %}
-                                            {% if detalles.responsabilidad_cruzada %}<p class="mb-1"><strong>Responsabilidad cruzada:</strong> ${{ detalles.responsabilidad_cruzada|formato_moneda }}</p>{% endif %}
+                                            {% if detalles.danos_materiales %}<p class="mb-1"><strong>PLO (Predios, Labores y Operaciones):</strong> ${{ detalles.danos_materiales|formato_moneda }}</p>{% endif %}
+                                            {% if detalles.responsabilidad_patronal %}<p class="mb-1"><strong>Patronal:</strong> ${{ detalles.responsabilidad_patronal|formato_moneda }}</p>{% endif %}
+                                            {% if detalles.gastos_medicos_cobertura %}<p class="mb-1"><strong>Gastos médicos:</strong> ${{ detalles.gastos_medicos_cobertura|formato_moneda }}</p>{% endif %}
+                                            {% if detalles.danos_bienes_terceros %}<p class="mb-1"><strong>Vehículos propios y no propios:</strong> ${{ detalles.danos_bienes_terceros|formato_moneda }}</p>{% endif %}
+                                            {% if detalles.danos_contratistas %}<p class="mb-1"><strong>Contratistas y subcontratistas:</strong> ${{ detalles.danos_contratistas|formato_moneda }}</p>{% endif %}
                                         </div>
                                         <div class="col-md-6">
-                                            {% if detalles.danos_contratistas %}<p class="mb-1"><strong>Daños por contratistas:</strong> ${{ detalles.danos_contratistas|formato_moneda }}</p>{% endif %}
-                                            {% if detalles.danos_ejecucion_contrato %}<p class="mb-1"><strong>Daños durante ejecución:</strong> ${{ detalles.danos_ejecucion_contrato|formato_moneda }}</p>{% endif %}
-                                            {% if detalles.danos_predios_vecinos %}<p class="mb-1"><strong>Daños en predios vecinos:</strong> ${{ detalles.danos_predios_vecinos|formato_moneda }}</p>{% endif %}
-                                            {% if detalles.gastos_medicos_cobertura %}<p class="mb-1"><strong>Gastos médicos:</strong> ${{ detalles.gastos_medicos_cobertura|formato_moneda }}</p>{% endif %}
-                                            {% if detalles.gastos_defensa %}<p class="mb-1"><strong>Gastos de defensa:</strong> ${{ detalles.gastos_defensa|formato_moneda }}</p>{% endif %}
-                                            {% if detalles.perjuicios_patrimoniales %}<p class="mb-1"><strong>Perjuicios patrimoniales:</strong> ${{ detalles.perjuicios_patrimoniales|formato_moneda }}</p>{% endif %}
+                                            {% if detalles.perjuicios_patrimoniales %}<p class="mb-1"><strong>Perjuicios extrapatrimoniales:</strong> ${{ detalles.perjuicios_patrimoniales|formato_moneda }}</p>{% endif %}
+                                            {% if detalles.danos_ejecucion_contrato %}<p class="mb-1"><strong>Daño moral:</strong> ${{ detalles.danos_ejecucion_contrato|formato_moneda }}</p>{% endif %}
+                                            {% if detalles.danos_predios_vecinos %}<p class="mb-1"><strong>Lucro cesante:</strong> ${{ detalles.danos_predios_vecinos|formato_moneda }}</p>{% endif %}
+                                            {% if detalles.muerte_terceros %}<p class="mb-1"><strong>Estabilidad de la obra:</strong> ${{ detalles.muerte_terceros|formato_moneda }}</p>{% endif %}
                                         </div>
                                     </div>
                                 </div>

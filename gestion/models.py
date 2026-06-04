@@ -145,6 +145,7 @@ POLIZA_TIPO_CHOICES = [
     ('Poliza de Arrendamiento', 'Póliza de Arrendamiento'),
     ('RCE - Responsabilidad Civil', 'RCE - Responsabilidad Civil'),
     ('Arrendamiento', 'Arrendamiento'),
+    ('Todo Riesgo', 'Todo Riesgo'),
     ('Otra', 'Otra'),
 ]
 
@@ -786,19 +787,16 @@ class Poliza(PolizaMixin, AuditoriaMixin):
         blank=True,
         verbose_name='Cuota de Administración Asegurada (Arrendamiento)'
     )
-    # Campos RCE - Coberturas para PROVEEDOR
-    rce_cobertura_danos_materiales = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True, verbose_name="Daños materiales a terceros")
-    rce_cobertura_lesiones_personales = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True, verbose_name="Lesiones personales a terceros")
-    rce_cobertura_muerte_terceros = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True, verbose_name="Muerte de terceros")
-    rce_cobertura_danos_bienes_terceros = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True, verbose_name="Daños a bienes de terceros")
-    rce_cobertura_responsabilidad_patronal = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True, verbose_name="Responsabilidad patronal (si aplica)")
-    rce_cobertura_responsabilidad_cruzada = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True, verbose_name="Responsabilidad cruzada (si aplica)")
-    rce_cobertura_danos_contratistas = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True, verbose_name="Daños causados por contratistas y subcontratistas (si aplica)")
-    rce_cobertura_danos_ejecucion_contrato = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True, verbose_name="Daños durante la ejecución del contrato")
-    rce_cobertura_danos_predios_vecinos = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True, verbose_name="Daños en predios vecinos (si aplica)")
-    rce_cobertura_gastos_medicos = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True, verbose_name="Gastos médicos (si aplica)")
-    rce_cobertura_gastos_defensa = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True, verbose_name="Gastos de defensa (si aplica)")
-    rce_cobertura_perjuicios_patrimoniales = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True, verbose_name="Perjuicios patrimoniales consecuenciales (si aplica)")
+    # Campos RCE - Amparos para PROVEEDOR
+    rce_amparo_plo = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True, verbose_name="PLO (Predios, Labores y Operaciones)")
+    rce_amparo_patronal = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True, verbose_name="Patronal")
+    rce_amparo_gastos_medicos = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True, verbose_name="Gastos médicos")
+    rce_amparo_vehiculos = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True, verbose_name="Vehículos propios y no propios")
+    rce_amparo_contratistas = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True, verbose_name="Contratistas y subcontratistas")
+    rce_amparo_perjuicios_extrapatrimoniales = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True, verbose_name="Perjuicios extrapatrimoniales")
+    rce_amparo_dano_moral = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True, verbose_name="Daño moral")
+    rce_amparo_lucro_cesante = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True, verbose_name="Lucro cesante")
+    rce_amparo_estabilidad_obra = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True, verbose_name="Estabilidad de la obra")
     # Campos Cumplimiento - Amparos para PROVEEDOR
     cumplimiento_amparo_cumplimiento_contrato = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True, verbose_name="Cumplimiento del contrato")
     cumplimiento_amparo_buen_manejo_anticipo = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True, verbose_name="Buen manejo y correcta inversión del anticipo (si aplica)")
@@ -1018,7 +1016,9 @@ class Poliza(PolizaMixin, AuditoriaMixin):
             }
         
         if requisitos.get('todo_riesgo', {}).get('exigida'):
-            polizas_requeridas['Arrendamiento'] = {
+            contrato_tr = self.contrato
+            clave_tr = 'Todo Riesgo' if (contrato_tr and contrato_tr.tipo_contrato_cliente_proveedor == 'PROVEEDOR') else 'Arrendamiento'
+            polizas_requeridas[clave_tr] = {
                 'valor_requerido': requisitos['todo_riesgo'].get('valor'),
                 'fecha_fin_requerida': requisitos['todo_riesgo'].get('fecha_fin'),
                 'detalles': {}
@@ -1071,18 +1071,15 @@ class Poliza(PolizaMixin, AuditoriaMixin):
                     ]
                 elif contrato.tipo_contrato_cliente_proveedor == 'PROVEEDOR':
                     detalles_rce = [
-                        (self.rce_cobertura_danos_materiales, detalles.get('danos_materiales'), "Daños materiales a terceros"),
-                        (self.rce_cobertura_lesiones_personales, detalles.get('lesiones_personales'), "Lesiones personales a terceros"),
-                        (self.rce_cobertura_muerte_terceros, detalles.get('muerte_terceros'), "Muerte de terceros"),
-                        (self.rce_cobertura_danos_bienes_terceros, detalles.get('danos_bienes_terceros'), "Daños a bienes de terceros"),
-                        (self.rce_cobertura_responsabilidad_patronal, detalles.get('responsabilidad_patronal'), "Responsabilidad patronal"),
-                        (self.rce_cobertura_responsabilidad_cruzada, detalles.get('responsabilidad_cruzada'), "Responsabilidad cruzada"),
-                        (self.rce_cobertura_danos_contratistas, detalles.get('danos_contratistas'), "Daños causados por contratistas y subcontratistas"),
-                        (self.rce_cobertura_danos_ejecucion_contrato, detalles.get('danos_ejecucion_contrato'), "Daños durante la ejecución del contrato"),
-                        (self.rce_cobertura_danos_predios_vecinos, detalles.get('danos_predios_vecinos'), "Daños en predios vecinos"),
-                        (self.rce_cobertura_gastos_medicos, detalles.get('gastos_medicos_cobertura'), "Gastos médicos"),
-                        (self.rce_cobertura_gastos_defensa, detalles.get('gastos_defensa'), "Gastos de defensa"),
-                        (self.rce_cobertura_perjuicios_patrimoniales, detalles.get('perjuicios_patrimoniales'), "Perjuicios patrimoniales consecuenciales"),
+                        (self.rce_amparo_plo, detalles.get('danos_materiales'), "PLO (Predios, Labores y Operaciones)"),
+                        (self.rce_amparo_patronal, detalles.get('responsabilidad_patronal'), "Patronal"),
+                        (self.rce_amparo_gastos_medicos, detalles.get('gastos_medicos_cobertura'), "Gastos médicos"),
+                        (self.rce_amparo_vehiculos, detalles.get('danos_bienes_terceros'), "Vehículos propios y no propios"),
+                        (self.rce_amparo_contratistas, detalles.get('danos_contratistas'), "Contratistas y subcontratistas"),
+                        (self.rce_amparo_perjuicios_extrapatrimoniales, detalles.get('perjuicios_patrimoniales'), "Perjuicios extrapatrimoniales"),
+                        (self.rce_amparo_dano_moral, detalles.get('danos_ejecucion_contrato'), "Daño moral"),
+                        (self.rce_amparo_lucro_cesante, detalles.get('danos_predios_vecinos'), "Lucro cesante"),
+                        (self.rce_amparo_estabilidad_obra, detalles.get('muerte_terceros'), "Estabilidad de la obra"),
                     ]
                 else:
                     detalles_rce = []
@@ -1135,16 +1132,17 @@ class Poliza(PolizaMixin, AuditoriaMixin):
                     if not verificar_detalle(valor_poliza, valor_requerido, etiqueta):
                         cumple = False
         
-        elif self.tipo == 'Arrendamiento':
-            if 'Arrendamiento' in polizas_requeridas:
-                req_tr = polizas_requeridas['Arrendamiento']
+        elif self.tipo in ('Arrendamiento', 'Todo Riesgo'):
+            clave_busqueda = self.tipo
+            if clave_busqueda in polizas_requeridas:
+                req_tr = polizas_requeridas[clave_busqueda]
                 valor_requerido = req_tr.get('valor_requerido')
                 fecha_fin_requerida = req_tr.get('fecha_fin_requerida')
-                
+
                 if valor_requerido and self.valor_asegurado < valor_requerido:
                     cumple = False
                     observaciones.append(f"Valor asegurado Todo Riesgo insuficiente. Requerido: ${valor_requerido:,.2f}, Actual: ${self.valor_asegurado:,.2f}")
-                
+
                 if fecha_fin_requerida and self.fecha_vencimiento < fecha_fin_requerida:
                     cumple = False
                     observaciones.append(f"Vigencia Todo Riesgo insuficiente. Requerida hasta: {fecha_fin_requerida.strftime('%Y-%m-%d')}, Actual: {self.fecha_vencimiento.strftime('%Y-%m-%d')}")

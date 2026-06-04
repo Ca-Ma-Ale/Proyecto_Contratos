@@ -294,7 +294,7 @@
                                         {% elif contrato.tipo_contrato_cliente_proveedor == 'PROVEEDOR' %}
                                         <div class="row">
                                             <div class="col-md-4 mb-3">
-                                                <label for="{{ form.nuevo_rce_cobertura_danos_materiales.id_for_label }}" class="form-label fw-semibold">{{ form.nuevo_rce_cobertura_danos_materiales.label }}</label>
+                                                <label for="{{ form.nuevo_rce_cobertura_danos_materiales.id_for_label }}" class="form-label fw-semibold">PLO (Predios, Labores y Operaciones)</label>
                                                 <div class="input-group">
                                                     <span class="input-group-text" style="background-color: var(--avenida-orange); color: white; font-weight: 600;">$</span>
                                                     {{ form.nuevo_rce_cobertura_danos_materiales }}
@@ -303,18 +303,9 @@
                                                     <div class="text-danger small">{{ form.nuevo_rce_cobertura_danos_materiales.errors }}</div>
                                                 {% endif %}
                                             </div>
+                                            {{ form.nuevo_rce_cobertura_lesiones_personales.as_hidden }}
                                             <div class="col-md-4 mb-3">
-                                                <label for="{{ form.nuevo_rce_cobertura_lesiones_personales.id_for_label }}" class="form-label fw-semibold">{{ form.nuevo_rce_cobertura_lesiones_personales.label }}</label>
-                                                <div class="input-group">
-                                                    <span class="input-group-text" style="background-color: var(--avenida-orange); color: white; font-weight: 600;">$</span>
-                                                    {{ form.nuevo_rce_cobertura_lesiones_personales }}
-                                                </div>
-                                                {% if form.nuevo_rce_cobertura_lesiones_personales.errors %}
-                                                    <div class="text-danger small">{{ form.nuevo_rce_cobertura_lesiones_personales.errors }}</div>
-                                                {% endif %}
-                                            </div>
-                                            <div class="col-md-4 mb-3">
-                                                <label for="{{ form.nuevo_rce_cobertura_muerte_terceros.id_for_label }}" class="form-label fw-semibold">{{ form.nuevo_rce_cobertura_muerte_terceros.label }}</label>
+                                                <label for="{{ form.nuevo_rce_cobertura_muerte_terceros.id_for_label }}" class="form-label fw-semibold">Estabilidad de la obra</label>
                                                 <div class="input-group">
                                                     <span class="input-group-text" style="background-color: var(--avenida-orange); color: white; font-weight: 600;">$</span>
                                                     {{ form.nuevo_rce_cobertura_muerte_terceros }}
@@ -326,7 +317,7 @@
                                         </div>
                                         <div class="row mt-2">
                                             <div class="col-md-4 mb-3">
-                                                <label for="{{ form.nuevo_rce_cobertura_danos_bienes_terceros.id_for_label }}" class="form-label fw-semibold">{{ form.nuevo_rce_cobertura_danos_bienes_terceros.label }}</label>
+                                                <label for="{{ form.nuevo_rce_cobertura_danos_bienes_terceros.id_for_label }}" class="form-label fw-semibold">Vehículos propios y no propios</label>
                                                 <div class="input-group">
                                                     <span class="input-group-text" style="background-color: var(--avenida-orange); color: white; font-weight: 600;">$</span>
                                                     {{ form.nuevo_rce_cobertura_danos_bienes_terceros }}
@@ -336,7 +327,7 @@
                                                 {% endif %}
                                             </div>
                                             <div class="col-md-4 mb-3">
-                                                <label for="{{ form.nuevo_rce_cobertura_responsabilidad_patronal.id_for_label }}" class="form-label fw-semibold">{{ form.nuevo_rce_cobertura_responsabilidad_patronal.label }}</label>
+                                                <label for="{{ form.nuevo_rce_cobertura_responsabilidad_patronal.id_for_label }}" class="form-label fw-semibold">Patronal</label>
                                                 <div class="input-group">
                                                     <span class="input-group-text" style="background-color: var(--avenida-orange); color: white; font-weight: 600;">$</span>
                                                     {{ form.nuevo_rce_cobertura_responsabilidad_patronal }}
@@ -345,20 +336,11 @@
                                                     <div class="text-danger small">{{ form.nuevo_rce_cobertura_responsabilidad_patronal.errors }}</div>
                                                 {% endif %}
                                             </div>
-                                            <div class="col-md-4 mb-3">
-                                                <label for="{{ form.nuevo_rce_cobertura_responsabilidad_cruzada.id_for_label }}" class="form-label fw-semibold">{{ form.nuevo_rce_cobertura_responsabilidad_cruzada.label }}</label>
-                                                <div class="input-group">
-                                                    <span class="input-group-text" style="background-color: var(--avenida-orange); color: white; font-weight: 600;">$</span>
-                                                    {{ form.nuevo_rce_cobertura_responsabilidad_cruzada }}
-                                                </div>
-                                                {% if form.nuevo_rce_cobertura_responsabilidad_cruzada.errors %}
-                                                    <div class="text-danger small">{{ form.nuevo_rce_cobertura_responsabilidad_cruzada.errors }}</div>
-                                                {% endif %}
-                                            </div>
+                                            {{ form.nuevo_rce_cobertura_responsabilidad_cruzada.as_hidden }}
                                         </div>
                                         <div class="row mt-2">
                                             <div class="col-md-4 mb-3">
-                                                <label for="{{ form.nuevo_rce_cobertura_danos_contratistas.id_for_label }}" class="form-label fw-semibold">{{ form.nuevo_rce_cobertura_danos_contratistas.label }}</label>
+                                                <label for="{{ form.nuevo_rce_cobertura_danos_contratistas.id_for_label }}" class="form-label fw-semibold">Contratistas y subcontratistas</label>
                                                 <div class="input-group">
                                                     <span class="input-group-text" style="background-color: var(--avenida-orange); color: white; font-weight: 600;">$</span>
                                                     {{ form.nuevo_rce_cobertura_danos_contratistas }}
@@ -368,7 +350,7 @@
                                                 {% endif %}
                                             </div>
                                             <div class="col-md-4 mb-3">
-                                                <label for="{{ form.nuevo_rce_cobertura_danos_ejecucion_contrato.id_for_label }}" class="form-label fw-semibold">{{ form.nuevo_rce_cobertura_danos_ejecucion_contrato.label }}</label>
+                                                <label for="{{ form.nuevo_rce_cobertura_danos_ejecucion_contrato.id_for_label }}" class="form-label fw-semibold">Daño moral</label>
                                                 <div class="input-group">
                                                     <span class="input-group-text" style="background-color: var(--avenida-orange); color: white; font-weight: 600;">$</span>
                                                     {{ form.nuevo_rce_cobertura_danos_ejecucion_contrato }}
@@ -378,7 +360,7 @@
                                                 {% endif %}
                                             </div>
                                             <div class="col-md-4 mb-3">
-                                                <label for="{{ form.nuevo_rce_cobertura_danos_predios_vecinos.id_for_label }}" class="form-label fw-semibold">{{ form.nuevo_rce_cobertura_danos_predios_vecinos.label }}</label>
+                                                <label for="{{ form.nuevo_rce_cobertura_danos_predios_vecinos.id_for_label }}" class="form-label fw-semibold">Lucro cesante</label>
                                                 <div class="input-group">
                                                     <span class="input-group-text" style="background-color: var(--avenida-orange); color: white; font-weight: 600;">$</span>
                                                     {{ form.nuevo_rce_cobertura_danos_predios_vecinos }}
@@ -390,7 +372,7 @@
                                         </div>
                                         <div class="row mt-2">
                                             <div class="col-md-4 mb-3">
-                                                <label for="{{ form.nuevo_rce_cobertura_gastos_medicos.id_for_label }}" class="form-label fw-semibold">{{ form.nuevo_rce_cobertura_gastos_medicos.label }}</label>
+                                                <label for="{{ form.nuevo_rce_cobertura_gastos_medicos.id_for_label }}" class="form-label fw-semibold">Gastos médicos</label>
                                                 <div class="input-group">
                                                     <span class="input-group-text" style="background-color: var(--avenida-orange); color: white; font-weight: 600;">$</span>
                                                     {{ form.nuevo_rce_cobertura_gastos_medicos }}
@@ -399,18 +381,9 @@
                                                     <div class="text-danger small">{{ form.nuevo_rce_cobertura_gastos_medicos.errors }}</div>
                                                 {% endif %}
                                             </div>
+                                            {{ form.nuevo_rce_cobertura_gastos_defensa.as_hidden }}
                                             <div class="col-md-4 mb-3">
-                                                <label for="{{ form.nuevo_rce_cobertura_gastos_defensa.id_for_label }}" class="form-label fw-semibold">{{ form.nuevo_rce_cobertura_gastos_defensa.label }}</label>
-                                                <div class="input-group">
-                                                    <span class="input-group-text" style="background-color: var(--avenida-orange); color: white; font-weight: 600;">$</span>
-                                                    {{ form.nuevo_rce_cobertura_gastos_defensa }}
-                                                </div>
-                                                {% if form.nuevo_rce_cobertura_gastos_defensa.errors %}
-                                                    <div class="text-danger small">{{ form.nuevo_rce_cobertura_gastos_defensa.errors }}</div>
-                                                {% endif %}
-                                            </div>
-                                            <div class="col-md-4 mb-3">
-                                                <label for="{{ form.nuevo_rce_cobertura_perjuicios_patrimoniales.id_for_label }}" class="form-label fw-semibold">{{ form.nuevo_rce_cobertura_perjuicios_patrimoniales.label }}</label>
+                                                <label for="{{ form.nuevo_rce_cobertura_perjuicios_patrimoniales.id_for_label }}" class="form-label fw-semibold">Perjuicios extrapatrimoniales</label>
                                                 <div class="input-group">
                                                     <span class="input-group-text" style="background-color: var(--avenida-orange); color: white; font-weight: 600;">$</span>
                                                     {{ form.nuevo_rce_cobertura_perjuicios_patrimoniales }}
@@ -1276,16 +1249,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 Object.assign(campos, {
                     '{{ form.nuevo_valor_asegurado_rce.id_for_label }}': formatearValorMonetario(valores.valor_asegurado),
                     '{{ form.nuevo_rce_cobertura_danos_materiales.id_for_label }}': formatearValorMonetario(valores.rce_cobertura_danos_materiales),
-                    '{{ form.nuevo_rce_cobertura_lesiones_personales.id_for_label }}': formatearValorMonetario(valores.rce_cobertura_lesiones_personales),
                     '{{ form.nuevo_rce_cobertura_muerte_terceros.id_for_label }}': formatearValorMonetario(valores.rce_cobertura_muerte_terceros),
                     '{{ form.nuevo_rce_cobertura_danos_bienes_terceros.id_for_label }}': formatearValorMonetario(valores.rce_cobertura_danos_bienes_terceros),
                     '{{ form.nuevo_rce_cobertura_responsabilidad_patronal.id_for_label }}': formatearValorMonetario(valores.rce_cobertura_responsabilidad_patronal),
-                    '{{ form.nuevo_rce_cobertura_responsabilidad_cruzada.id_for_label }}': formatearValorMonetario(valores.rce_cobertura_responsabilidad_cruzada),
                     '{{ form.nuevo_rce_cobertura_danos_contratistas.id_for_label }}': formatearValorMonetario(valores.rce_cobertura_danos_contratistas),
                     '{{ form.nuevo_rce_cobertura_danos_ejecucion_contrato.id_for_label }}': formatearValorMonetario(valores.rce_cobertura_danos_ejecucion_contrato),
                     '{{ form.nuevo_rce_cobertura_danos_predios_vecinos.id_for_label }}': formatearValorMonetario(valores.rce_cobertura_danos_predios_vecinos),
                     '{{ form.nuevo_rce_cobertura_gastos_medicos.id_for_label }}': formatearValorMonetario(valores.rce_cobertura_gastos_medicos),
-                    '{{ form.nuevo_rce_cobertura_gastos_defensa.id_for_label }}': formatearValorMonetario(valores.rce_cobertura_gastos_defensa),
                     '{{ form.nuevo_rce_cobertura_perjuicios_patrimoniales.id_for_label }}': formatearValorMonetario(valores.rce_cobertura_perjuicios_patrimoniales)
                 });
             }
