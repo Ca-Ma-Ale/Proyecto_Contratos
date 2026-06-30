@@ -22,7 +22,7 @@
                         <li><strong>Contrato:</strong> {{ informe.contrato.num_contrato }}</li>
                         <li><strong>{% if informe.contrato.tipo_contrato_cliente_proveedor == 'PROVEEDOR' %}Proveedor{% else %}Arrendatario{% endif %}:</strong> {{ informe.contrato.obtener_nombre_tercero }}</li>
                         <li><strong>Mes/Año:</strong> {{ informe.get_mes_display }}/{{ informe.año }}</li>
-                        <li><strong>Estado:</strong> 
+                        <li><strong>Estado:</strong>
                             {% if informe.estado == 'ENTREGADO' %}
                                 <span class="badge bg-success">Entregado</span>
                             {% else %}
@@ -30,6 +30,26 @@
                             {% endif %}
                         </li>
                     </ul>
+
+                    {% if calculos_asociados %}
+                    <p class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        Este informe tiene <strong>{{ calculos_asociados|length }}</strong> cálculo(s) de facturación asociado(s) que también se eliminarán
+                        {% if hay_calculo_confirmado %}
+                            , <strong>incluyendo uno ya confirmado</strong>.
+                        {% else %}
+                            .
+                        {% endif %}
+                    </p>
+                    <ul class="list-unstyled">
+                        {% for calculo in calculos_asociados %}
+                        <li>
+                            Cálculo #{{ calculo.id }} — {{ calculo.get_mes_display }}/{{ calculo.año }}
+                            {% if calculo.confirmado %}<span class="badge bg-info text-dark">Confirmado</span>{% endif %}
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% endif %}
 
                     <form method="post">
                         {% csrf_token %}

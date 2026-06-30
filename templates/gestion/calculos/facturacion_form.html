@@ -101,6 +101,17 @@
                             {% endif %}
                         </div>
 
+                        <div class="mb-3">
+                            {{ form.url_archivo.label_tag }}
+                            {{ form.url_archivo }}
+                            {% if form.url_archivo.errors %}
+                                <div class="text-danger">{{ form.url_archivo.errors }}</div>
+                            {% endif %}
+                            <small class="form-text text-muted">
+                                <i class="fas fa-info-circle"></i> Ingrese el enlace al archivo digital de soporte del cálculo (OneDrive, Google Drive, etc.)
+                            </small>
+                        </div>
+
                         <div class="alert alert-info">
                             <i class="fas fa-info-circle"></i> 
                             <strong>Nota:</strong> El sistema calculará automáticamente:

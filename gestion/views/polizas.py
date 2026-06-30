@@ -163,10 +163,7 @@ def gestionar_polizas(request, contrato_id):
     if requisitos_contrato['arrendamiento']['exigida']:
         pólizas_requeridas.append('Poliza de Arrendamiento')
     if requisitos_contrato['todo_riesgo']['exigida']:
-        if contrato.tipo_contrato_cliente_proveedor == 'PROVEEDOR':
-            pólizas_requeridas.append('Todo Riesgo')
-        else:
-            pólizas_requeridas.append('Arrendamiento')
+        pólizas_requeridas.append('Todo Riesgo')
     if requisitos_contrato['otra']['exigida']:
         nombre_otra = requisitos_contrato['otra'].get('nombre') or 'Otra'
         pólizas_requeridas.append(nombre_otra)

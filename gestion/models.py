@@ -1017,7 +1017,7 @@ class Poliza(PolizaMixin, AuditoriaMixin):
         
         if requisitos.get('todo_riesgo', {}).get('exigida'):
             contrato_tr = self.contrato
-            clave_tr = 'Todo Riesgo' if (contrato_tr and contrato_tr.tipo_contrato_cliente_proveedor == 'PROVEEDOR') else 'Arrendamiento'
+            clave_tr = 'Todo Riesgo'
             polizas_requeridas[clave_tr] = {
                 'valor_requerido': requisitos['todo_riesgo'].get('valor'),
                 'fecha_fin_requerida': requisitos['todo_riesgo'].get('fecha_fin'),
@@ -2056,12 +2056,12 @@ class CalculoFacturacionVentas(models.Model):
     )
     informe_ventas = models.ForeignKey(
         InformeVentas,
-        on_delete=models.SET_NULL,
+        on_delete=models.CASCADE,
         null=True,
         blank=True,
         related_name='calculos_facturacion',
         verbose_name='Informe de Ventas',
-        help_text='Informe de ventas asociado (opcional)'
+        help_text='Informe de ventas asociado (opcional). Al eliminar el informe se elimina también este cálculo.'
     )
     mes = models.IntegerField(
         choices=[(i, ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 
@@ -2159,11 +2159,32 @@ class CalculoFacturacionVentas(models.Model):
         verbose_name='Otro Sí de Referencia',
         help_text='Otro Sí vigente usado para el cálculo'
     )
+    fuente_canon_minimo_garantizado = models.CharField(
+        max_length=200,
+        blank=True,
+        null=True,
+        verbose_name='Fuente del Canon Mínimo Garantizado',
+        help_text='De dónde se tomó el Canon Mínimo Garantizado vigente (Otro Sí, Cálculo IPC/Salario Mínimo o Contrato base)'
+    )
+    fuente_canon_fijo = models.CharField(
+        max_length=200,
+        blank=True,
+        null=True,
+        verbose_name='Fuente del Canon Fijo',
+        help_text='De dónde se tomó el Canon Fijo vigente (Otro Sí, Cálculo IPC/Salario Mínimo o Contrato base)'
+    )
     observaciones = models.TextField(
         blank=True,
         null=True,
         verbose_name='Observaciones',
         help_text='Notas adicionales sobre el cálculo'
+    )
+    url_archivo = models.CharField(
+        max_length=500,
+        blank=True,
+        null=True,
+        verbose_name='URL del Archivo Digital',
+        help_text='Enlace al archivo digital de soporte del cálculo (OneDrive, Google Drive, etc.)'
     )
     calculado_por = models.CharField(
         max_length=150,

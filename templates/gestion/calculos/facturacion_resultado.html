@@ -93,8 +93,8 @@
                                 <tr>
                                     <td class="fw-bold">Canon Mínimo Garantizado Vigente
                                         {% if canon_min_modificado %}
-                                            <span class="badge bg-info text-dark ms-2" title="Del documento {{ calculo.otrosi_referencia.numero_otrosi }} vigente desde {{ calculo.otrosi_referencia.effective_from|date:'d/m/Y' }}">
-                                                {{ calculo.otrosi_referencia.numero_otrosi }}
+                                            <span class="badge bg-info text-dark ms-2" title="{{ canon_min_fuente }}">
+                                                {{ canon_min_fuente }}
                                             </span>
                                         {% else %}
                                             <span class="badge bg-secondary text-white ms-2" title="Valores tomados del contrato base">
@@ -132,7 +132,7 @@
             </div>
 
             <!-- Información Adicional -->
-            {% if calculo.otrosi_referencia %}
+            {% if calculo.otrosi_referencia or calculo.observaciones or calculo.url_archivo %}
             <div class="card mb-4">
                 <div class="card-header">
                     <h5 class="mb-0">
@@ -140,10 +140,15 @@
                     </h5>
                 </div>
                 <div class="card-body">
+                    {% if calculo.otrosi_referencia %}
                     <p><strong>Otro Sí de Referencia:</strong> {{ calculo.otrosi_referencia.numero_otrosi }}</p>
                     <p><strong>Vigencia desde:</strong> {{ calculo.otrosi_referencia.effective_from|date:"d/m/Y" }}</p>
+                    {% endif %}
                     {% if calculo.observaciones %}
                     <p><strong>Observaciones:</strong> {{ calculo.observaciones }}</p>
+                    {% endif %}
+                    {% if calculo.url_archivo %}
+                    <p><strong>Archivo Digital:</strong> <a href="{{ calculo.url_archivo }}" target="_blank" rel="noopener noreferrer">{{ calculo.url_archivo }}</a></p>
                     {% endif %}
                 </div>
             </div>

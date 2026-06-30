@@ -1,11 +1,14 @@
 from datetime import date
+from decimal import Decimal
 
 from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
-from gestion.models import Contrato, Local, OtroSi, RenovacionAutomatica, Tercero
+from gestion.forms import CalculoFacturacionVentasForm
+from gestion.models import CalculoIPC, Contrato, IPCHistorico, Local, OtroSi, RenovacionAutomatica, Tercero
+from gestion.utils_otrosi import obtener_valores_vigentes_facturacion_ventas
 
 
 class ListaInformesVentasPerformanceTest(TestCase):
@@ -82,3 +85,254 @@ class ListaInformesVentasPerformanceTest(TestCase):
         self.assertContains(response, 'V-1')
         self.assertContains(response, 'V-5')
         self.assertContains(response, 'OSV-5')
+
+
+class ObtenerValoresVigentesFacturacionVentasIPCTest(TestCase):
+    """El cálculo de % de ventas debe usar el canon mínimo garantizado ya
+    ajustado por IPC, no el valor original del contrato/Otro Sí."""
+
+    def setUp(self):
+        self.local = Local.objects.create(
+            nombre_comercial_stand='Local Hibrido',
+            total_area_m2=80,
+        )
+        self.proveedor = Tercero.objects.create(
+            nit='9001',
+            razon_social='Proveedor Hibrido',
+            tipo='PROVEEDOR',
+            nombre_rep_legal='Representante',
+        )
+        self.contrato = Contrato.objects.create(
+            num_contrato='H-1',
+            tipo_contrato_cliente_proveedor='PROVEEDOR',
+            objeto_destinacion='Objeto',
+            nit_concedente='800',
+            rep_legal_concedente='Legal',
+            fecha_firma=date(2024, 1, 1),
+            fecha_inicial_contrato=date(2024, 1, 1),
+            fecha_final_inicial=date(2030, 12, 31),
+            modalidad_pago='Hibrido (Min Garantizado)',
+            porcentaje_ventas=5,
+            canon_minimo_garantizado=Decimal('1000000'),
+            reporta_ventas=True,
+            proveedor=self.proveedor,
+            local=self.local,
+        )
+        self.ipc_historico = IPCHistorico.objects.create(
+            año=2025,
+            valor_ipc=Decimal('5.00'),
+        )
+        CalculoIPC.objects.create(
+            contrato=self.contrato,
+            año_aplicacion=2025,
+            fecha_aplicacion=date(2025, 1, 1),
+            ipc_historico=self.ipc_historico,
+            canon_anterior=Decimal('1000000'),
+            porcentaje_total_aplicar=Decimal('5.00'),
+            valor_incremento=Decimal('50000'),
+            nuevo_canon=Decimal('1050000'),
+            estado='APLICADO',
+        )
+
+    def test_canon_minimo_garantizado_refleja_ajuste_ipc_vigente(self):
+        valores = obtener_valores_vigentes_facturacion_ventas(self.contrato, 6, 2025)
+
+        self.assertIsNotNone(valores)
+        self.assertEqual(valores['canon_minimo_garantizado'], Decimal('1050000'))
+
+    def test_canon_minimo_garantizado_sin_ipc_usa_valor_contrato(self):
+        valores = obtener_valores_vigentes_facturacion_ventas(self.contrato, 6, 2024)
+
+        self.assertIsNotNone(valores)
+        self.assertEqual(valores['canon_minimo_garantizado'], Decimal('1000000'))
+
+
+class CalculoFacturacionVentasFormUrlArchivoTest(TestCase):
+    """El formulario de cálculo de % de ventas debe aceptar y guardar la URL
+    del archivo digital de soporte, igual que el formulario de informe de ventas."""
+
+    def setUp(self):
+        self.local = Local.objects.create(
+            nombre_comercial_stand='Local Ventas Form',
+            total_area_m2=60,
+        )
+        self.tercero = Tercero.objects.create(
+            nit='9101',
+            razon_social='Cliente Form',
+            tipo='ARRENDATARIO',
+            nombre_rep_legal='Representante',
+        )
+        self.contrato = Contrato.objects.create(
+            num_contrato='F-1',
+            objeto_destinacion='Objeto',
+            nit_concedente='800',
+            rep_legal_concedente='Legal',
+            fecha_firma=date(2025, 1, 1),
+            fecha_inicial_contrato=date(2025, 1, 1),
+            fecha_final_inicial=date(2028, 12, 31),
+            modalidad_pago='Variable Puro',
+            porcentaje_ventas=5,
+            reporta_ventas=True,
+            arrendatario=self.tercero,
+            local=self.local,
+        )
+
+    def test_form_acepta_y_limpia_url_archivo(self):
+        form = CalculoFacturacionVentasForm(data={
+            'contrato': self.contrato.id,
+            'mes': '6',
+            'año': 2025,
+            'ventas_totales': '1.000.000',
+            'devoluciones': '0',
+            'observaciones': '',
+            'url_archivo': '  https://onedrive.com/soporte-ventas  ',
+        })
+
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertEqual(form.cleaned_data['url_archivo'], 'https://onedrive.com/soporte-ventas')
+
+    def test_form_url_archivo_es_opcional(self):
+        form = CalculoFacturacionVentasForm(data={
+            'contrato': self.contrato.id,
+            'mes': '6',
+            'año': 2025,
+            'ventas_totales': '1.000.000',
+            'devoluciones': '0',
+            'observaciones': '',
+        })
+
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertFalse(form.cleaned_data.get('url_archivo'))
+
+
+class ObtenerValoresVigentesFacturacionVentasCanonVigenteTest(TestCase):
+    """Caso real: contrato CLIENTE/arrendatario con modalidad Híbrido cuyo
+    Canon Mínimo Garantizado lo fijó un Otro Sí, y luego se aplicó un cálculo
+    de IPC posterior. El % de ventas debe coincidir con el "Canon Vigente"
+    que ya muestran los informes/dashboard (obtener_canon_vigente), que
+    prioriza por fecha de aplicación sobre el Otro Sí."""
+
+    def setUp(self):
+        self.local = Local.objects.create(
+            nombre_comercial_stand='Local Hall Gastro',
+            total_area_m2=50,
+        )
+        self.arrendatario = Tercero.objects.create(
+            nit='9201',
+            razon_social='Arrendatario Hibrido',
+            tipo='ARRENDATARIO',
+            nombre_rep_legal='Representante',
+        )
+        self.contrato = Contrato.objects.create(
+            num_contrato='H-2',
+            tipo_contrato_cliente_proveedor='CLIENTE',
+            objeto_destinacion='Objeto',
+            nit_concedente='800',
+            rep_legal_concedente='Legal',
+            fecha_firma=date(2008, 1, 1),
+            fecha_inicial_contrato=date(2008, 1, 1),
+            fecha_final_inicial=date(2030, 12, 31),
+            modalidad_pago='Hibrido (Min Garantizado)',
+            porcentaje_ventas=8,
+            canon_minimo_garantizado=Decimal('10000000'),
+            reporta_ventas=True,
+            arrendatario=self.arrendatario,
+            local=self.local,
+        )
+        OtroSi.objects.create(
+            contrato=self.contrato,
+            numero_otrosi='OS-2',
+            estado='APROBADO',
+            fecha_otrosi=date(2021, 1, 1),
+            effective_from=date(2021, 1, 1),
+            nuevo_canon_minimo_garantizado=Decimal('8579032'),
+            descripcion='Ajuste canon mínimo',
+            fecha_aprobacion=timezone.make_aware(timezone.datetime(2021, 1, 1, 9, 0)),
+        )
+        self.ipc_historico = IPCHistorico.objects.create(
+            año=2025,
+            valor_ipc=Decimal('5.10'),
+        )
+        CalculoIPC.objects.create(
+            contrato=self.contrato,
+            año_aplicacion=2026,
+            fecha_aplicacion=date(2026, 1, 1),
+            ipc_historico=self.ipc_historico,
+            canon_anterior=Decimal('15232287'),
+            canon_anterior_manual=True,
+            porcentaje_total_aplicar=Decimal('5.10'),
+            valor_incremento=Decimal('776846.64'),
+            nuevo_canon=Decimal('16009133.64'),
+            estado='APLICADO',
+        )
+
+    def test_canon_minimo_garantizado_usa_el_canon_vigente_oficial(self):
+        valores = obtener_valores_vigentes_facturacion_ventas(self.contrato, 5, 2026)
+
+        self.assertIsNotNone(valores)
+        self.assertEqual(valores['canon_minimo_garantizado'], Decimal('16009133.64'))
+        self.assertIn('IPC', valores['fuente_canon_minimo_garantizado'])
+        self.assertIn('01/01/2026', valores['fuente_canon_minimo_garantizado'])
+
+    def test_canon_minimo_garantizado_antes_del_ipc_usa_el_otrosi(self):
+        valores = obtener_valores_vigentes_facturacion_ventas(self.contrato, 6, 2022)
+
+        self.assertIsNotNone(valores)
+        self.assertEqual(valores['canon_minimo_garantizado'], Decimal('8579032'))
+        self.assertIn('OS-2', valores['fuente_canon_minimo_garantizado'])
+
+
+class EliminarInformeVentasCascadaTest(TestCase):
+    """Al eliminar un Informe de Ventas, los Cálculos de Facturación
+    asociados (confirmados o no) deben eliminarse también."""
+
+    def setUp(self):
+        self.local = Local.objects.create(
+            nombre_comercial_stand='Local Cascada',
+            total_area_m2=40,
+        )
+        self.tercero = Tercero.objects.create(
+            nit='9301',
+            razon_social='Cliente Cascada',
+            tipo='ARRENDATARIO',
+            nombre_rep_legal='Representante',
+        )
+        self.contrato = Contrato.objects.create(
+            num_contrato='C-1',
+            objeto_destinacion='Objeto',
+            nit_concedente='800',
+            rep_legal_concedente='Legal',
+            fecha_firma=date(2025, 1, 1),
+            fecha_inicial_contrato=date(2025, 1, 1),
+            fecha_final_inicial=date(2028, 12, 31),
+            modalidad_pago='Variable Puro',
+            porcentaje_ventas=5,
+            reporta_ventas=True,
+            arrendatario=self.tercero,
+            local=self.local,
+        )
+
+    def test_eliminar_informe_borra_calculo_confirmado_asociado(self):
+        from gestion.models import CalculoFacturacionVentas, InformeVentas
+
+        informe = InformeVentas.objects.create(contrato=self.contrato, mes=6, año=2025)
+        calculo = CalculoFacturacionVentas.objects.create(
+            contrato=self.contrato,
+            informe_ventas=informe,
+            mes=6,
+            año=2025,
+            ventas_totales=Decimal('1000000'),
+            devoluciones=Decimal('0'),
+            base_neta=Decimal('1000000'),
+            modalidad_contrato='VARIABLE_PURO',
+            porcentaje_ventas_vigente=Decimal('5'),
+            valor_calculado_porcentaje=Decimal('50000'),
+            valor_a_facturar_variable=Decimal('50000'),
+            aplica_variable=True,
+            confirmado=True,
+        )
+        calculo_id = calculo.id
+
+        informe.delete()
+
+        self.assertFalse(CalculoFacturacionVentas.objects.filter(id=calculo_id).exists())

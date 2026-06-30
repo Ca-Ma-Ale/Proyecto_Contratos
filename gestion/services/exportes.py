@@ -650,6 +650,7 @@ def generar_pdf_calculo_facturacion(calculo, configuracion_empresa):
         ['Mes/Año:', f'{calculo.get_mes_display()}/{calculo.año}'],
         ['Modalidad:', calculo.get_modalidad_contrato_display()],
         ['Fecha de Cálculo:', fecha_calculo_str],
+        ['Calculado por:', calculo.calculado_por or 'N/A'],
     ]
     
     info_table = Table(info_contrato, colWidths=[2*inch, 5*inch])
@@ -695,6 +696,7 @@ def generar_pdf_calculo_facturacion(calculo, configuracion_empresa):
     
     if calculo.modalidad_contrato == 'HIBRIDO_MIN_GARANTIZADO':
         desglose_data.append(['Canon Mínimo Garantizado Vigente', formatear_moneda(calculo.canon_minimo_garantizado_vigente)])
+        desglose_data.append(['Fuente del Canon Mínimo', calculo.fuente_canon_minimo_garantizado or 'Contrato base'])
         if calculo.excedente_sobre_minimo:
             desglose_data.append(['Excedente sobre Mínimo', formatear_moneda(calculo.excedente_sobre_minimo)])
             filas_negrita.append(len(desglose_data) - 1)

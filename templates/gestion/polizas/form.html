@@ -308,7 +308,7 @@ document.addEventListener('DOMContentLoaded', function() {
             html += `
                 <div class="requirement-alert alert-todo-riesgo mb-2">
                     <h6 class="d-flex justify-content-between align-items-center">
-                        <span><i class="fas fa-umbrella"></i> ${tipoContrato === 'PROVEEDOR' ? 'Todo Riesgo' : 'Arrendamiento (Todo Riesgo)'}</span>
+                        <span><i class="fas fa-umbrella"></i> Todo Riesgo</span>
                         ${tr.fuente === 'otrosi' ? '<span class="badge bg-primary text-white"><i class="fas fa-sync-alt"></i> Actualizado por Otro Sí</span>' : ''}
                     </h6>
                     ${tr.exigida && tr.valor ? `<p><strong>Valor Requerido:</strong> $${formatoMoneda(tr.valor)}</p>` : ''}
@@ -1669,6 +1669,26 @@ document.addEventListener('DOMContentLoaded', function() {
                                         <p class="mb-1"><strong>IVA:</strong> ${{ detalles.iva|default:0|formato_moneda }}</p>
                                         <p class="mb-1"><strong>Cuota de administración:</strong> ${{ detalles.cuota_admon|default:0|formato_moneda }}</p>
                                         {% endwith %}
+                                    </div>
+                                    {% endif %}
+
+                                    {% if requisitos_contrato.todo_riesgo.exigida %}
+                                    <div class="requirement-alert alert-arrendamiento">
+                                        <h6 class="d-flex justify-content-between align-items-center">
+                                            <span><i class="fas fa-umbrella"></i> Todo Riesgo</span>
+                                            {% if requisitos_contrato.todo_riesgo.fuente == 'otrosi' %}
+                                            <span class="badge bg-primary text-white"><i class="fas fa-sync-alt"></i> Actualizado por Otro Sí</span>
+                                            {% endif %}
+                                        </h6>
+                                        {% if requisitos_contrato.todo_riesgo.valor %}
+                                        <p><strong>Valor Requerido:</strong> ${{ requisitos_contrato.todo_riesgo.valor|formato_moneda }}</p>
+                                        {% endif %}
+                                        {% if requisitos_contrato.todo_riesgo.vigencia %}
+                                        <p class="mb-1"><strong>Vigencia:</strong> {{ requisitos_contrato.todo_riesgo.vigencia }} meses</p>
+                                        {% endif %}
+                                        {% if requisitos_contrato.todo_riesgo.fecha_fin %}
+                                        <p class="mb-1"><strong>Vigente hasta:</strong> {{ requisitos_contrato.todo_riesgo.fecha_fin|date:"d/m/Y" }}</p>
+                                        {% endif %}
                                     </div>
                                     {% endif %}
                                 </div>

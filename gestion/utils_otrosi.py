@@ -1614,8 +1614,8 @@ def get_polizas_requeridas_contrato(contrato, fecha_referencia=None, permitir_fu
         valor_todo_riesgo, otrosi_valor_todo_riesgo = obtener_valor_y_otrosi('nuevo_valor_asegurado_todo_riesgo', 'valor_asegurado_todo_riesgo')
         otrosi_modificador_todo_riesgo = otrosi_valor_todo_riesgo
         
-        polizas_requeridas['Arrendamiento'] = {
-            'tipo': 'Arrendamiento',
+        polizas_requeridas['Todo Riesgo'] = {
+            'tipo': 'Todo Riesgo',
             'valor_requerido': valor_todo_riesgo,
             'meses_vigencia': meses_todo_riesgo,
             'fecha_inicio_requerida': fecha_inicio_todo_riesgo,
@@ -1836,27 +1836,57 @@ def obtener_valores_vigentes_facturacion_ventas(contrato, mes, año):
         canon_fijo = Decimal(str(contrato.valor_canon_fijo))
     else:
         canon_fijo = None
-    
+
+    # Usar el mismo "Canon Vigente" que ya calculan los informes y el dashboard
+    # (obtener_canon_vigente_con_fuente), que aplica IPC/SMLV por prioridad de
+    # fecha sobre el Otro Sí. Sin esto, el cálculo de % de ventas ignoraba los
+    # aumentos anuales y seguía usando el valor del contrato/Otro Sí sin
+    # actualizar, además de no poder mostrar la fuente real del valor.
+    fuente_canon_minimo_garantizado = None
+    fuente_canon_fijo = None
+    canon_vigente_con_fuente = None
+    try:
+        from gestion.views.utils import obtener_canon_vigente_con_fuente
+        # El campo relevante depende de la modalidad, no del tipo de contrato:
+        # en Híbrido siempre se compara contra canon_minimo_garantizado.
+        campo_forzado = 'canon_minimo_garantizado' if modalidad == 'Hibrido (Min Garantizado)' else 'valor_canon_fijo'
+        canon_vigente_con_fuente = obtener_canon_vigente_con_fuente(contrato, fecha_referencia, forzar_campo=campo_forzado)
+    except Exception:
+        canon_vigente_con_fuente = None
+
+    if canon_vigente_con_fuente and canon_vigente_con_fuente['valor'] is not None:
+        canon_vigente_oficial = Decimal(str(canon_vigente_con_fuente['valor']))
+        if modalidad == 'Hibrido (Min Garantizado)':
+            canon_minimo_garantizado = canon_vigente_oficial
+            fuente_canon_minimo_garantizado = canon_vigente_con_fuente['fuente']
+        else:
+            canon_fijo = canon_vigente_oficial
+            fuente_canon_fijo = canon_vigente_con_fuente['fuente']
+        if canon_vigente_con_fuente['tipo'] == 'otrosi':
+            otrosi_referencia = otrosi_referencia or canon_vigente_con_fuente['otrosi']
+
     # No establecer otrosi_referencia como fallback si ningún campo fue modificado
     # Solo debe mostrarse si realmente se modificó algún campo relevante
-    
+
     # Determinar referencias específicas por campo
     otrosi_referencia_porcentaje = None
     otrosi_referencia_canon_minimo = None
-    
+
     # Referencia para porcentaje de ventas
     if otrosi_porcentaje and otrosi_porcentaje.nuevo_porcentaje_ventas is not None:
         porcentaje_contrato_base = contrato.porcentaje_ventas
         if porcentaje_contrato_base is None or Decimal(str(otrosi_porcentaje.nuevo_porcentaje_ventas)) != Decimal(str(porcentaje_contrato_base)):
             otrosi_referencia_porcentaje = otrosi_porcentaje
-    
-    # Referencia para canon mínimo
-    if modalidad == 'Hibrido (Min Garantizado)':
-        if otrosi_canon_min and otrosi_canon_min.nuevo_canon_minimo_garantizado is not None:
-            canon_min_contrato_base = contrato.canon_minimo_garantizado
-            if canon_min_contrato_base is None or Decimal(str(otrosi_canon_min.nuevo_canon_minimo_garantizado)) != Decimal(str(canon_min_contrato_base)):
-                otrosi_referencia_canon_minimo = otrosi_canon_min
-    
+
+    # Referencia para canon mínimo (Otro Sí), usada solo cuando la fuente final
+    # del canon vigente sí fue un Otro Sí (ver canon_vigente_con_fuente arriba)
+    if (
+        modalidad == 'Hibrido (Min Garantizado)'
+        and canon_vigente_con_fuente
+        and canon_vigente_con_fuente['tipo'] == 'otrosi'
+    ):
+        otrosi_referencia_canon_minimo = canon_vigente_con_fuente['otrosi']
+
     return {
         'modalidad': modalidad,
         'porcentaje_ventas': porcentaje_ventas,
@@ -1865,6 +1895,8 @@ def obtener_valores_vigentes_facturacion_ventas(contrato, mes, año):
         'otrosi_referencia': otrosi_referencia,  # Mantener para compatibilidad
         'otrosi_referencia_porcentaje': otrosi_referencia_porcentaje,
         'otrosi_referencia_canon_minimo': otrosi_referencia_canon_minimo,
+        'fuente_canon_minimo_garantizado': fuente_canon_minimo_garantizado,
+        'fuente_canon_fijo': fuente_canon_fijo,
         'fecha_referencia': fecha_referencia,
     }
 

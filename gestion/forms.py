@@ -298,7 +298,7 @@ class ContratoForm(BaseModelForm):
     )
     seguimiento_poliza_todo_riesgo = forms.CharField(
         required=False,
-        label='Seguimiento póliza Todo Riesgo para Equipos',
+        label='Seguimiento póliza Todo Riesgo',
         widget=forms.Textarea(attrs={'rows': 3}),
         max_length=2000,
         help_text='Máximo 2000 caracteres. El HTML será removido por seguridad.'
@@ -1044,10 +1044,7 @@ class PolizaForm(BaseModelForm):
                 if requisitos_base.get('arrendamiento', {}).get('exigida'):
                     tipos_unicos.add('Poliza de Arrendamiento')
                 if requisitos_base.get('todo_riesgo', {}).get('exigida'):
-                    if self.contrato.tipo_contrato_cliente_proveedor == 'PROVEEDOR':
-                        tipos_unicos.add('Todo Riesgo')
-                    else:
-                        tipos_unicos.add('Arrendamiento')
+                    tipos_unicos.add('Todo Riesgo')
                 if requisitos_base.get('otra', {}).get('exigida'):
                     tipos_unicos.add('Otra')
                 
@@ -1768,7 +1765,9 @@ class CalculoFacturacionVentasForm(BaseForm):
             'placeholder': 'Notas adicionales sobre el cálculo...'
         })
     )
-    
+
+    url_archivo = URLFlexibleField(label='URL del Archivo Digital')
+
     def clean_ventas_totales(self):
         """Limpia y convierte el valor de ventas totales"""
         from .utils_formateo import limpiar_valor_numerico

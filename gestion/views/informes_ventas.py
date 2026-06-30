@@ -221,14 +221,21 @@ def eliminar_informe_ventas(request, informe_id):
     if request.method == 'POST':
         contrato_num = informe.contrato.num_contrato
         mes_año = f"{informe.get_mes_display()}/{informe.año}"
+        total_calculos = informe.calculos_facturacion.count()
         informe.delete()
-        messages.success(request, f'Informe de ventas eliminado: {contrato_num} - {mes_año}')
+        mensaje = f'Informe de ventas eliminado: {contrato_num} - {mes_año}'
+        if total_calculos:
+            mensaje += f'. También se eliminó {total_calculos} cálculo(s) de facturación asociado(s).'
+        messages.success(request, mensaje)
         return redirect('gestion:lista_informes_ventas')
     
+    calculos_asociados = list(informe.calculos_facturacion.all())
     context = {
         'informe': informe,
+        'calculos_asociados': calculos_asociados,
+        'hay_calculo_confirmado': any(c.confirmado for c in calculos_asociados),
     }
-    
+
     return render(request, 'gestion/informes/ventas/eliminar.html', context)
 
 
@@ -305,6 +312,8 @@ def calcular_facturacion_ventas(contrato, mes, año, ventas_totales, devolucione
         'aplica_variable': aplica_variable,
         'otrosi_referencia': valores_vigentes.get('otrosi_referencia'),
         'fecha_referencia': valores_vigentes.get('fecha_referencia'),
+        'fuente_canon_minimo_garantizado': valores_vigentes.get('fuente_canon_minimo_garantizado'),
+        'fuente_canon_fijo': valores_vigentes.get('fuente_canon_fijo'),
     }
 
 
@@ -367,6 +376,7 @@ def calcular_facturacion(request):
             ventas_totales = form.cleaned_data['ventas_totales']
             devoluciones = form.cleaned_data['devoluciones'] or Decimal('0')
             observaciones = form.cleaned_data.get('observaciones', '')
+            url_archivo = form.cleaned_data.get('url_archivo', '')
 
             from calendar import monthrange
             fecha_corte = date(año, mes, monthrange(año, mes)[1])
@@ -444,7 +454,10 @@ def calcular_facturacion(request):
                     excedente_sobre_minimo=resultado.get('excedente_sobre_minimo'),
                     aplica_variable=resultado['aplica_variable'],
                     otrosi_referencia=resultado.get('otrosi_referencia_canon_minimo') or resultado.get('otrosi_referencia_porcentaje') or resultado.get('otrosi_referencia'),
+                    fuente_canon_minimo_garantizado=resultado.get('fuente_canon_minimo_garantizado'),
+                    fuente_canon_fijo=resultado.get('fuente_canon_fijo'),
                     observaciones=observaciones,
+                    url_archivo=url_archivo,
                     calculado_por=request.user.get_username() if request.user.is_authenticated else None,
                 )
                 
@@ -578,24 +591,33 @@ def resultado_calculo_facturacion(request, calculo_id):
             # Solo mostrar badge si fue modificado Y hay una referencia
             porcentaje_modificado = porcentaje_modificado and calculo.otrosi_referencia is not None
     
-    # Verificar si el canon mínimo fue modificado comparando con el contrato base
-    canon_min_modificado = False
-    if calculo.canon_minimo_garantizado_vigente is not None:
+    # Fuente real del canon mínimo vigente (Otro Sí, Cálculo IPC/Salario Mínimo
+    # o Contrato base). Para cálculos hechos antes de que se guardara esta
+    # fuente, se cae de vuelta a la comparación contra el contrato base.
+    canon_min_fuente = calculo.fuente_canon_minimo_garantizado
+    canon_min_modificado = bool(canon_min_fuente)
+    if not canon_min_fuente and calculo.canon_minimo_garantizado_vigente is not None:
         canon_min_contrato_base = calculo.contrato.canon_minimo_garantizado
         if canon_min_contrato_base is None:
-            # Si el contrato base no tiene canon mínimo pero el cálculo sí, fue modificado
             canon_min_modificado = calculo.otrosi_referencia is not None
         else:
-            canon_min_modificado = Decimal(str(calculo.canon_minimo_garantizado_vigente)) != Decimal(str(canon_min_contrato_base))
-            # Solo mostrar badge si fue modificado Y hay una referencia
-            canon_min_modificado = canon_min_modificado and calculo.otrosi_referencia is not None
-    
+            canon_min_modificado = (
+                Decimal(str(calculo.canon_minimo_garantizado_vigente)) != Decimal(str(canon_min_contrato_base))
+                and calculo.otrosi_referencia is not None
+            )
+        if canon_min_modificado and calculo.otrosi_referencia:
+            canon_min_fuente = (
+                f'Otro Sí {calculo.otrosi_referencia.numero_otrosi} '
+                f'(vigente desde {calculo.otrosi_referencia.effective_from:%d/%m/%Y})'
+            )
+
     context = {
         'calculo': calculo,
         'desglose': calculo.get_desglose_completo(),
         'informe': informe,
         'porcentaje_modificado': porcentaje_modificado,
         'canon_min_modificado': canon_min_modificado,
+        'canon_min_fuente': canon_min_fuente,
     }
     
     return render(request, 'gestion/calculos/facturacion_resultado.html', context)

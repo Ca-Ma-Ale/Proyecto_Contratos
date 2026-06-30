@@ -28,7 +28,8 @@ def _aplicar_polizas_vigentes_a_requisitos(requisitos, polizas_queryset, sobresc
         'RCE - Responsabilidad Civil': 'rce',
         'Cumplimiento': 'cumplimiento',
         'Poliza de Arrendamiento': 'arrendamiento',
-        'Arrendamiento': 'todo_riesgo',
+        'Todo Riesgo': 'todo_riesgo',
+        'Arrendamiento': 'todo_riesgo',  # backward compat con pólizas antiguas en BD
         'Otra': 'otra',
     }
 
@@ -365,11 +366,11 @@ def _construir_requisitos_poliza_desde_otrosi(contrato, otrosi):
             }
         },
         'todo_riesgo': {
-            'exigida': getattr(otrosi, 'nuevo_exige_poliza_todo_riesgo', None) if getattr(otrosi, 'nuevo_exige_poliza_todo_riesgo', None) is not None else (valores_base.get('Arrendamiento', {}).get('valor_requerido') is not None),
-            'valor': get_valor('nuevo_valor_asegurado_todo_riesgo') or (float(valores_base.get('Arrendamiento', {}).get('valor_requerido', 0)) if valores_base.get('Arrendamiento', {}).get('valor_requerido') else None),
-            'vigencia': getattr(otrosi, 'nuevo_meses_vigencia_todo_riesgo', None) or valores_base.get('Arrendamiento', {}).get('meses_vigencia'),
-            'fecha_inicio': getattr(otrosi, 'nuevo_fecha_inicio_vigencia_todo_riesgo', None) or valores_base.get('Arrendamiento', {}).get('fecha_inicio_requerida'),
-            'fecha_fin': getattr(otrosi, 'nuevo_fecha_fin_vigencia_todo_riesgo', None) or valores_base.get('Arrendamiento', {}).get('fecha_fin_requerida'),
+            'exigida': getattr(otrosi, 'nuevo_exige_poliza_todo_riesgo', None) if getattr(otrosi, 'nuevo_exige_poliza_todo_riesgo', None) is not None else (valores_base.get('Todo Riesgo', valores_base.get('Arrendamiento', {})).get('valor_requerido') is not None),
+            'valor': get_valor('nuevo_valor_asegurado_todo_riesgo') or (float(valores_base.get('Todo Riesgo', valores_base.get('Arrendamiento', {})).get('valor_requerido', 0)) if valores_base.get('Todo Riesgo', valores_base.get('Arrendamiento', {})).get('valor_requerido') else None),
+            'vigencia': getattr(otrosi, 'nuevo_meses_vigencia_todo_riesgo', None) or valores_base.get('Todo Riesgo', valores_base.get('Arrendamiento', {})).get('meses_vigencia'),
+            'fecha_inicio': getattr(otrosi, 'nuevo_fecha_inicio_vigencia_todo_riesgo', None) or valores_base.get('Todo Riesgo', valores_base.get('Arrendamiento', {})).get('fecha_inicio_requerida'),
+            'fecha_fin': getattr(otrosi, 'nuevo_fecha_fin_vigencia_todo_riesgo', None) or valores_base.get('Todo Riesgo', valores_base.get('Arrendamiento', {})).get('fecha_fin_requerida'),
             'fuente': 'otrosi',
             'detalles': {}
         },
@@ -489,11 +490,11 @@ def _construir_requisitos_poliza_desde_renovacion(contrato, renovacion):
             }
         },
         'todo_riesgo': {
-            'exigida': getattr(renovacion, 'nuevo_exige_poliza_todo_riesgo', None) if getattr(renovacion, 'nuevo_exige_poliza_todo_riesgo', None) is not None else (valores_base.get('Arrendamiento', {}).get('valor_requerido') is not None),
-            'valor': get_valor('nuevo_valor_asegurado_todo_riesgo') or (float(valores_base.get('Arrendamiento', {}).get('valor_requerido', 0)) if valores_base.get('Arrendamiento', {}).get('valor_requerido') else None),
-            'vigencia': getattr(renovacion, 'nuevo_meses_vigencia_todo_riesgo', None) or valores_base.get('Arrendamiento', {}).get('meses_vigencia'),
-            'fecha_inicio': getattr(renovacion, 'nuevo_fecha_inicio_vigencia_todo_riesgo', None) or valores_base.get('Arrendamiento', {}).get('fecha_inicio_requerida'),
-            'fecha_fin': getattr(renovacion, 'nuevo_fecha_fin_vigencia_todo_riesgo', None) or valores_base.get('Arrendamiento', {}).get('fecha_fin_requerida'),
+            'exigida': getattr(renovacion, 'nuevo_exige_poliza_todo_riesgo', None) if getattr(renovacion, 'nuevo_exige_poliza_todo_riesgo', None) is not None else (valores_base.get('Todo Riesgo', valores_base.get('Arrendamiento', {})).get('valor_requerido') is not None),
+            'valor': get_valor('nuevo_valor_asegurado_todo_riesgo') or (float(valores_base.get('Todo Riesgo', valores_base.get('Arrendamiento', {})).get('valor_requerido', 0)) if valores_base.get('Todo Riesgo', valores_base.get('Arrendamiento', {})).get('valor_requerido') else None),
+            'vigencia': getattr(renovacion, 'nuevo_meses_vigencia_todo_riesgo', None) or valores_base.get('Todo Riesgo', valores_base.get('Arrendamiento', {})).get('meses_vigencia'),
+            'fecha_inicio': getattr(renovacion, 'nuevo_fecha_inicio_vigencia_todo_riesgo', None) or valores_base.get('Todo Riesgo', valores_base.get('Arrendamiento', {})).get('fecha_inicio_requerida'),
+            'fecha_fin': getattr(renovacion, 'nuevo_fecha_fin_vigencia_todo_riesgo', None) or valores_base.get('Todo Riesgo', valores_base.get('Arrendamiento', {})).get('fecha_fin_requerida'),
             'fuente': 'renovacion',
             'detalles': {}
         },
@@ -587,7 +588,8 @@ def _construir_requisitos_poliza(contrato, vista_vigente, permitir_fuera_vigenci
         'RCE - Responsabilidad Civil': ('rce', {}),
         'Cumplimiento': ('cumplimiento', {}),
         'Poliza de Arrendamiento': ('arrendamiento', {}),
-        'Arrendamiento': ('todo_riesgo', {}),
+        'Todo Riesgo': ('todo_riesgo', {}),
+        'Arrendamiento': ('todo_riesgo', {}),  # backward compat con pólizas antiguas en BD
         'Otra': ('otra', {'nombre': None}),
     }
     
@@ -646,7 +648,7 @@ def registrar_seguimientos_contrato_desde_formulario(form, contrato, usuario):
         ('seguimiento_poliza_rce', 'RCE - Responsabilidad Civil'),
         ('seguimiento_poliza_cumplimiento', 'Cumplimiento'),
         ('seguimiento_poliza_arrendamiento', 'Poliza de Arrendamiento'),
-        ('seguimiento_poliza_todo_riesgo', 'Arrendamiento'),
+        ('seguimiento_poliza_todo_riesgo', 'Todo Riesgo'),
         ('seguimiento_poliza_otra', 'Otra'),
     ]
 
@@ -745,16 +747,27 @@ def _es_contrato_vencido(contrato, fecha_referencia=None):
     return fecha_final < fecha_referencia
 
 
-def obtener_canon_vigente(contrato, fecha_referencia=None):
+def obtener_canon_vigente_con_fuente(contrato, fecha_referencia=None, forzar_campo=None):
     """
-    Devuelve el canon vigente del contrato a la fecha de referencia, aplicando la misma
-    prioridad que el resumen del contrato:
-      1. Último cálculo IPC/SMLV aplicado (si es posterior al OtroSí que modificó el canon)
-      2. Último OtroSí que modificó el campo de canon (efecto cadena)
-      3. Valor base del contrato
+    Igual que obtener_canon_vigente, pero además identifica de dónde viene el
+    valor (Otro Sí, cálculo de IPC/Salario Mínimo, o contrato base), para que
+    la interfaz pueda mostrar la fuente real en vez de asumir "Contrato base".
 
-    Para arrendatarios usa valor_canon_fijo / nuevo_valor_canon.
-    Para proveedores usa canon_minimo_garantizado / nuevo_canon_minimo_garantizado.
+    Args:
+        forzar_campo: 'canon_minimo_garantizado' o 'valor_canon_fijo'. Si se
+            especifica, se usa ese campo del contrato (y su equivalente en
+            Otro Sí) sin importar tipo_contrato_cliente_proveedor. Útil para
+            modalidad Híbrido (Min Garantizado), donde el campo relevante es
+            siempre canon_minimo_garantizado, sin importar si el contrato es
+            cliente o proveedor.
+
+    Returns:
+        dict con:
+        - valor: Decimal con el canon vigente (o None)
+        - tipo: 'ipc' | 'smlv' | 'otrosi' | 'contrato' | None
+        - fuente: texto legible para mostrar en pantalla/PDF
+        - otrosi: instancia de OtroSi si tipo == 'otrosi', si no None
+        - calculo: instancia de CalculoIPC/CalculoSalarioMinimo si tipo es 'ipc'/'smlv', si no None
     """
     from gestion.utils_ipc import obtener_ultimo_calculo_aplicado_hasta_fecha
     from gestion.utils_otrosi import get_ultimo_otrosi_que_modifico_campo_hasta_fecha
@@ -762,9 +775,16 @@ def obtener_canon_vigente(contrato, fecha_referencia=None):
     if fecha_referencia is None:
         fecha_referencia = date.today()
 
-    es_proveedor = getattr(contrato, 'tipo_contrato_cliente_proveedor', None) == 'PROVEEDOR'
-    campo_otrosi = 'nuevo_canon_minimo_garantizado' if es_proveedor else 'nuevo_valor_canon'
-    campo_base = 'canon_minimo_garantizado' if es_proveedor else 'valor_canon_fijo'
+    if forzar_campo == 'canon_minimo_garantizado':
+        campo_base = 'canon_minimo_garantizado'
+        campo_otrosi = 'nuevo_canon_minimo_garantizado'
+    elif forzar_campo == 'valor_canon_fijo':
+        campo_base = 'valor_canon_fijo'
+        campo_otrosi = 'nuevo_valor_canon'
+    else:
+        es_proveedor = getattr(contrato, 'tipo_contrato_cliente_proveedor', None) == 'PROVEEDOR'
+        campo_otrosi = 'nuevo_canon_minimo_garantizado' if es_proveedor else 'nuevo_valor_canon'
+        campo_base = 'canon_minimo_garantizado' if es_proveedor else 'valor_canon_fijo'
 
     otrosi_canon = get_ultimo_otrosi_que_modifico_campo_hasta_fecha(contrato, campo_otrosi, fecha_referencia)
     ultimo_calculo = obtener_ultimo_calculo_aplicado_hasta_fecha(contrato, fecha_referencia)
@@ -784,12 +804,48 @@ def obtener_canon_vigente(contrato, fecha_referencia=None):
             else:
                 aplicar_calculo = True
         if aplicar_calculo:
-            return ultimo_calculo.nuevo_canon
+            es_ipc = hasattr(ultimo_calculo, 'ipc_historico')
+            fecha_str = ultimo_calculo.fecha_aplicacion.strftime('%d/%m/%Y')
+            return {
+                'valor': ultimo_calculo.nuevo_canon,
+                'tipo': 'ipc' if es_ipc else 'smlv',
+                'fuente': f'Cálculo {"IPC" if es_ipc else "Salario Mínimo"} aplicado el {fecha_str}',
+                'otrosi': None,
+                'calculo': ultimo_calculo,
+            }
 
     if otrosi_canon_valor:
-        return otrosi_canon_valor
+        fecha_str = otrosi_canon.effective_from.strftime('%d/%m/%Y') if otrosi_canon.effective_from else ''
+        return {
+            'valor': otrosi_canon_valor,
+            'tipo': 'otrosi',
+            'fuente': f'Otro Sí {otrosi_canon.numero_otrosi} (vigente desde {fecha_str})',
+            'otrosi': otrosi_canon,
+            'calculo': None,
+        }
 
-    return getattr(contrato, campo_base, None)
+    valor_base = getattr(contrato, campo_base, None)
+    return {
+        'valor': valor_base,
+        'tipo': 'contrato' if valor_base is not None else None,
+        'fuente': 'Contrato base',
+        'otrosi': None,
+        'calculo': None,
+    }
+
+
+def obtener_canon_vigente(contrato, fecha_referencia=None):
+    """
+    Devuelve el canon vigente del contrato a la fecha de referencia, aplicando la misma
+    prioridad que el resumen del contrato:
+      1. Último cálculo IPC/SMLV aplicado (si es posterior al OtroSí que modificó el canon)
+      2. Último OtroSí que modificó el campo de canon (efecto cadena)
+      3. Valor base del contrato
+
+    Para arrendatarios usa valor_canon_fijo / nuevo_valor_canon.
+    Para proveedores usa canon_minimo_garantizado / nuevo_canon_minimo_garantizado.
+    """
+    return obtener_canon_vigente_con_fuente(contrato, fecha_referencia)['valor']
 
 
 def _estado_vigente_contrato(contrato, fecha_actual=None):
