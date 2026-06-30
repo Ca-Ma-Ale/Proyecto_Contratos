@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+
+{% block title %}Eliminar Cálculo de Ventas - Gestión de Contratos{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-6 offset-md-3">
+            <div class="card">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-exclamation-triangle"></i> Eliminar Cálculo de Ventas
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        ¿Está seguro de que desea eliminar este cálculo? Esta acción no se puede deshacer.
+                    </p>
+
+                    <ul class="list-unstyled mb-3">
+                        <li><strong>Contrato:</strong> {{ calculo.contrato.num_contrato }}</li>
+                        <li><strong>Mes/Año:</strong> {{ calculo.get_mes_display }}/{{ calculo.año }}</li>
+                        <li><strong>Valor a facturar:</strong> ${{ calculo.valor_a_facturar_variable|floatformat:0 }}</li>
+                        <li><strong>Calculado por:</strong> {{ calculo.calculado_por|default:"-" }}</li>
+                        <li><strong>Fecha de cálculo:</strong> {{ calculo.fecha_calculo|date:"d/m/Y H:i" }}</li>
+                        {% if calculo.confirmado %}
+                        <li>
+                            <strong>Estado:</strong>
+                            <span class="badge bg-warning text-dark">
+                                <i class="fas fa-lock"></i> Confirmado
+                            </span>
+                        </li>
+                        {% endif %}
+                    </ul>
+
+                    {% if calculo.confirmado %}
+                    <p class="alert alert-warning">
+                        <i class="fas fa-lock"></i>
+                        <strong>Este cálculo ya fue confirmado.</strong> Eliminarlo desbloqueará los campos de porcentaje
+                        de ventas y canon mínimo garantizado del contrato.
+                    </p>
+                    {% endif %}
+
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="d-flex justify-content-between">
+                            {% if informe %}
+                            <a href="{% url 'gestion:resultado_calculo_facturacion' calculo.id %}" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Cancelar
+                            </a>
+                            {% else %}
+                            <a href="{% url 'gestion:lista_informes_entregados' %}" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Cancelar
+                            </a>
+                            {% endif %}
+                            <button type="submit" class="btn btn-danger">
+                                <i class="fas fa-trash-alt"></i> Eliminar cálculo
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

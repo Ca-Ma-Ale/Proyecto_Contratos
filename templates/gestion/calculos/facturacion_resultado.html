@@ -175,22 +175,42 @@
                         <i class="fas fa-file-excel"></i> Descargar Excel
                     </a>
                     {% if not calculo.confirmado %}
-                    <form method="post" action="{% url 'gestion:confirmar_calculo_facturacion' calculo.id %}"
-                          onsubmit="return confirm('¿Confirmar este cálculo? Esto bloqueará la edición del porcentaje de ventas y canon mínimo garantizado del contrato.');">
-                        {% csrf_token %}
-                        <button type="submit" class="btn btn-warning">
-                            <i class="fas fa-check-double"></i> Confirmar Cálculo
-                        </button>
-                    </form>
+                        {% if informe and informe.estado == 'PENDIENTE' %}
+                        {# Acción combinada: confirmar + finalizar #}
+                        <form method="post" action="{% url 'gestion:confirmar_y_finalizar_calculo' calculo.id %}"
+                              onsubmit="return confirm('¿Confirmar el cálculo y marcar el informe como entregado? Esta acción bloqueará la edición de porcentaje y canon mínimo del contrato.');"
+                              class="d-flex align-items-center gap-2">
+                            {% csrf_token %}
+                            <input type="date" name="fecha_entrega" class="form-control form-control-sm"
+                                   value="{{ fecha_hoy|date:'Y-m-d' }}" style="width:160px;" title="Fecha de entrega">
+                            <button type="submit" class="btn btn-primary text-nowrap">
+                                <i class="fas fa-check-double"></i> Confirmar y Finalizar
+                            </button>
+                        </form>
+                        {% else %}
+                        {# Solo confirmar (sin informe pendiente) #}
+                        <form method="post" action="{% url 'gestion:confirmar_calculo_facturacion' calculo.id %}"
+                              onsubmit="return confirm('¿Confirmar este cálculo? Esto bloqueará la edición del porcentaje de ventas y canon mínimo garantizado del contrato.');">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-warning">
+                                <i class="fas fa-check-double"></i> Confirmar Cálculo
+                            </button>
+                        </form>
+                        {% endif %}
+                        {% if informe %}
+                        <a href="{% url 'gestion:calcular_facturacion' %}?informe_id={{ informe.id }}&recalcular=1"
+                           class="btn btn-outline-primary">
+                            <i class="fas fa-redo"></i> Recalcular
+                        </a>
+                        <a href="{% url 'gestion:eliminar_calculo_facturacion' calculo.id %}"
+                           class="btn btn-outline-danger">
+                            <i class="fas fa-trash-alt"></i> Eliminar cálculo
+                        </a>
+                        {% endif %}
                     {% else %}
                     <span class="btn btn-outline-success disabled">
                         <i class="fas fa-lock"></i> Cálculo Confirmado
                     </span>
-                    {% endif %}
-                    {% if informe and informe.estado == 'PENDIENTE' %}
-                    <a href="{% url 'gestion:finalizar_informe_ventas' informe.id %}" class="btn btn-primary">
-                        <i class="fas fa-check-circle"></i> Finalizar Informe
-                    </a>
                     {% endif %}
                     <a href="{% url 'gestion:lista_informes_ventas' %}" class="btn btn-secondary">
                         <i class="fas fa-list"></i> Ver Contratos

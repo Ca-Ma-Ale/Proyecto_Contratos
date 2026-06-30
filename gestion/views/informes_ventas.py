@@ -2,7 +2,7 @@ from datetime import date
 from decimal import Decimal
 
 from django.contrib import messages
-from django.db.models import Q
+from django.db.models import Q, Subquery, OuterRef
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
@@ -435,33 +435,36 @@ def calcular_facturacion(request):
                     }
                 )
             
-            # Guardar el cálculo
+            # Guardar el cálculo (update si ya existe para ese informe, create si no)
             try:
-                calculo = CalculoFacturacionVentas.objects.create(
-                    contrato=contrato,
+                calculo, creado = CalculoFacturacionVentas.objects.update_or_create(
                     informe_ventas=informe_ventas,
-                    mes=mes,
-                    año=año,
-                    ventas_totales=ventas_totales,
-                    devoluciones=devoluciones,
-                    base_neta=resultado['base_neta'],
-                    modalidad_contrato=resultado['modalidad_calculo'],
-                    porcentaje_ventas_vigente=resultado['porcentaje_ventas'],
-                    canon_minimo_garantizado_vigente=resultado.get('canon_minimo_garantizado'),
-                    canon_fijo_vigente=resultado.get('canon_fijo'),
-                    valor_calculado_porcentaje=resultado['valor_calculado_porcentaje'],
-                    valor_a_facturar_variable=resultado['valor_a_facturar_variable'],
-                    excedente_sobre_minimo=resultado.get('excedente_sobre_minimo'),
-                    aplica_variable=resultado['aplica_variable'],
-                    otrosi_referencia=resultado.get('otrosi_referencia_canon_minimo') or resultado.get('otrosi_referencia_porcentaje') or resultado.get('otrosi_referencia'),
-                    fuente_canon_minimo_garantizado=resultado.get('fuente_canon_minimo_garantizado'),
-                    fuente_canon_fijo=resultado.get('fuente_canon_fijo'),
-                    observaciones=observaciones,
-                    url_archivo=url_archivo,
-                    calculado_por=request.user.get_username() if request.user.is_authenticated else None,
+                    defaults={
+                        'contrato': contrato,
+                        'mes': mes,
+                        'año': año,
+                        'ventas_totales': ventas_totales,
+                        'devoluciones': devoluciones,
+                        'base_neta': resultado['base_neta'],
+                        'modalidad_contrato': resultado['modalidad_calculo'],
+                        'porcentaje_ventas_vigente': resultado['porcentaje_ventas'],
+                        'canon_minimo_garantizado_vigente': resultado.get('canon_minimo_garantizado'),
+                        'canon_fijo_vigente': resultado.get('canon_fijo'),
+                        'valor_calculado_porcentaje': resultado['valor_calculado_porcentaje'],
+                        'valor_a_facturar_variable': resultado['valor_a_facturar_variable'],
+                        'excedente_sobre_minimo': resultado.get('excedente_sobre_minimo'),
+                        'aplica_variable': resultado['aplica_variable'],
+                        'otrosi_referencia': resultado.get('otrosi_referencia_canon_minimo') or resultado.get('otrosi_referencia_porcentaje') or resultado.get('otrosi_referencia'),
+                        'fuente_canon_minimo_garantizado': resultado.get('fuente_canon_minimo_garantizado'),
+                        'fuente_canon_fijo': resultado.get('fuente_canon_fijo'),
+                        'observaciones': observaciones,
+                        'url_archivo': url_archivo,
+                        'calculado_por': request.user.get_username() if request.user.is_authenticated else None,
+                    }
                 )
-                
-                logger.info(f"Cálculo creado exitosamente: ID={calculo.id}, Contrato={contrato.num_contrato}, Mes={mes}, Año={año}")
+
+                accion = 'creado' if creado else 'actualizado'
+                logger.info(f"Cálculo {accion} exitosamente: ID={calculo.id}, Contrato={contrato.num_contrato}, Mes={mes}, Año={año}")
             except Exception as e:
                 logger.error(f"Error al guardar cálculo: {str(e)}", exc_info=True)
                 messages.error(
@@ -511,6 +514,17 @@ def calcular_facturacion(request):
                     logger.error(f"Error al recuperar informe {informe_id}: {str(e)}\n{traceback.format_exc()}", exc_info=True)
                     pass
     else:
+        # Bloquear si el informe ya tiene un cálculo (requiere borrar o editar explícitamente)
+        if informe and not request.GET.get('recalcular'):
+            calculo_existente = informe.calculos_facturacion.order_by('-id').first()
+            if calculo_existente:
+                messages.warning(
+                    request,
+                    'Este informe ya tiene un cálculo registrado. '
+                    'Puede verlo, editarlo o eliminarlo desde la vista del resultado.'
+                )
+                return redirect('gestion:resultado_calculo_facturacion', calculo_id=calculo_existente.id)
+
         # Si viene desde un informe, pre-llenar los datos
         if informe:
             try:
@@ -519,16 +533,27 @@ def calcular_facturacion(request):
                     logger.error(f"El informe {informe_id} no tiene contrato asociado")
                     messages.error(request, 'El informe no tiene un contrato asociado válido.')
                     return redirect('gestion:lista_informes_ventas')
-                
+
                 if not informe.contrato.reporta_ventas:
                     logger.warning(f"El contrato {informe.contrato.num_contrato} del informe {informe_id} no reporta ventas")
                     messages.warning(request, f'El contrato {informe.contrato.num_contrato} no reporta ventas.')
-                
-                form = CalculoFacturacionVentasForm(initial={
+
+                initial = {
                     'contrato': informe.contrato.id,
                     'mes': str(informe.mes),
                     'año': informe.año,
-                })
+                }
+                # Si es recálculo, pre-rellenar con los valores del cálculo anterior
+                if request.GET.get('recalcular'):
+                    calculo_anterior = informe.calculos_facturacion.order_by('-id').first()
+                    if calculo_anterior:
+                        initial.update({
+                            'ventas_totales': calculo_anterior.ventas_totales,
+                            'devoluciones': calculo_anterior.devoluciones,
+                            'observaciones': calculo_anterior.observaciones or '',
+                            'url_archivo': calculo_anterior.url_archivo or '',
+                        })
+                form = CalculoFacturacionVentasForm(initial=initial)
             except Exception as e:
                 logger.error(f"Error al crear formulario con informe {informe_id}: {str(e)}", exc_info=True)
                 messages.error(request, f'Error al cargar los datos del informe: {str(e)}')
@@ -618,6 +643,7 @@ def resultado_calculo_facturacion(request, calculo_id):
         'porcentaje_modificado': porcentaje_modificado,
         'canon_min_modificado': canon_min_modificado,
         'canon_min_fuente': canon_min_fuente,
+        'fecha_hoy': date.today(),
     }
     
     return render(request, 'gestion/calculos/facturacion_resultado.html', context)
@@ -662,6 +688,60 @@ def confirmar_calculo_facturacion(request, calculo_id):
 
 
 @login_required_custom
+def confirmar_y_finalizar_calculo(request, calculo_id):
+    """Confirma el cálculo y marca el informe asociado como entregado en un solo paso."""
+    if request.method != 'POST':
+        return redirect('gestion:resultado_calculo_facturacion', calculo_id=calculo_id)
+
+    calculo = get_object_or_404(CalculoFacturacionVentas, id=calculo_id)
+    informe = calculo.informe_ventas
+
+    if not informe:
+        messages.error(request, 'Este cálculo no tiene informe asociado.')
+        return redirect('gestion:resultado_calculo_facturacion', calculo_id=calculo_id)
+
+    usuario = request.user.get_full_name() or request.user.username
+
+    # Confirmar el cálculo si no lo está
+    if not calculo.confirmado:
+        calculo.confirmado = True
+        calculo.confirmado_por = usuario
+        calculo.fecha_confirmacion = timezone.now()
+        calculo.save()
+
+        _auditar_cambio(
+            tipo_documento='CALCULO_VENTAS',
+            documento_id=calculo.id,
+            documento_descripcion=f'Cálculo Ventas #{calculo.id} - {calculo.contrato.num_contrato} {calculo.get_mes_display()}/{calculo.año}',
+            nombre_campo='confirmado',
+            valor_anterior=False,
+            valor_nuevo=True,
+            modificado_por=usuario,
+            causa_tipo='CONFIRMACION_CALCULO_VENTAS',
+            causa_descripcion=f'Cálculo confirmado y informe finalizado por {request.user.username}',
+            ip_origen=request.META.get('REMOTE_ADDR'),
+        )
+
+    # Finalizar el informe
+    fecha_entrega_str = request.POST.get('fecha_entrega')
+    if fecha_entrega_str:
+        try:
+            fecha_entrega = date.fromisoformat(fecha_entrega_str)
+            informe.marcar_como_entregado(fecha_entrega)
+        except ValueError:
+            informe.marcar_como_entregado()
+    else:
+        informe.marcar_como_entregado()
+
+    messages.success(
+        request,
+        f'Cálculo confirmado e informe finalizado para {calculo.contrato.num_contrato} — '
+        f'{calculo.get_mes_display()}/{calculo.año}.'
+    )
+    return redirect('gestion:lista_informes_entregados')
+
+
+@login_required_custom
 def finalizar_informe_ventas(request, informe_id):
     """Vista para finalizar un informe de ventas (marcarlo como entregado)"""
     informe = get_object_or_404(InformeVentas, id=informe_id)
@@ -698,6 +778,12 @@ def lista_informes_entregados(request):
     # Por defecto mostrar todos los informes, no solo los entregados
     informes = InformeVentas.objects.all().select_related(
         'contrato', 'contrato__arrendatario', 'contrato__local', 'contrato__tipo_contrato'
+    ).annotate(
+        calculo_id=Subquery(
+            CalculoFacturacionVentas.objects.filter(
+                informe_ventas=OuterRef('pk')
+            ).order_by('-id').values('id')[:1]
+        )
     ).order_by('-año', '-mes', 'contrato__num_contrato')
     
     # Aplicar filtros
@@ -857,6 +943,28 @@ def descargar_excel_calculo(request, calculo_id):
     response['Content-Disposition'] = f'attachment; filename="calculo_facturacion_{calculo.contrato.num_contrato}_{calculo.get_mes_display()}_{calculo.año}.xlsx"'
     
     return response
+
+
+@login_required_custom
+def eliminar_calculo_facturacion(request, calculo_id):
+    """Vista para eliminar un cálculo de facturación por ventas."""
+    calculo = get_object_or_404(CalculoFacturacionVentas, id=calculo_id)
+    informe = calculo.informe_ventas
+
+    if request.method == 'POST':
+        calculo.delete()
+        messages.success(request, 'Cálculo eliminado exitosamente. Ya puede registrar un nuevo cálculo.')
+        if informe:
+            from django.urls import reverse
+            return redirect(f"{reverse('gestion:calcular_facturacion')}?informe_id={informe.id}")
+        return redirect('gestion:lista_informes_entregados')
+
+    context = {
+        'calculo': calculo,
+        'informe': informe,
+        'titulo': f'Eliminar Cálculo de Ventas — {calculo.contrato.num_contrato} {calculo.get_mes_display()}/{calculo.año}',
+    }
+    return render(request, 'gestion/calculos/eliminar_calculo_ventas.html', context)
 
 
 @login_required_custom
