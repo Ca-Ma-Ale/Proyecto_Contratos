@@ -24,6 +24,7 @@ from gestion.utils_otrosi import (
     obtener_valores_vigentes_facturacion_ventas,
     es_fecha_fuera_vigencia_contrato,
 )
+from gestion.utils_ventas import contratos_con_configuracion_ventas_queryset
 
 
 class URLFlexibleField(forms.CharField):
@@ -1363,7 +1364,7 @@ class InformeVentasForm(BaseModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Filtrar solo contratos que reportan ventas
-        self.fields['contrato'].queryset = Contrato.objects.filter(reporta_ventas=True).order_by('num_contrato')
+        self.fields['contrato'].queryset = contratos_con_configuracion_ventas_queryset().order_by('num_contrato')
         # Establecer año por defecto al año actual
         if not self.instance.pk:
             self.fields['año'].initial = date.today().year
@@ -1374,10 +1375,6 @@ class InformeVentasForm(BaseModelForm):
         contrato = cleaned_data.get('contrato')
         mes = cleaned_data.get('mes')
         año = cleaned_data.get('año')
-        
-        # Validar que el contrato reporte ventas
-        if contrato and not contrato.reporta_ventas:
-            raise ValidationError('El contrato seleccionado no reporta ventas.')
         
         # Validar que no exista un informe duplicado para el mismo contrato, mes y año
         if contrato and mes and año:
@@ -1493,12 +1490,12 @@ class FiltroContratosVentasForm(BaseForm):
             # Obtener tipos de contrato únicos de contratos que reportan ventas y son del tipo seleccionado
             self.fields['tipo_contrato'].queryset = TipoContrato.objects.filter(
                 contratos__tipo_contrato_cliente_proveedor=tipo_cliente_proveedor,
-                contratos__reporta_ventas=True
+                contratos__in=contratos_con_configuracion_ventas_queryset()
             ).distinct().order_by('nombre')
         else:
             # Si no hay filtro, mostrar todos los tipos de contratos que tienen contratos que reportan ventas
             self.fields['tipo_contrato'].queryset = TipoContrato.objects.filter(
-                contratos__reporta_ventas=True
+                contratos__in=contratos_con_configuracion_ventas_queryset()
             ).distinct().order_by('nombre')
         
         # Establecer valores iniciales de mes/año si no vienen en data inicial
@@ -1721,7 +1718,7 @@ class CalculoFacturacionVentasForm(BaseForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Filtrar solo contratos que reportan ventas
-        self.fields['contrato'].queryset = Contrato.objects.filter(reporta_ventas=True).order_by('num_contrato')
+        self.fields['contrato'].queryset = contratos_con_configuracion_ventas_queryset().order_by('num_contrato')
     
     mes = forms.ChoiceField(
         choices=[(i, ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 
@@ -1811,13 +1808,19 @@ class CalculoFacturacionVentasForm(BaseForm):
                 ventas_totales = Decimal(str(ventas_totales))
         
         if contrato and mes and año and ventas_totales:
-            # Validar que el contrato reporte ventas
-            if not contrato.reporta_ventas:
-                raise ValidationError('El contrato seleccionado no reporta ventas.')
-            
             # Validar que las devoluciones no sean mayores que las ventas totales
             if isinstance(ventas_totales, Decimal) and devoluciones > ventas_totales:
                 raise ValidationError('Las devoluciones no pueden ser mayores que las ventas totales.')
+
+            valores_vigentes = obtener_valores_vigentes_facturacion_ventas(
+                contrato,
+                int(mes),
+                int(año),
+            )
+            if not valores_vigentes:
+                raise ValidationError(
+                    'El contrato no tiene modalidad Variable Puro o HÃ­brido con porcentaje de ventas vigente para este periodo.'
+                )
         
         return cleaned_data
     

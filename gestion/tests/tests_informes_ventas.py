@@ -9,6 +9,7 @@ from django.utils import timezone
 from gestion.forms import CalculoFacturacionVentasForm
 from gestion.models import CalculoIPC, Contrato, IPCHistorico, Local, OtroSi, RenovacionAutomatica, Tercero
 from gestion.utils_otrosi import obtener_valores_vigentes_facturacion_ventas
+from gestion.utils_ventas import contratos_con_configuracion_ventas_queryset
 
 
 class ListaInformesVentasPerformanceTest(TestCase):
@@ -85,6 +86,69 @@ class ListaInformesVentasPerformanceTest(TestCase):
         self.assertContains(response, 'V-1')
         self.assertContains(response, 'V-5')
         self.assertContains(response, 'OSV-5')
+
+
+class ContratosVentasPorOtrosiTest(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username='ventas-otrosi', password='testpass123'
+        )
+        self.client.force_login(self.user)
+        self.local = Local.objects.create(
+            nombre_comercial_stand='Local Pops',
+            total_area_m2=80,
+        )
+        self.arrendatario = Tercero.objects.create(
+            nit='900999',
+            razon_social='Popsy',
+            tipo='ARRENDATARIO',
+            nombre_rep_legal='Representante',
+        )
+        self.contrato = Contrato.objects.create(
+            num_contrato='POPSY-CTO-01',
+            tipo_contrato_cliente_proveedor='CLIENTE',
+            objeto_destinacion='Objeto',
+            nit_concedente='800',
+            rep_legal_concedente='Legal',
+            fecha_firma=date(2014, 1, 23),
+            fecha_inicial_contrato=date(2014, 1, 23),
+            fecha_final_inicial=date(2030, 1, 22),
+            modalidad_pago='Hibrido (Min Garantizado)',
+            porcentaje_ventas=None,
+            canon_minimo_garantizado=Decimal('10000000'),
+            reporta_ventas=False,
+            arrendatario=self.arrendatario,
+            local=self.local,
+        )
+        OtroSi.objects.create(
+            contrato=self.contrato,
+            numero_otrosi='OS-8',
+            estado='APROBADO',
+            fecha_otrosi=date(2023, 1, 5),
+            effective_from=date(2023, 1, 1),
+            nueva_modalidad_pago='Hibrido (Min Garantizado)',
+            nuevo_porcentaje_ventas=Decimal('12'),
+            nuevo_canon_minimo_garantizado=Decimal('5000000'),
+            descripcion='Ventas por otrosi',
+            fecha_aprobacion=timezone.make_aware(timezone.datetime(2023, 1, 5, 9, 0)),
+        )
+
+    def test_consulta_incluye_contrato_que_reporta_ventas_por_otrosi(self):
+        contratos = contratos_con_configuracion_ventas_queryset()
+
+        self.assertIn(self.contrato, contratos)
+
+    def test_formulario_calculo_permite_contrato_que_reporta_ventas_por_otrosi(self):
+        form = CalculoFacturacionVentasForm(data={
+            'contrato': self.contrato.id,
+            'mes': '7',
+            'año': 2026,
+            'ventas_totales': '100000000',
+            'devoluciones': '0',
+            'observaciones': '',
+        })
+
+        self.assertTrue(form.is_valid(), form.errors)
 
 
 class ObtenerValoresVigentesFacturacionVentasIPCTest(TestCase):

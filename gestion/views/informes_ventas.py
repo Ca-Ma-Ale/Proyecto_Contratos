@@ -16,6 +16,7 @@ from gestion.utils_otrosi import (
     obtener_valores_vigentes_facturacion_ventas,
     es_fecha_fuera_vigencia_contrato,
 )
+from gestion.utils_ventas import contratos_con_configuracion_ventas_queryset
 from gestion.services.exportes import generar_pdf_calculo_facturacion, generar_excel_calculo_facturacion, generar_excel_informes_ventas
 from gestion.views.utils import obtener_configuracion_empresa, _obtener_fecha_final_contrato
 
@@ -32,8 +33,7 @@ def _es_contrato_vigente_en_fecha(contrato, fecha_referencia):
 def lista_informes_ventas(request):
     """Vista para listar contratos que reportan ventas con filtros y fecha de corte"""
     contratos = (
-        Contrato.objects
-        .filter(reporta_ventas=True)
+        contratos_con_configuracion_ventas_queryset()
         .select_related(
             'arrendatario',
             'proveedor',
@@ -528,15 +528,26 @@ def calcular_facturacion(request):
         # Si viene desde un informe, pre-llenar los datos
         if informe:
             try:
-                # Verificar que el contrato existe y reporta ventas
                 if not informe.contrato:
                     logger.error(f"El informe {informe_id} no tiene contrato asociado")
                     messages.error(request, 'El informe no tiene un contrato asociado válido.')
                     return redirect('gestion:lista_informes_ventas')
 
-                if not informe.contrato.reporta_ventas:
-                    logger.warning(f"El contrato {informe.contrato.num_contrato} del informe {informe_id} no reporta ventas")
-                    messages.warning(request, f'El contrato {informe.contrato.num_contrato} no reporta ventas.')
+                valores_vigentes = obtener_valores_vigentes_facturacion_ventas(
+                    informe.contrato,
+                    informe.mes,
+                    informe.año,
+                )
+                if not valores_vigentes:
+                    logger.warning(
+                        "El contrato %s del informe %s no tiene configuracion de ventas vigente",
+                        informe.contrato.num_contrato,
+                        informe_id,
+                    )
+                    messages.warning(
+                        request,
+                        f'El contrato {informe.contrato.num_contrato} no tiene configuraciÃ³n de ventas vigente.'
+                    )
 
                 initial = {
                     'contrato': informe.contrato.id,
