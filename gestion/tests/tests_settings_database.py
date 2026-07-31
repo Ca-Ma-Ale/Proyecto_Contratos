@@ -7,6 +7,26 @@ import unittest
 
 
 class SettingsDatabaseTests(unittest.TestCase):
+    def run_wsgi_settings_module_check(self, env):
+        script = textwrap.dedent(
+            """
+            import contratos.wsgi
+            from django.conf import settings
+
+            print(settings.SETTINGS_MODULE)
+            """
+        )
+
+        result = subprocess.run(
+            [sys.executable, "-c", script],
+            check=True,
+            capture_output=True,
+            env=env,
+            text=True,
+        )
+
+        return result.stdout.strip()
+
     def test_uses_mysql_when_database_name_is_configured(self):
         env = os.environ.copy()
         env.update(
@@ -81,3 +101,17 @@ class SettingsDatabaseTests(unittest.TestCase):
         )
 
         self.assertEqual(result.stdout.strip(), "False")
+
+    def test_wsgi_defaults_to_deployable_settings(self):
+        env = os.environ.copy()
+        env.pop("DJANGO_SETTINGS_MODULE", None)
+        env["SECRET_KEY"] = "test-secret-key-for-wsgi-defaults"
+
+        self.assertEqual(self.run_wsgi_settings_module_check(env), "contratos.settings")
+
+    def test_wsgi_ignores_blank_settings_module(self):
+        env = os.environ.copy()
+        env["DJANGO_SETTINGS_MODULE"] = ""
+        env["SECRET_KEY"] = "test-secret-key-for-wsgi-defaults"
+
+        self.assertEqual(self.run_wsgi_settings_module_check(env), "contratos.settings")
