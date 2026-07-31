@@ -1,48 +1,49 @@
 """
-Django settings for contratos project.
-ADVERTENCIA: Este archivo es para DESARROLLO solamente.
-Para producción, usa settings_production.py
+Django settings for contratos.
+
+Local development keeps using SQLite by default. Production can switch to MySQL
+by setting DATABASE_NAME and the related DATABASE_* environment variables.
 """
 
 import os
 from pathlib import Path
 
-# Cargar variables de entorno desde .env (si existe)
 try:
     from decouple import config
-    # python-decouple cargará automáticamente el archivo .env
-    # Usar config() en lugar de os.environ.get() para cargar desde .env
 except ImportError:
-    # Si decouple no está instalado, cargar manualmente con dotenv
     try:
         from dotenv import load_dotenv
+
         load_dotenv()
     except ImportError:
-        # Si no hay soporte para .env, usar solo variables de entorno del sistema
         pass
+
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# SECURITY WARNING: keep the secret key used in production secret!
-# En desarrollo usamos una clave fija, en producción debe venir de variable de entorno
-# Usar config() si decouple está disponible, sino os.environ.get()
-try:
-    SECRET_KEY = config('SECRET_KEY', default='django-insecure-your-secret-key-here-SOLO-DESARROLLO')
-except NameError:
-    SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-your-secret-key-here-SOLO-DESARROLLO')
 
-# SECURITY WARNING: don't run with debug turned on in production!
-# El default es False: si DEBUG no está en el entorno, el sistema arranca seguro.
-# Para desarrollo local, agrega DEBUG=True a tu archivo .env
-try:
-    DEBUG = config('DEBUG', default=False, cast=bool)
-except NameError:
-    DEBUG = os.environ.get('DEBUG', 'False') == 'True'
+def env_value(name, default=''):
+    try:
+        return config(name, default=default)
+    except NameError:
+        return os.environ.get(name, default)
 
-try:
-    ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1').split(',')
-except NameError:
-    ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+
+def env_bool(name, default=False):
+    try:
+        return config(name, default=default, cast=bool)
+    except NameError:
+        value = os.environ.get(name, str(default))
+        return value.strip().lower() in {'1', 'true', 'yes', 'on'}
+
+
+def env_list(name, default=''):
+    return [item.strip() for item in env_value(name, default).split(',') if item.strip()]
+
+
+SECRET_KEY = env_value('SECRET_KEY', 'django-insecure-your-secret-key-here-SOLO-DESARROLLO')
+DEBUG = env_bool('DEBUG', False)
+ALLOWED_HOSTS = env_list('ALLOWED_HOSTS', 'localhost,127.0.0.1')
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -51,21 +52,22 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'django.contrib.humanize',  # Para formateo de números y fechas
-    'axes',  # Protección contra fuerza bruta
+    'django.contrib.humanize',
+    'axes',
     'gestion',
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'axes.middleware.AxesMiddleware',  # Protección contra fuerza bruta
+    'axes.middleware.AxesMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'gestion.csp_middleware.ContentSecurityPolicyMiddleware',  # Content-Security-Policy
+    'gestion.csp_middleware.ContentSecurityPolicyMiddleware',
 ]
 
 ROOT_URLCONF = 'contratos.urls'
@@ -90,18 +92,33 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'contratos.wsgi.application'
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-        'OPTIONS': {
-            # Esperar hasta 20 segundos antes de lanzar OperationalError por
-            # bloqueo de escritura concurrente. Reduce errores "database is locked"
-            # con múltiples usuarios simultáneos.
-            'timeout': 20,
-        },
+DATABASE_NAME = env_value('DATABASE_NAME')
+
+if DATABASE_NAME:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.mysql',
+            'NAME': DATABASE_NAME,
+            'USER': env_value('DATABASE_USER'),
+            'PASSWORD': env_value('DATABASE_PASSWORD'),
+            'HOST': env_value('DATABASE_HOST', 'mysql'),
+            'PORT': env_value('DATABASE_PORT', '3306'),
+            'OPTIONS': {
+                'charset': 'utf8mb4',
+                'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+            },
+        }
     }
-}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+            'OPTIONS': {
+                'timeout': 20,
+            },
+        }
+    }
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -124,11 +141,8 @@ AUTHENTICATION_BACKENDS = [
 ]
 
 LANGUAGE_CODE = 'es-co'
-
 TIME_ZONE = 'America/Bogota'
-
 USE_I18N = True
-
 USE_TZ = True
 
 STATIC_URL = '/static/'
@@ -137,49 +151,55 @@ STATICFILES_DIRS = [
 ]
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
-# Media files (uploads)
+STORAGES = {
+    'default': {
+        'BACKEND': 'django.core.files.storage.FileSystemStorage',
+    },
+    'staticfiles': {
+        'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
+    },
+}
+
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# Login/Logout URLs
 LOGIN_URL = '/login/'
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/login/'
 
-# CSRF Trusted Origins (importante para producción)
-CSRF_TRUSTED_ORIGINS = os.environ.get('CSRF_TRUSTED_ORIGINS', '').split(',') if os.environ.get('CSRF_TRUSTED_ORIGINS') else []
+CSRF_TRUSTED_ORIGINS = env_list('CSRF_TRUSTED_ORIGINS')
 
-# Configuración de Seguridad de Sesiones
-SESSION_COOKIE_AGE = 3600  # 1 hora en segundos
-SESSION_COOKIE_HTTPONLY = True  # Previene acceso a cookies desde JavaScript (protección XSS)
-SESSION_COOKIE_SAMESITE = 'Strict'  # Protección CSRF mejorada
-SESSION_SAVE_EVERY_REQUEST = True  # Renueva la sesión en cada request
-SESSION_EXPIRE_AT_BROWSER_CLOSE = True  # Expira la sesión al cerrar el navegador
-SESSION_COOKIE_SECURE = not DEBUG   # True automáticamente cuando DEBUG=False
-CSRF_COOKIE_SECURE = not DEBUG      # Idem para la cookie CSRF
+SESSION_COOKIE_AGE = 3600
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = 'Strict'
+SESSION_SAVE_EVERY_REQUEST = True
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = not DEBUG
 
-# Configuración de django-axes (Protección contra fuerza bruta)
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+SECURE_SSL_REDIRECT = not DEBUG
+SECURE_HSTS_SECONDS = 0 if DEBUG else 31536000
+SECURE_HSTS_INCLUDE_SUBDOMAINS = not DEBUG
+SECURE_HSTS_PRELOAD = not DEBUG
+SECURE_CONTENT_TYPE_NOSNIFF = True
+
 AXES_ENABLED = True
-AXES_FAILURE_LIMIT = 5  # Número de intentos fallidos antes de bloquear
-AXES_COOLOFF_TIME = 1  # Tiempo de bloqueo en horas (1 hora)
-AXES_LOCKOUT_TEMPLATE = 'registration/login.html'  # Template a mostrar cuando está bloqueado
-AXES_LOCKOUT_URL = None  # Usar template en lugar de URL
-AXES_RESET_ON_SUCCESS = True  # Resetear contador al hacer login exitoso
-AXES_LOCKOUT_PARAMETERS = ['username', 'ip_address']  # Bloquear por combinación usuario+IP
-AXES_VERBOSE = False  # Logging detallado (desactivado para reducir ruido en logs)
+AXES_FAILURE_LIMIT = 5
+AXES_COOLOFF_TIME = 1
+AXES_LOCKOUT_TEMPLATE = 'registration/login.html'
+AXES_LOCKOUT_URL = None
+AXES_RESET_ON_SUCCESS = True
+AXES_LOCKOUT_PARAMETERS = ['username', 'ip_address']
+AXES_VERBOSE = False
 
-# Configuración de Email (se puede sobrescribir desde ConfiguracionEmail en BD)
-# En producción, la configuración se toma desde el modelo ConfiguracionEmail
-EMAIL_BACKEND = os.environ.get(
-    'EMAIL_BACKEND',
-    'django.core.mail.backends.smtp.EmailBackend'
-)
-EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.gmail.com')
-EMAIL_PORT = int(os.environ.get('EMAIL_PORT', 587))
-EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True') == 'True'
-EMAIL_USE_SSL = os.environ.get('EMAIL_USE_SSL', 'False') == 'True'
-EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
-EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
-DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'noreply@example.com')
+EMAIL_BACKEND = env_value('EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')
+EMAIL_HOST = env_value('EMAIL_HOST', 'smtp.gmail.com')
+EMAIL_PORT = int(env_value('EMAIL_PORT', 587))
+EMAIL_USE_TLS = env_bool('EMAIL_USE_TLS', True)
+EMAIL_USE_SSL = env_bool('EMAIL_USE_SSL', False)
+EMAIL_HOST_USER = env_value('EMAIL_HOST_USER')
+EMAIL_HOST_PASSWORD = env_value('EMAIL_HOST_PASSWORD')
+DEFAULT_FROM_EMAIL = env_value('DEFAULT_FROM_EMAIL', 'noreply@example.com')

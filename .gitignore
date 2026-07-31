@@ -180,6 +180,7 @@ cython_debug/
 
 # Media files
 media/
+deploy_data/
 
 # Static files
 staticfiles/
