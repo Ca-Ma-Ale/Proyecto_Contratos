@@ -57,3 +57,27 @@ class SettingsDatabaseTests(unittest.TestCase):
                 "charset": "utf8mb4",
             },
         )
+
+    def test_ssl_redirect_can_be_disabled_when_proxy_handles_https(self):
+        env = os.environ.copy()
+        env.update(
+            {
+                "DEBUG": "False",
+                "SECURE_SSL_REDIRECT": "False",
+            }
+        )
+
+        script = (
+            "import contratos.settings as settings; "
+            "print(settings.SECURE_SSL_REDIRECT)"
+        )
+
+        result = subprocess.run(
+            [sys.executable, "-c", script],
+            check=True,
+            capture_output=True,
+            env=env,
+            text=True,
+        )
+
+        self.assertEqual(result.stdout.strip(), "False")
