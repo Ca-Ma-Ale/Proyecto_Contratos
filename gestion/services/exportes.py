@@ -41,7 +41,7 @@ FORMATO_NUMERICO = '#.##0'
 
 
 def limpiar_nombre_hoja_excel(nombre: str) -> str:
-    """
+    r"""
     Limpia el nombre de una hoja de Excel eliminando caracteres no permitidos.
     Excel no permite: / \ ? * [ ]
     También limita la longitud a 31 caracteres.

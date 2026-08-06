@@ -9,6 +9,7 @@ from django.utils import timezone
 from datetime import date
 import logging
 
+from gestion.models import TIPO_ALERTA_CHOICES
 from gestion.services.alerta_email_service import AlertaEmailService
 
 logger = logging.getLogger(__name__)
@@ -22,15 +23,11 @@ class Command(BaseCommand):
             '--tipo',
             type=str,
             help='Tipo específico de alerta a enviar (opcional)',
-            choices=[
-                'VENCIMIENTO_CONTRATOS',
-                'ALERTAS_IPC',
-                'POLIZAS_CRITICAS',
-                'PREAVISO_RENOVACION',
-                'POLIZAS_REQUERIDAS',
-                'TERMINACION_ANTICIPADA',
-                'RENOVACION_AUTOMATICA',
-            ]
+            # Se derivan del modelo para que no vuelvan a quedar desfasadas: la
+            # lista estaba escrita a mano y se quedó sin ALERTAS_SALARIO_MINIMO,
+            # así que ese tipo se enviaba en la corrida completa pero argparse lo
+            # rechazaba si se pedía con --tipo.
+            choices=[codigo for codigo, _nombre in TIPO_ALERTA_CHOICES],
         )
         parser.add_argument(
             '--forzar',
