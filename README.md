@@ -121,6 +121,12 @@ Ver documentación completa en: `docs/guias/GUIA_BACKUPS_AUTOMATICOS.md`
 
 ## 🚀 Deployment en Producción
 
+> **Producción corre hoy en el VPS Hostinger** (`/opt/proyecto-contratos`, Docker
+> Compose + MySQL), no en PythonAnywhere. Las guías de PythonAnywhere se
+> conservan como referencia histórica.
+
+- **[Alertas por correo programadas en el VPS](docs/deployment/ALERTAS_PROGRAMADAS_VPS.md)** - El cron semanal, de dónde salen las credenciales SMTP y las trampas de días y zona horaria
+
 Para llevar este proyecto a producción:
 
 1. **[Lee la Guía de Producción](docs/guias/GUIA_PRODUCCION.md)** - Tareas críticas antes de producción
