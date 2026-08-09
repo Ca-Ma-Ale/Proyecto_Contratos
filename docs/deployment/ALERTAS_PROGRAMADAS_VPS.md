@@ -80,24 +80,48 @@ Se puede reutilizar la misma cuenta de Gmail y la misma contraseña de
 aplicación, pero hay que cargarla en `ConfiguracionEmail` (admin de Django o
 `scripts/configurar_email.py`). Ponerla solo en el `.env` no activa nada.
 
-### Trampa: `ENCRYPTION_KEY`
+### `ENCRYPTION_KEY` — configurada el 2026-08-09
 
 `get_password()` descifra con Fernet usando `ENCRYPTION_KEY`. Si esa variable no
-está definida, `gestion/utils_encryption.py` deriva la clave del `SECRET_KEY`
-por PBKDF2 y deja un aviso en los logs. Hoy en el VPS funciona por ese camino de
-respaldo.
+está definida (o está vacía), `gestion/utils_encryption.py` deriva la clave del
+`SECRET_KEY` por PBKDF2 y deja un aviso en los logs (`ENCRYPTION_KEY no
+configurada... usando derivacion de fallback`). Desde el 2026-08-09 el VPS ya
+no usa ese camino de respaldo: `ENCRYPTION_KEY` está fijada en el `.env` y
+`enviar_alertas_email` corre sin ese aviso.
 
-La consecuencia: **si algún día se rota el `SECRET_KEY`, la contraseña guardada
-deja de descifrarse y las alertas mueren en silencio** — el síntoma es que el
-cliente deja de recibir correos.
+**Trampa real que se encontró al hacerlo:** el `.env` ya tenía una línea
+`ENCRYPTION_KEY=` — pero vacía. `os.environ.get('ENCRYPTION_KEY')` devuelve
+`''`, que es falsy, así que `if encryption_key:` seguía cayendo al fallback
+aunque la variable "existiera". `grep -q '^ENCRYPTION_KEY='` no distingue una
+línea vacía de una con valor real; hay que revisar el contenido, no solo si la
+línea existe.
 
-Al configurar `ENCRYPTION_KEY` hay que tener cuidado con el orden, porque la
-contraseña actual está cifrada con la clave derivada del `SECRET_KEY` y tampoco
-se podrá descifrar con la nueva:
+Por qué importaba resolverlo: **si se rota el `SECRET_KEY`, la contraseña
+guardada bajo la derivación de fallback deja de descifrarse y las alertas
+mueren en silencio** — el síntoma es que el cliente deja de recibir correos.
+Con `ENCRYPTION_KEY` propia, la contraseña de email queda desacoplada de
+`SECRET_KEY`.
 
-1. Definir `ENCRYPTION_KEY` en el `.env`.
-2. Recrear el contenedor (`up -d web`; un `restart` no relee el `.env`).
-3. **Volver a guardar la contraseña** para que se cifre con la clave nueva.
+**Orden seguro usado** (evita el problema de que, si primero cambias la clave
+y recreas el contenedor, ya no se puede descifrar la contraseña vieja para
+volver a guardarla):
+
+1. Generar la clave nueva con
+   `python -c "from gestion.utils_encryption import generate_encryption_key; print(generate_encryption_key())"`
+   dentro del contenedor.
+2. **Antes** de tocar el `.env`, generar una contraseña de aplicación de Gmail
+   nueva (https://myaccount.google.com/apppasswords) y guardarla ya cifrada
+   con la clave nueva, directo por `manage.py shell` con
+   `Fernet(NEW_KEY).encrypt(...)` — sin depender de descifrar la contraseña
+   vieja ni de que el operador la tenga a mano.
+3. Recién ahí escribir `ENCRYPTION_KEY` en el `.env` (revisando que la línea
+   quede con valor, no vacía) y recrear el contenedor: `up -d web` (un
+   `restart` no relee el `.env`).
+4. Verificar con `ConfiguracionEmail.get_activa().get_password()` que ya no
+   hay excepción, y con un envío real de prueba (ver abajo) que Gmail acepta
+   la contraseña nueva.
+5. Revocar la contraseña de aplicación vieja en Gmail una vez confirmado el
+   envío.
 
 ## Cómo probar sin molestar al cliente
 
