@@ -22,8 +22,23 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            position: relative;
+            overflow: hidden;
         }
-        
+
+        .bg-shape {
+            position: fixed;
+            width: 380px;
+            height: auto;
+            opacity: 0.15;
+            pointer-events: none;
+            z-index: 0;
+        }
+        .bg-shape-tl { top: -80px; left: -80px; transform: rotate(-8deg); }
+        .bg-shape-tr { top: -100px; right: -90px; transform: rotate(15deg); }
+        .bg-shape-bl { bottom: -100px; left: -70px; transform: rotate(20deg); }
+        .bg-shape-br { bottom: -90px; right: -80px; transform: rotate(-15deg); }
+
         .login-container {
             background: white;
             border-radius: 15px;
@@ -31,6 +46,8 @@
             overflow: hidden;
             max-width: 900px;
             width: 100%;
+            position: relative;
+            z-index: 1;
         }
         
         .login-left {
@@ -56,17 +73,21 @@
             font-size: 1.75rem;
         }
         
-        .logo-squares {
-            display: inline-block;
+        .logo-chip {
+            background: white;
+            border-radius: 16px;
+            padding: 12px 20px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
             margin-bottom: 1rem;
         }
-        
-        .square-color {
-            width: 40px;
-            height: 40px;
-            margin: 3px;
-            border-radius: 5px;
-            display: inline-block;
+
+        .logo-chip img {
+            height: 80px;
+            width: auto;
+            object-fit: contain;
+            display: block;
         }
         
         .login-right {
@@ -96,18 +117,18 @@
     </style>
 </head>
 <body>
+    <img src="{% static 'gestion/img/avenida-chile-icono.svg' %}" class="bg-shape bg-shape-tl" alt="">
+    <img src="{% static 'gestion/img/avenida-chile-icono.svg' %}" class="bg-shape bg-shape-tr" alt="">
+    <img src="{% static 'gestion/img/avenida-chile-icono.svg' %}" class="bg-shape bg-shape-bl" alt="">
+    <img src="{% static 'gestion/img/avenida-chile-icono.svg' %}" class="bg-shape bg-shape-br" alt="">
     <div class="container">
         <div class="login-container">
             <div class="row g-0">
                 <!-- Lado Izquierdo - Branding -->
                 <div class="col-md-5 login-left">
                     <div class="login-logo">
-                        <div class="logo-squares">
-                            <div class="square-color" style="background-color: var(--avenida-green);"></div>
-                            <div class="square-color" style="background-color: var(--avenida-orange);"></div>
-                            <br>
-                            <div class="square-color" style="background-color: var(--avenida-cyan);"></div>
-                            <div class="square-color" style="background-color: var(--avenida-magenta);"></div>
+                        <div class="logo-chip">
+                            <img src="{% if empresa_config and empresa_config.logo %}{{ empresa_config.logo.url }}{% else %}{% static 'gestion/img/avenida-chile-icono.svg' %}{% endif %}" alt="Logo {% if empresa_config %}{{ empresa_config.nombre_empresa }}{% else %}Centro Comercial Avenida de Chile{% endif %}">
                         </div>
                         <h2 class="mb-3">{% if empresa_config %}{{ empresa_config.nombre_empresa }}{% else %}Centro Comercial<br>Avenida de Chile{% endif %}</h2>
                         <p class="mb-1">NIT: {% if empresa_config %}{{ empresa_config.nit_empresa }}{% else %}860.509.249-3{% endif %}</p>
