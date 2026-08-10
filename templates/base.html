@@ -59,7 +59,23 @@
             font-weight: bold;
             color: var(--avenida-orange) !important;
         }
-        
+
+        .navbar-logo-chip {
+            background: white;
+            border-radius: 10px;
+            padding: 6px 10px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .navbar-logo-chip img {
+            height: 40px;
+            width: auto;
+            object-fit: contain;
+            display: block;
+        }
+
         .btn-primary {
             background-color: var(--avenida-orange);
             border-color: var(--avenida-orange);
@@ -210,15 +226,8 @@
         <div class="container-fluid">
             <a class="navbar-brand" href="{% url 'gestion:dashboard' %}" style="flex: 1;">
                 <div class="d-flex align-items-center justify-content-center">
-                    <div class="me-3">
-                        <div class="d-flex">
-                            <div class="square-color" style="background-color: var(--avenida-green); width: 28px; height: 28px; margin: 2px; border-radius: 3px;"></div>
-                            <div class="square-color" style="background-color: var(--avenida-orange); width: 28px; height: 28px; margin: 2px; border-radius: 3px;"></div>
-                        </div>
-                        <div class="d-flex">
-                            <div class="square-color" style="background-color: var(--avenida-cyan); width: 28px; height: 28px; margin: 2px; border-radius: 3px;"></div>
-                            <div class="square-color" style="background-color: var(--avenida-magenta); width: 28px; height: 28px; margin: 2px; border-radius: 3px;"></div>
-                        </div>
+                    <div class="navbar-logo-chip me-3">
+                        <img src="{% if empresa_config and empresa_config.logo %}{{ empresa_config.logo.url }}{% else %}{% static 'gestion/img/avenida-chile-icono.svg' %}{% endif %}" alt="Logo {% if empresa_config %}{{ empresa_config.nombre_empresa }}{% else %}Centro Comercial Avenida de Chile{% endif %}">
                     </div>
                     <div class="text-center">
                         <strong style="font-size: 1.5rem; display: block; line-height: 1.3;">{% if empresa_config %}{{ empresa_config.nombre_empresa }}{% else %}Centro Comercial Avenida de Chile - PH{% endif %}</strong>
