@@ -49,7 +49,7 @@
                     </div>
                 </div>
                 <div class="card-body p-4">
-                    <form method="post" novalidate>
+                    <form method="post" enctype="multipart/form-data" novalidate>
                         {% csrf_token %}
 
                         <section class="mb-4">
@@ -166,6 +166,31 @@
                                     {% if form.direccion.errors %}
                                         <div class="alert alert-danger mt-2 mb-0 py-2">
                                             <i class="fas fa-exclamation-circle me-2"></i>{{ form.direccion.errors }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </section>
+
+                        <section class="mb-4">
+                            <h6 class="text-muted text-uppercase fw-semibold small mb-3">
+                                <i class="fas fa-image text-primary me-2"></i>Logo de la empresa
+                            </h6>
+                            <div class="row g-3 align-items-center">
+                                {% if configuracion and configuracion.logo %}
+                                <div class="col-auto">
+                                    <img src="{{ configuracion.logo.url }}" alt="Logo actual" style="height: 60px; width: auto; object-fit: contain; background: white; border-radius: 8px; padding: 6px;">
+                                </div>
+                                {% endif %}
+                                <div class="col">
+                                    <label for="{{ form.logo.id_for_label }}" class="form-label fw-semibold">
+                                        {{ form.logo.label }}
+                                    </label>
+                                    {{ form.logo|add_class:'form-control' }}
+                                    <div class="form-text">PNG, SVG o JPG. Se usará en el login y el menú superior.</div>
+                                    {% if form.logo.errors %}
+                                        <div class="alert alert-danger mt-2 mb-0 py-2">
+                                            <i class="fas fa-exclamation-circle me-2"></i>{{ form.logo.errors }}
                                         </div>
                                     {% endif %}
                                 </div>

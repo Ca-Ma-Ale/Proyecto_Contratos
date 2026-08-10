@@ -16,7 +16,7 @@ def configuracion_empresa(request):
         configuracion = ConfiguracionEmpresa.objects.order_by('-fecha_creacion').first()
     
     if request.method == 'POST':
-        form = ConfiguracionEmpresaForm(request.POST, instance=configuracion)
+        form = ConfiguracionEmpresaForm(request.POST, request.FILES, instance=configuracion)
         if form.is_valid():
             configuracion = form.save(commit=False)
             es_nuevo = configuracion.pk is None
