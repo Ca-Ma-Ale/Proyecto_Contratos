@@ -199,7 +199,13 @@ class ConfiguracionEmpresa(AuditoriaMixin):
     telefono = models.CharField(max_length=20, blank=True, null=True, verbose_name='Teléfono')
     email = models.EmailField(blank=True, null=True, verbose_name='Email')
     activo = models.BooleanField(default=True, verbose_name='Configuración Activa')
-    
+    logo = models.ImageField(
+        upload_to='empresa/logos/',
+        blank=True,
+        null=True,
+        verbose_name='Logo de la Empresa'
+    )
+
     class Meta:
         verbose_name = 'Configuración de Empresa'
         verbose_name_plural = 'Configuraciones de Empresa'
