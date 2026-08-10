@@ -15,6 +15,14 @@ Esta carpeta contiene toda la documentación relacionada con el despliegue y con
 - **CONFIGURACION_CMHERRAMIENTAS.md** - Configuración específica para cmherramientascontables.pythonanywhere.com
 - **BASES_DATOS_PYTHONANYWHERE.md** - Información sobre bases de datos en PythonAnywhere
 
+### Configuración del VPS (Hostinger, despliegue actual)
+
+Configuración que **solo existe en el servidor** y no se deduce del código. Si
+se pierde, la funcionalidad se rompe en silencio.
+
+- **MEDIA_EN_VPS.md** - Cómo se sirven los archivos subidos (`/media/`) a través del Caddy compartido
+- **ALERTAS_PROGRAMADAS_VPS.md** - Cron semanal de alertas por correo y credenciales de email
+
 ### Checklists y Resúmenes
 
 - **CHECKLIST_PRODUCCION.md** - Checklist pre-deployment
