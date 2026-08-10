@@ -191,3 +191,6 @@ backups/
 *.sqlite3.backup
 backup_*.json
 backup_db_*.sqlite3
+
+# Superpowers scratch (brainstorm mockups, SDD ledgers/briefs)
+.superpowers/
