@@ -39,6 +39,11 @@
         .bg-shape-bl { bottom: -100px; left: -70px; transform: rotate(20deg); }
         .bg-shape-br { bottom: -90px; right: -80px; transform: rotate(-15deg); }
 
+        .container {
+            position: relative;
+            z-index: 1;
+        }
+
         .login-container {
             background: white;
             border-radius: 15px;
@@ -113,6 +118,12 @@
         .form-control:focus {
             border-color: var(--avenida-orange);
             box-shadow: 0 0 0 0.2rem rgba(255, 152, 0, 0.25);
+        }
+
+        @media (max-width: 576px) {
+            .bg-shape {
+                width: 200px;
+            }
         }
     </style>
 </head>
