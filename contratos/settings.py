@@ -42,8 +42,20 @@ def env_list(name, default=''):
     return [item.strip() for item in env_value(name, default).split(',') if item.strip()]
 
 
-SECRET_KEY = env_value('SECRET_KEY', 'django-insecure-your-secret-key-here-SOLO-DESARROLLO')
 DEBUG = env_bool('DEBUG', False)
+
+# La clave por defecto solo existe para desarrollo (DEBUG=True). En produccion
+# la aplicacion se niega a arrancar sin una SECRET_KEY real: con la clave
+# publica del repositorio cualquiera podria firmar sesiones y tokens.
+_SECRET_KEY_SOLO_DESARROLLO = 'django-insecure-your-secret-key-here-SOLO-DESARROLLO'
+SECRET_KEY = env_value('SECRET_KEY', '') or (_SECRET_KEY_SOLO_DESARROLLO if DEBUG else '')
+if not DEBUG and (not SECRET_KEY or SECRET_KEY.startswith('django-insecure')):
+    from django.core.exceptions import ImproperlyConfigured
+    raise ImproperlyConfigured(
+        'SECRET_KEY es obligatoria en produccion (DEBUG=False): defina una clave '
+        'segura en el archivo .env (python -c "from django.core.management.utils '
+        'import get_random_secret_key; print(get_random_secret_key())").'
+    )
 ALLOWED_HOSTS = env_list('ALLOWED_HOSTS', 'localhost,127.0.0.1')
 
 INSTALLED_APPS = [

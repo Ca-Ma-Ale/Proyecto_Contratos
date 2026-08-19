@@ -83,6 +83,8 @@ class SettingsDatabaseTests(unittest.TestCase):
         env.update(
             {
                 "DEBUG": "False",
+                # Con DEBUG=False la SECRET_KEY de desarrollo no es aceptada
+                "SECRET_KEY": "clave-fuerte-de-prueba-0123456789",
                 "SECURE_SSL_REDIRECT": "False",
             }
         )
