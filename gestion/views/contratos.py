@@ -149,14 +149,17 @@ def editar_contrato(request, contrato_id):
                 'marca_comercial', 'supervisor_concedente', 'supervisor_contraparte',
                 'arrendatario', 'proveedor', 'local'
             ]
+            # Se sobreescribe siempre (no solo si falta en el POST): un usuario
+            # no-staff no debe poder alterar estos campos manipulando la peticion.
             for campo in campos_protegidos:
-                if campo not in post_data and hasattr(contrato, campo):
+                if hasattr(contrato, campo):
                     valor = getattr(contrato, campo)
-                    if valor is not None:
-                        if hasattr(valor, 'pk'):
-                            post_data[campo] = str(valor.pk)
-                        else:
-                            post_data[campo] = str(valor)
+                    if valor is None:
+                        post_data.pop(campo, None)
+                    elif hasattr(valor, 'pk'):
+                        post_data[campo] = str(valor.pk)
+                    else:
+                        post_data[campo] = str(valor)
 
         form = ContratoForm(post_data, instance=contrato, user=request.user)
 

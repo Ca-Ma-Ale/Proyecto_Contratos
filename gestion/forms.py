@@ -314,7 +314,13 @@ class ContratoForm(BaseModelForm):
 
     class Meta:
         model = Contrato
-        fields = '__all__'
+        # Campos de auditoria y de estado gestionados por el sistema (nunca por
+        # el formulario): evitan asignacion masiva desde el POST.
+        exclude = [
+            'creado_por', 'fecha_creacion', 'modificado_por', 'fecha_modificacion',
+            'eliminado_por', 'fecha_eliminacion', 'finalizado',
+            'ultima_renovacion_automatica_por', 'fecha_ultima_renovacion_automatica',
+        ]
         widgets = {
             'fecha_firma': forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d'),
             'fecha_inicial_contrato': forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d'),
@@ -429,10 +435,13 @@ class ContratoForm(BaseModelForm):
                 self.fields['rep_legal_concedente'].widget.attrs['readonly'] = True
                 self.fields['rep_legal_concedente'].widget.attrs['class'] = self.fields['rep_legal_concedente'].widget.attrs.get('class', '') + ' form-control-enhanced'
         
-        # Al editar: deshabilitar campos para usuarios auxiliares (no admin)
+        # Al editar: deshabilitar campos para usuarios auxiliares (no admin).
+        # `field.disabled = True` hace que Django ignore lo que venga en el POST
+        # y conserve el valor de la instancia (el atributo HTML solo no protege).
         if not es_creacion and not es_admin:
             for field_name in campos_datos_generales + campos_partes_involucradas:
                 if field_name in self.fields:
+                    self.fields[field_name].disabled = True
                     self.fields[field_name].widget.attrs['disabled'] = True
                     # Mantener clases CSS existentes
                     existing_class = self.fields[field_name].widget.attrs.get('class', '')

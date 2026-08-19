@@ -111,10 +111,10 @@ def nuevo_otrosi(request, contrato_id):
                 else:
                     form_data[key] = value
             form_data['continuar_desde_advertencia'] = '1'
-            form = OtroSiForm(form_data, contrato=contrato, contrato_id=contrato_id)
+            form = OtroSiForm(form_data, contrato=contrato, contrato_id=contrato_id, user=request.user)
             del request.session['otrosi_pendiente_advertencia']
         else:
-            form = OtroSiForm(request.POST, contrato=contrato, contrato_id=contrato_id)
+            form = OtroSiForm(request.POST, contrato=contrato, contrato_id=contrato_id, user=request.user)
         
         if form.is_valid():
             otrosi = form.save(commit=False)
@@ -205,6 +205,9 @@ def nuevo_otrosi(request, contrato_id):
                         }
                         return render(request, 'gestion/otrosi/advertencia_calculo_existente.html', context)
             
+            # Defensa adicional: solo staff puede crear un Otro Si ya aprobado
+            if not request.user.is_staff and otrosi.estado not in OtroSiForm.ESTADOS_NO_STAFF:
+                otrosi.estado = 'BORRADOR'
             if otrosi.estado == 'APROBADO' and not otrosi.fecha_aprobacion:
                 otrosi.fecha_aprobacion = timezone.now()
                 otrosi.aprobado_por = request.user.username
@@ -255,7 +258,7 @@ def nuevo_otrosi(request, contrato_id):
             if not form.errors:
                 messages.error(request, 'Por favor corrija los errores en el formulario.')
     else:
-        form = OtroSiForm(contrato=contrato, contrato_id=contrato_id)
+        form = OtroSiForm(contrato=contrato, contrato_id=contrato_id, user=request.user)
         # Pre-llenar fecha de Otro Sí con hoy
         from datetime import date
         form.fields['fecha_otrosi'].initial = date.today()
@@ -426,10 +429,10 @@ def editar_otrosi(request, otrosi_id):
                 else:
                     form_data[key] = value
             form_data['continuar_desde_advertencia'] = '1'
-            form = OtroSiForm(form_data, instance=otrosi, contrato=contrato, contrato_id=contrato.id)
+            form = OtroSiForm(form_data, instance=otrosi, contrato=contrato, contrato_id=contrato.id, user=request.user)
             del request.session['otrosi_pendiente_advertencia']
         else:
-            form = OtroSiForm(request.POST, instance=otrosi, contrato=contrato, contrato_id=contrato.id)
+            form = OtroSiForm(request.POST, instance=otrosi, contrato=contrato, contrato_id=contrato.id, user=request.user)
 
         # Aplicar disabled ANTES de is_valid(): el browser no envía inputs disabled,
         # así Django usa el valor de la instancia y no falla por campo requerido ausente.
@@ -615,7 +618,7 @@ def editar_otrosi(request, otrosi_id):
             from gestion.utils import agregar_errores_formulario_a_mensajes
             agregar_errores_formulario_a_mensajes(request, form, prefijo_emoji='❌ ')
     else:
-        form = OtroSiForm(instance=otrosi, contrato=contrato, contrato_id=contrato.id)
+        form = OtroSiForm(instance=otrosi, contrato=contrato, contrato_id=contrato.id, user=request.user)
     
     # Preparar datos de condiciones de pólizas para el template
     condiciones_para_template = []

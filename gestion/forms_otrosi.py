@@ -504,10 +504,15 @@ class OtroSiForm(BaseModelForm):
             'notas_polizas': forms.Textarea(attrs={'rows': 4, 'class': 'form-control', 'placeholder': 'Detalle de las modificaciones en pólizas (ej: actualización de RCE, nueva vigencia de cumplimiento, etc.)'}),
         }
     
+    # Estados que puede fijar un usuario sin permisos de administracion. Aprobar,
+    # rechazar o anular son acciones de admin (aprobar_otrosi / anular_otrosi).
+    ESTADOS_NO_STAFF = ('BORRADOR', 'EN_REVISION')
+
     def __init__(self, *args, **kwargs):
         # Guardar contrato para inicializar valores de pólizas
         self.contrato = kwargs.pop('contrato', None)
         self.contrato_id = kwargs.pop('contrato_id', None)
+        self.user = kwargs.pop('user', None)
         
         # Si no tenemos contrato pero tenemos contrato_id, obtenerlo
         if not self.contrato and self.contrato_id:
@@ -532,6 +537,12 @@ class OtroSiForm(BaseModelForm):
         
         # Hacer numero_otrosi no requerido (se genera auto)
         self.fields['numero_otrosi'].required = False
+
+        # Usuarios no-staff solo pueden dejar el Otro Si en borrador o en revision
+        if self.user is not None and not self.user.is_staff and 'estado' in self.fields:
+            self.fields['estado'].choices = [
+                c for c in OtroSi.ESTADO_CHOICES if c[0] in self.ESTADOS_NO_STAFF
+            ]
         # Deshabilitar edición en el formulario; será asignado automáticamente en el modelo
         if 'numero_otrosi' in self.fields:
             self.fields['numero_otrosi'].disabled = True
