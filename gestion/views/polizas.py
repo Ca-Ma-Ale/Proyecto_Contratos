@@ -123,7 +123,7 @@ def obtener_requisitos_documento(request, contrato_id):
         import logging
         logger = logging.getLogger(__name__)
         logger.error(f"Error al convertir requisitos a JSON: {str(e)}", exc_info=True)
-        return JsonResponse({'error': str(e)}, status=500)
+        return JsonResponse({'error': 'No fue posible obtener los requisitos del documento.'}, status=500)
     
     return JsonResponse(requisitos_json)
 

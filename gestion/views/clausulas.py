@@ -1,3 +1,5 @@
+import logging
+
 from django.contrib import messages
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
@@ -10,6 +12,8 @@ from gestion.models import (
     Clausula, ClausulaObligatoria, ClausulaContrato,
     TipoContrato, TipoServicio, Contrato
 )
+
+logger = logging.getLogger(__name__)
 
 
 @login_required_custom
@@ -121,7 +125,8 @@ def guardar_parametrizacion_clausulas(request):
         )
         
     except Exception as e:
-        messages.error(request, f'Error al guardar la parametrización: {str(e)}')
+        logger.exception('Error al guardar la parametrización de cláusulas')
+        messages.error(request, 'Error al guardar la parametrización. Intente nuevamente o contacte al administrador.')
     
     return redirect('gestion:parametrizar_clausulas')
 
@@ -161,7 +166,8 @@ def crear_clausula(request):
         )
         messages.success(request, f'Cláusula "{titulo}" creada exitosamente.')
     except Exception as e:
-        messages.error(request, f'Error al crear la cláusula: {str(e)}')
+        logger.exception('Error al crear la cláusula')
+        messages.error(request, 'Error al crear la cláusula. Intente nuevamente o contacte al administrador.')
     
     return redirect('gestion:gestionar_clausulas')
 
@@ -189,7 +195,8 @@ def editar_clausula(request, clausula_id):
         clausula.save()
         messages.success(request, f'Cláusula "{titulo}" actualizada exitosamente.')
     except Exception as e:
-        messages.error(request, f'Error al actualizar la cláusula: {str(e)}')
+        logger.exception('Error al actualizar la cláusula')
+        messages.error(request, 'Error al actualizar la cláusula. Intente nuevamente o contacte al administrador.')
     
     return redirect('gestion:gestionar_clausulas')
 
@@ -206,7 +213,8 @@ def eliminar_clausula(request, clausula_id):
         clausula.delete()
         messages.success(request, f'Cláusula "{titulo}" eliminada exitosamente.')
     except Exception as e:
-        messages.error(request, f'Error al eliminar la cláusula: {str(e)}')
+        logger.exception('Error al eliminar la cláusula')
+        messages.error(request, 'Error al eliminar la cláusula. Intente nuevamente o contacte al administrador.')
     
     return redirect('gestion:gestionar_clausulas')
 
@@ -353,8 +361,9 @@ def guardar_clausulas_contrato(request, contrato_id):
             'redirect_url': redirect_url
         })
         
-    except Exception as e:
+    except Exception:
+        logger.exception('Error al guardar cláusulas del contrato')
         return JsonResponse({
             'success': False,
-            'error': str(e)
+            'error': 'No fue posible guardar las cláusulas. Intente nuevamente o contacte al administrador.'
         }, status=400)

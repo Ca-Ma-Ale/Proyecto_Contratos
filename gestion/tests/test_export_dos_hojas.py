@@ -168,3 +168,24 @@ class ExportarContratosDocsHojasTest(TestCase):
             wb['Proveedores'].cell(row=2, column=1).value,
             'Sin contratos registrados',
         )
+
+
+class NeutralizarFormulasTest(TestCase):
+    """CN-023: textos que Excel interpretaria como formula deben neutralizarse."""
+
+    def test_valores_con_prefijo_de_formula_se_neutralizan(self):
+        from gestion.services.exportes import neutralizar_formula
+        for peligroso in ['=HYPERLINK("http://x")', '+cmd|calc', '-1+1', '@SUM(A1)', '\t=1', '\r=1']:
+            self.assertTrue(neutralizar_formula(peligroso).startswith("'"), peligroso)
+        for inocuo in ['Texto normal', '2025-107', '', None, 42, 3.5]:
+            self.assertEqual(neutralizar_formula(inocuo), inocuo)
+
+    def test_excel_corporativo_neutraliza_texto(self):
+        from gestion.services.exportes import generar_excel_corporativo
+        columnas = [ColumnaExportacion('Obs', ancho=15), ColumnaExportacion('Num', ancho=10, es_numerica=True)]
+        wb = load_workbook(BytesIO(generar_excel_corporativo(
+            nombre_hoja='Prueba', columnas=columnas, registros=[('=HYPERLINK("http://x")', 10)],
+        )))
+        celda = wb['Prueba'].cell(row=2, column=1)
+        self.assertEqual(celda.value, "'=HYPERLINK(\"http://x\")")
+        self.assertNotEqual(celda.data_type, 'f')

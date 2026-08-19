@@ -350,7 +350,7 @@ def calcular_facturacion(request):
             logger.info(f"Formulario creado - Datos: contrato={request.POST.get('contrato')}, mes={request.POST.get('mes')}, año={request.POST.get('año')}")
         except Exception as e:
             logger.error(f"Error al crear formulario: {str(e)}\n{traceback.format_exc()}", exc_info=True)
-            messages.error(request, f'Error al procesar el formulario: {str(e)}')
+            messages.error(request, 'Error al procesar el formulario. Intente nuevamente o contacte al administrador.')
             form = CalculoFacturacionVentasForm()
             if informe:
                 try:
@@ -400,7 +400,7 @@ def calcular_facturacion(request):
                 logger.error(f"Error al calcular facturación: {str(e)}", exc_info=True)
                 messages.error(
                     request,
-                    f'Error al realizar el cálculo: {str(e)}. Por favor, verifique los datos e intente nuevamente.'
+                    'Error al realizar el cálculo. Por favor, verifique los datos e intente nuevamente.'
                 )
                 context = {
                     'form': form,
@@ -469,7 +469,7 @@ def calcular_facturacion(request):
                 logger.error(f"Error al guardar cálculo: {str(e)}", exc_info=True)
                 messages.error(
                     request,
-                    f'Error al guardar el cálculo: {str(e)}. Por favor, verifique los datos e intente nuevamente.'
+                    'Error al guardar el cálculo. Por favor, verifique los datos e intente nuevamente.'
                 )
                 context = {
                     'form': form,
@@ -495,7 +495,7 @@ def calcular_facturacion(request):
                 logger.error(f"Error al redirigir después de crear cálculo: {str(e)}", exc_info=True)
                 messages.error(
                     request,
-                    f'Cálculo guardado pero error al redirigir: {str(e)}. El cálculo fue guardado con ID {calculo.id}.'
+                    f'Cálculo guardado (ID {calculo.id}) pero ocurrió un error al redirigir. Consulte el listado de cálculos.'
                 )
                 return redirect('gestion:lista_informes_ventas')
         else:
@@ -567,7 +567,7 @@ def calcular_facturacion(request):
                 form = CalculoFacturacionVentasForm(initial=initial)
             except Exception as e:
                 logger.error(f"Error al crear formulario con informe {informe_id}: {str(e)}", exc_info=True)
-                messages.error(request, f'Error al cargar los datos del informe: {str(e)}')
+                messages.error(request, 'Error al cargar los datos del informe. Intente nuevamente o contacte al administrador.')
                 form = CalculoFacturacionVentasForm()
                 form.fields['año'].initial = date.today().year
                 mes_actual = date.today().month
@@ -601,7 +601,7 @@ def calcular_facturacion(request):
         return render(request, 'gestion/calculos/facturacion_form.html', context)
     except Exception as e:
         logger.error(f"Error al renderizar formulario de cálculo: {str(e)}\n{traceback.format_exc()}", exc_info=True)
-        messages.error(request, f'Error al cargar el formulario: {str(e)}. Por favor, intente nuevamente.')
+        messages.error(request, 'Error al cargar el formulario. Por favor, intente nuevamente.')
         return redirect('gestion:lista_informes_ventas')
 
 

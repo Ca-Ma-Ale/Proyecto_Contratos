@@ -40,6 +40,21 @@ PALETA_AVENIDA = {
 FORMATO_NUMERICO = '#.##0'
 
 
+_PREFIJOS_FORMULA = ('=', '+', '-', '@', '\t', '\r')
+
+
+def neutralizar_formula(valor):
+    """
+    Evita la inyeccion de formulas (CSV/Excel injection, CWE-1236): un texto que
+    empieza por =, +, -, @, tabulador o retorno de carro se antepone con un
+    apostrofo para que Excel/LibreOffice lo traten como texto literal.
+    Solo afecta a cadenas; numeros, fechas y None se devuelven tal cual.
+    """
+    if isinstance(valor, str) and valor and valor.startswith(_PREFIJOS_FORMULA):
+        return "'" + valor
+    return valor
+
+
 def limpiar_nombre_hoja_excel(nombre: str) -> str:
     r"""
     Limpia el nombre de una hoja de Excel eliminando caracteres no permitidos.
@@ -244,7 +259,7 @@ def generar_excel_corporativo(
                 if valor is None or valor == '' or (isinstance(valor, str) and valor.strip() == ''):
                     registro_procesado.append('N/A')
                 else:
-                    registro_procesado.append(valor)
+                    registro_procesado.append(neutralizar_formula(valor))
         hoja.append(registro_procesado)
 
     ultima_fila_datos = len(registros) + 1
@@ -326,7 +341,7 @@ def generar_excel_multi_hoja(
                         ):
                             registro_procesado.append('N/A')
                         else:
-                            registro_procesado.append(valor)
+                            registro_procesado.append(neutralizar_formula(valor))
                 hoja.append(registro_procesado)
 
             ultima_fila_datos = len(registros) + 1

@@ -177,8 +177,10 @@ def exportar_historial_campos_csv(request):
         'Modificado Por', 'Causa', 'Descripción Causa',
     ])
 
+    from gestion.services.exportes import neutralizar_formula
+
     for registro in qs:
-        writer.writerow([
+        writer.writerow([neutralizar_formula(v) for v in (
             registro.fecha_modificacion.strftime('%d/%m/%Y %H:%M:%S'),
             registro.tipo_documento,
             registro.documento_descripcion,
@@ -188,6 +190,6 @@ def exportar_historial_campos_csv(request):
             registro.modificado_por,
             registro.get_causa_tipo_display(),
             registro.causa_descripcion,
-        ])
+        )])
 
     return response
