@@ -194,3 +194,18 @@ backup_db_*.sqlite3
 
 # Superpowers scratch (brainstorm mockups, SDD ledgers/briefs)
 .superpowers/
+
+# Claves y credenciales (Cyber Neo CN-031)
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+id_rsa*
+id_ed25519*
+credentials*.json
+service-account*.json
+.npmrc
+.pypirc
+.env.*
+!.env.example

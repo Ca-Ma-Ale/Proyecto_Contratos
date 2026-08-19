@@ -28,7 +28,7 @@ python -c "from gestion.utils_encryption import generate_encryption_key; print(g
 
 **Ejemplo de salida:**
 ```
-k7gNU3sdo+OL0wNhqoVWhr3g6s1xYv72el/brIDm3L4=
+<clave-fernet-de-44-caracteres-base64>
 ```
 
 ### Paso 2: Configurar Variable de Entorno
@@ -37,7 +37,7 @@ Agregar la clave generada al archivo `.env`:
 
 ```env
 # Encriptación de Datos Sensibles
-ENCRYPTION_KEY=k7gNU3sdo+OL0wNhqoVWhr3g6s1xYv72el/brIDm3L4=
+ENCRYPTION_KEY=<salida-de-Fernet.generate_key()-NO-versionar>
 ```
 
 **⚠️ IMPORTANTE:**

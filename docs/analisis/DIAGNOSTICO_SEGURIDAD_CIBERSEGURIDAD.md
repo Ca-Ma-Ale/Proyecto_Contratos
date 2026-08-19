@@ -108,8 +108,8 @@ def get_password(self) -> str:
 
 **Problema:**
 ```python
-PASSWORD = 'Avenida2024!'  # Contraseña temporal - CAMBIAR después
-NORMAL_PASSWORD = 'Avenida2024!'  # Contraseña temporal - CAMBIAR después
+PASSWORD = '<contraseña-redactada>'  # Contraseña temporal - CAMBIAR después
+NORMAL_PASSWORD = '<contraseña-redactada>'  # Contraseña temporal - CAMBIAR después
 ```
 
 **Impacto:**

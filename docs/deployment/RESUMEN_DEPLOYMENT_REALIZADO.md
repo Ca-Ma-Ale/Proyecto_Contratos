@@ -86,7 +86,7 @@ pip install -r requirements.txt
 
 **Contenido configurado:**
 ```env
-SECRET_KEY=ys3-0+erd$d&_)%a)f7445r^ck+o6!e%9m2djac#p*@xu!$h)5
+SECRET_KEY=<clave-generada-con-get_random_secret_key-NO-versionar>
 DEBUG=False
 ALLOWED_HOSTS=CMHerramientasContables.pythonanywhere.com
 CSRF_TRUSTED_ORIGINS=https://CMHerramientasContables.pythonanywhere.com
