@@ -157,7 +157,7 @@
                                             {% if item.contrato.modalidad_pago %}
                                                 <span class="badge bg-info">{{ item.contrato.get_modalidad_pago_display }}</span>
                                             {% else %}
-                                                <span class="text-muted">-</span>
+                                                <span class="badge bg-secondary" title="La modalidad de pago no fue asignada en el contrato">Sin asignar</span>
                                             {% endif %}
                                         </td>
                                         <td>{{ item.contrato.fecha_inicial_contrato|date:"d \d\e F \d\e Y" }}</td>

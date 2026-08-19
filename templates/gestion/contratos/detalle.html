@@ -111,7 +111,11 @@
                                 <tr>
                                     <td><strong>Modalidad:</strong></td>
                                     <td>
-                                        <span class="badge bg-info">{{ modalidad_pago_display|default:contrato.get_modalidad_pago_display }}</span>
+                                        {% if modalidad_pago_display or contrato.modalidad_pago %}
+                                            <span class="badge bg-info">{{ modalidad_pago_display|default:contrato.get_modalidad_pago_display }}</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary" title="La modalidad de pago no fue asignada en el contrato">Sin asignar</span>
+                                        {% endif %}
                                         {% if otrosi_modificadores.nueva_modalidad_pago %}
                                             <span class="badge bg-info ms-2" title="Del documento {% if otrosi_modificadores.nueva_modalidad_pago.numero_otrosi %}{{ otrosi_modificadores.nueva_modalidad_pago.numero_otrosi }}{% else %}{{ otrosi_modificadores.nueva_modalidad_pago.numero_renovacion }}{% endif %}">
                                                 <i class="fas {% if otrosi_modificadores.nueva_modalidad_pago.numero_otrosi %}fa-file-signature{% else %}fa-sync-alt{% endif %}"></i> {% if otrosi_modificadores.nueva_modalidad_pago.numero_otrosi %}{{ otrosi_modificadores.nueva_modalidad_pago.numero_otrosi }}{% else %}{{ otrosi_modificadores.nueva_modalidad_pago.numero_renovacion }}{% endif %}
