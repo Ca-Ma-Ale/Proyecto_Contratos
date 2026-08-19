@@ -41,7 +41,7 @@ def lista_informes_ventas(request):
             'tipo_contrato',
             'tipo_servicio',
         )
-        .prefetch_related('otrosi', 'renovaciones_automaticas')
+        .prefetch_related('otrosi', 'renovaciones_automaticas', 'calculos_ipc', 'calculos_salario_minimo')
         .order_by('num_contrato')
     )
     

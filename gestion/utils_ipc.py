@@ -721,20 +721,37 @@ def obtener_ultimo_calculo_aplicado_hasta_fecha(contrato, fecha_referencia=None)
     
     if fecha_referencia is None:
         fecha_referencia = date.today()
-    
+
+    def _ultimo_aplicado_desde_prefetch(related_name):
+        """Usa el caché de prefetch_related si la vista lo cargó; si no, None."""
+        cache = getattr(contrato, '_prefetched_objects_cache', {})
+        if related_name not in cache:
+            return None
+        aplicados = [
+            c for c in cache[related_name]
+            if c.estado == 'APLICADO' and c.fecha_aplicacion <= fecha_referencia
+        ]
+        if not aplicados:
+            return False
+        return max(aplicados, key=lambda c: (c.fecha_aplicacion, c.fecha_calculo))
+
     # Obtener último cálculo de IPC aplicado hasta la fecha
-    ultimo_ipc = CalculoIPC.objects.filter(
-        contrato=contrato,
-        estado='APLICADO',
-        fecha_aplicacion__lte=fecha_referencia
-    ).order_by('-fecha_aplicacion', '-fecha_calculo').first()
+    ultimo_ipc = _ultimo_aplicado_desde_prefetch('calculos_ipc')
+    if ultimo_ipc is None:
+        ultimo_ipc = CalculoIPC.objects.filter(
+            contrato=contrato,
+            estado='APLICADO',
+            fecha_aplicacion__lte=fecha_referencia
+        ).order_by('-fecha_aplicacion', '-fecha_calculo').first()
     
     # Obtener último cálculo de Salario Mínimo aplicado hasta la fecha
-    ultimo_salario = CalculoSalarioMinimo.objects.filter(
-        contrato=contrato,
-        estado='APLICADO',
-        fecha_aplicacion__lte=fecha_referencia
-    ).order_by('-fecha_aplicacion', '-fecha_calculo').first()
+    ultimo_salario = _ultimo_aplicado_desde_prefetch('calculos_salario_minimo')
+    if ultimo_salario is None:
+        ultimo_salario = CalculoSalarioMinimo.objects.filter(
+            contrato=contrato,
+            estado='APLICADO',
+            fecha_aplicacion__lte=fecha_referencia
+        ).order_by('-fecha_aplicacion', '-fecha_calculo').first()
     
     # Retornar el más reciente
     if ultimo_ipc and ultimo_salario:

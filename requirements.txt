@@ -1,16 +1,16 @@
 # Dependencias del proyecto — versiones ancladas para reproducibilidad.
 # Para actualizar: revisar changelogs y CVEs antes de cambiar versiones.
-# Última revisión de seguridad: 2026-02-22
+# Última revisión de seguridad: 2026-08-18 (reporte Cyber Neo)
 
-Django==5.0.11
-Pillow==10.4.0
+Django==5.2.17
+Pillow==12.3.0
 python-dateutil==2.9.0.post0
 python-decouple==3.8
 gunicorn==23.0.0
 openpyxl==3.1.5
-reportlab==4.2.5
-requests==2.32.3
-django-axes==7.0.0
-cryptography==43.0.3
-mysqlclient==2.2.7
-whitenoise==6.9.0
+reportlab==4.5.1
+requests==2.34.2
+django-axes==7.1.0
+cryptography==46.0.7
+mysqlclient==2.2.8
+whitenoise==6.12.0

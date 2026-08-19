@@ -79,7 +79,10 @@ class ListaInformesVentasPerformanceTest(TestCase):
             contrato = self.crear_contrato(numero)
             self.agregar_eventos(contrato, numero)
 
-        with self.assertNumQueries(14):
+        # 14 originales + 2 prefetch (calculos_ipc, calculos_salario_minimo) que
+        # usa obtener_canon_vigente_con_fuente; el total no depende del numero
+        # de contratos.
+        with self.assertNumQueries(16):
             response = self.client.get(reverse('gestion:lista_informes_ventas'))
 
         self.assertEqual(response.status_code, 200)

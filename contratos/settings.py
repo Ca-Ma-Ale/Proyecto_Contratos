@@ -6,6 +6,7 @@ by setting DATABASE_NAME and the related DATABASE_* environment variables.
 """
 
 import os
+import sys
 from pathlib import Path
 
 try:
@@ -159,6 +160,13 @@ STORAGES = {
         'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
     },
 }
+
+# En la suite de tests no hay collectstatic: el storage con manifest fallaría
+# con "Missing staticfiles manifest entry" al renderizar plantillas.
+if 'test' in sys.argv:
+    STORAGES['staticfiles'] = {
+        'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage',
+    }
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
