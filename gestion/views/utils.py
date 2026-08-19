@@ -825,6 +825,11 @@ def obtener_canon_vigente_con_fuente(contrato, fecha_referencia=None, forzar_cam
         }
 
     valor_base = getattr(contrato, campo_base, None)
+    if valor_base is None and campo_base == 'valor_canon_fijo':
+        # El formulario de contrato solo captura canon_minimo_garantizado
+        # (valor_canon_fijo nunca se diligencia), asi que en modalidad Fijo el
+        # canon base de un contrato CLIENTE vive en canon_minimo_garantizado.
+        valor_base = contrato.canon_minimo_garantizado
     return {
         'valor': valor_base,
         'tipo': 'contrato' if valor_base is not None else None,

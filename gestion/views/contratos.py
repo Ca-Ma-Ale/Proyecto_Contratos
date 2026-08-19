@@ -867,6 +867,13 @@ def detalle_contrato(request, contrato_id):
             
             if aplicar_calculo:
                 valor_canon_fijo = ultimo_calculo_aplicado.nuevo_canon
+
+    # El formulario de contrato solo captura canon_minimo_garantizado
+    # (valor_canon_fijo nunca se diligencia), asi que en modalidad Fijo el
+    # canon vive en canon_minimo_garantizado: usarlo como respaldo para que
+    # el resumen no quede vacio.
+    if modalidad_pago_valor == 'Fijo' and not valor_canon_fijo and not contrato.valor_canon_fijo:
+        valor_canon_fijo = canon_minimo_garantizado
     
     context = {
         'contrato': contrato,
@@ -1499,8 +1506,11 @@ def exportar_contratos(request):
                 # Días al vencimiento (negativo = ya venció)
                 dias_vencimiento = (fecha_final - fecha_actual).days if fecha_final else None
 
-                # Canon base del contrato original
-                canon_base = float(contrato.valor_canon_fijo) if (contrato.valor_canon_fijo and not es_proveedor) else None
+                # Canon base del contrato original. El formulario solo captura
+                # canon_minimo_garantizado (valor_canon_fijo nunca se diligencia),
+                # asi que para CLIENTE se usa ese campo como respaldo.
+                canon_base_cliente = contrato.valor_canon_fijo or contrato.canon_minimo_garantizado
+                canon_base = float(canon_base_cliente) if (canon_base_cliente and not es_proveedor) else None
                 canon_minimo_base = float(contrato.canon_minimo_garantizado) if (contrato.canon_minimo_garantizado and es_proveedor) else None
 
                 # Último IPC aplicado
