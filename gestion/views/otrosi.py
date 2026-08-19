@@ -23,6 +23,7 @@ from gestion.utils_otrosi import (
     get_polizas_requeridas_contrato,
 )
 from .utils import _construir_requisitos_poliza
+from gestion.utils_red import obtener_ip_cliente
 
 @login_required_custom
 def lista_otrosi(request, contrato_id):
@@ -566,7 +567,7 @@ def editar_otrosi(request, otrosi_id):
                             modificado_por=request.user.get_username(),
                             causa_tipo='EDICION_DIRECTA',
                             causa_descripcion='Edición directa desde formulario',
-                            ip_origen=request.META.get('REMOTE_ADDR'),
+                            ip_origen=obtener_ip_cliente(request),
                         )
             except Exception:
                 pass
@@ -922,7 +923,7 @@ def eliminar_otrosi(request, otrosi_id):
                 modificado_por=request.user.get_username(),
                 causa_tipo='ELIMINACION_OTROSI',
                 causa_descripcion=f'OtroSí {otrosi.numero_otrosi} eliminado por {request.user.get_username()}',
-                ip_origen=request.META.get('REMOTE_ADDR'),
+                ip_origen=obtener_ip_cliente(request),
             )
 
             registrar_eliminacion(otrosi, request.user)

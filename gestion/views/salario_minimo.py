@@ -31,6 +31,7 @@ from gestion.utils_salario_minimo import (
     obtener_otrosi_para_legalizar_smlv,
 )
 from gestion.utils_formateo import limpiar_valor_numerico
+from gestion.utils_red import obtener_ip_cliente
 
 
 @login_required_custom
@@ -854,7 +855,7 @@ def eliminar_calculo_salario_minimo(request, calculo_id):
             modificado_por=request.user.get_username(),
             causa_tipo='ELIMINACION_OTROSI',
             causa_descripcion=f'Cálculo SMLV eliminado. Liberados {len(bloqueos_a_liberar)} bloqueo(s).',
-            ip_origen=request.META.get('REMOTE_ADDR'),
+            ip_origen=obtener_ip_cliente(request),
         )
 
         calculo.delete()

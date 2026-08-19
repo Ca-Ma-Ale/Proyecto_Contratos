@@ -19,6 +19,7 @@ from gestion.utils_otrosi import (
 from gestion.utils_ventas import contratos_con_configuracion_ventas_queryset
 from gestion.services.exportes import generar_pdf_calculo_facturacion, generar_excel_calculo_facturacion, generar_excel_informes_ventas
 from gestion.views.utils import obtener_configuracion_empresa, _obtener_fecha_final_contrato
+from gestion.utils_red import obtener_ip_cliente
 
 
 def _es_contrato_vigente_en_fecha(contrato, fecha_referencia):
@@ -687,7 +688,7 @@ def confirmar_calculo_facturacion(request, calculo_id):
         modificado_por=request.user.get_full_name() or request.user.username,
         causa_tipo='CONFIRMACION_CALCULO_VENTAS',
         causa_descripcion=f'Cálculo de facturación por ventas confirmado por {request.user.username}',
-        ip_origen=request.META.get('REMOTE_ADDR'),
+        ip_origen=obtener_ip_cliente(request),
     )
 
     messages.success(
@@ -730,7 +731,7 @@ def confirmar_y_finalizar_calculo(request, calculo_id):
             modificado_por=usuario,
             causa_tipo='CONFIRMACION_CALCULO_VENTAS',
             causa_descripcion=f'Cálculo confirmado y informe finalizado por {request.user.username}',
-            ip_origen=request.META.get('REMOTE_ADDR'),
+            ip_origen=obtener_ip_cliente(request),
         )
 
     # Finalizar el informe

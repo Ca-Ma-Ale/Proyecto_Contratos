@@ -40,6 +40,7 @@ from gestion.utils_otrosi import (
     get_valores_polizas_vigentes,
 )
 from gestion.utils_ipc import obtener_ultimo_calculo_ipc_aplicado, obtener_ultimo_calculo_aplicado_hasta_fecha
+from gestion.utils_red import obtener_ip_cliente
 from .utils import (
     obtener_configuracion_empresa,
     registrar_seguimientos_contrato_desde_formulario,
@@ -184,7 +185,7 @@ def editar_contrato(request, contrato_id):
                     modificado_por=request.user.get_username(),
                     causa_tipo='EDICION_DIRECTA',
                     causa_descripcion='Edición directa desde formulario',
-                    ip_origen=request.META.get('REMOTE_ADDR'),
+                    ip_origen=obtener_ip_cliente(request),
                 )
 
             guardar_con_auditoria(contrato_nuevo, request.user, es_nuevo=False)
@@ -2515,7 +2516,7 @@ def anular_renovacion_automatica(request, renovacion_id):
                 modificado_por=request.user.get_username(),
                 causa_tipo='ELIMINACION_RENOVACION',
                 causa_descripcion=f'Renovación #{numero_renovacion} eliminada por {request.user.get_username()}',
-                ip_origen=request.META.get('REMOTE_ADDR'),
+                ip_origen=obtener_ip_cliente(request),
             )
             # Las pólizas y DependenciaDocumento se eliminan por signals pre_delete / post_delete
             renovacion.delete()

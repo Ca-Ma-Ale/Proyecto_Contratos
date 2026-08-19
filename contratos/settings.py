@@ -260,7 +260,12 @@ AXES_COOLOFF_TIME = 1
 AXES_LOCKOUT_TEMPLATE = 'registration/login.html'
 AXES_LOCKOUT_URL = None
 AXES_RESET_ON_SUCCESS = True
-AXES_LOCKOUT_PARAMETERS = ['username', 'ip_address']
+# Bloqueo por (usuario + IP) y, con un umbral mayor, por IP sola: frena la
+# enumeracion de usuarios sin que 5 fallos contra "admin" desde cualquier lugar
+# bloqueen a admin para todos.
+AXES_LOCKOUT_PARAMETERS = [['username', 'ip_address'], 'ip_address']
+# La app corre detras de Caddy: sin esto REMOTE_ADDR es siempre la IP del proxy.
+AXES_CLIENT_IP_CALLABLE = 'gestion.utils_red.obtener_ip_cliente'
 AXES_VERBOSE = False
 
 EMAIL_BACKEND = env_value('EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')

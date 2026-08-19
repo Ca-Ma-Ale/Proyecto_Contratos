@@ -40,6 +40,7 @@ from gestion.utils_ipc import (
 )
 from gestion.utils_formateo import limpiar_valor_numerico
 from gestion.models import obtener_nombre_tipo_condicion_ipc, obtener_nombre_periodicidad_ipc
+from gestion.utils_red import obtener_ip_cliente
 
 
 @login_required_custom
@@ -1006,7 +1007,7 @@ def eliminar_calculo_ipc(request, calculo_id):
             modificado_por=request.user.get_username(),
             causa_tipo='ELIMINACION_OTROSI',  # reutilizamos causa más cercana
             causa_descripcion=f'Cálculo IPC eliminado. Liberados {len(bloqueos_a_liberar)} bloqueo(s).',
-            ip_origen=request.META.get('REMOTE_ADDR'),
+            ip_origen=obtener_ip_cliente(request),
         )
 
         # post_delete signal libera automáticamente las DependenciaDocumento
