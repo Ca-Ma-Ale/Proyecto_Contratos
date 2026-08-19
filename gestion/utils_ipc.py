@@ -415,24 +415,26 @@ def _misma_fecha_en_anio(fecha, anio):
         return date(anio, fecha.month, 28)
 
 
-def _proxima_fecha_ajuste_sin_calculos(fecha_base, fecha_inicial_contrato, fecha_referencia):
+def _proxima_fecha_ajuste_sin_calculos(fecha_base, fecha_ancla, fecha_referencia):
     """
-    Próxima fecha de ajuste cuando el contrato aún no tiene cálculos IPC/SMLV.
+    Próxima fecha de ajuste a partir de una fecha de aumento pactada (fecha_base)
+    y de la fecha en que esa condición entró en vigencia (fecha_ancla: el inicio
+    del contrato, o la vigencia del Otro Sí que cambió la fecha).
 
     Regla:
-    - Si fecha_base (fecha_aumento_ipc) es posterior al inicio del contrato, el
-      usuario pactó esa fecha exacta como primer ajuste: se respeta tal cual.
-    - Si fecha_base es igual o anterior al inicio (lo usual cuando se digita la
+    - Si fecha_base es posterior al ancla, se pactó esa fecha exacta como primer
+      ajuste: se respeta tal cual.
+    - Si fecha_base es igual o anterior al ancla (lo usual cuando se digita la
       fecha de inicio como "fecha de aumento"), el primer ajuste es la primera
-      ocurrencia de ese día/mes estrictamente posterior al inicio (primer ciclo).
+      ocurrencia de ese día/mes estrictamente posterior al ancla (primer ciclo).
     - Devuelve la ocurrencia anual más reciente que ya venció (o la próxima si
       ninguna ha vencido), nunca una anterior al primer ajuste.
     """
-    if fecha_inicial_contrato and fecha_base <= fecha_inicial_contrato:
-        primer_ajuste = _misma_fecha_en_anio(fecha_base, fecha_inicial_contrato.year)
-        if primer_ajuste <= fecha_inicial_contrato:
-            primer_ajuste = _misma_fecha_en_anio(fecha_base, fecha_inicial_contrato.year + 1)
-    elif fecha_inicial_contrato:
+    if fecha_ancla and fecha_base <= fecha_ancla:
+        primer_ajuste = _misma_fecha_en_anio(fecha_base, fecha_ancla.year)
+        if primer_ajuste <= fecha_ancla:
+            primer_ajuste = _misma_fecha_en_anio(fecha_base, fecha_ancla.year + 1)
+    elif fecha_ancla:
         primer_ajuste = fecha_base
     else:
         primer_ajuste = _misma_fecha_en_anio(fecha_base, fecha_base.year + 1)
@@ -441,6 +443,22 @@ def _proxima_fecha_ajuste_sin_calculos(fecha_base, fecha_inicial_contrato, fecha
     if candidato > fecha_referencia:
         candidato = _misma_fecha_en_anio(fecha_base, fecha_referencia.year - 1)
     return candidato if candidato >= primer_ajuste else primer_ajuste
+
+
+def _proxima_fecha_por_otrosi_posterior_al_calculo(otrosi_fecha_ipc, ultimo_calculo, fecha_referencia):
+    """
+    Si un Otro Sí que cambió la fecha de aumento IPC entró en vigencia DESPUÉS
+    del último cálculo, reinicia el ciclo: la próxima fecha sale de la nueva
+    fecha pactada (anclada a la vigencia del Otro Sí), no de "último + 1 año".
+    Devuelve None si no aplica.
+    """
+    if not (otrosi_fecha_ipc and otrosi_fecha_ipc.nueva_fecha_aumento_ipc and ultimo_calculo):
+        return None
+    if otrosi_fecha_ipc.effective_from <= ultimo_calculo.fecha_aplicacion:
+        return None
+    return _proxima_fecha_ajuste_sin_calculos(
+        otrosi_fecha_ipc.nueva_fecha_aumento_ipc, otrosi_fecha_ipc.effective_from, fecha_referencia
+    )
 
 
 def calcular_proxima_fecha_aumento(contrato, fecha_referencia=None, _calculos_cache=None):
@@ -539,6 +557,18 @@ def calcular_proxima_fecha_aumento(contrato, fecha_referencia=None, _calculos_ca
             elif renovaciones_automaticas:
                 renovacion_relevante = renovaciones_automaticas
         
+        # Un Otro Sí que cambió la fecha de aumento y entró en vigencia después
+        # del último cálculo reinicia el ciclo con la nueva fecha pactada.
+        if ultimo_calculo:
+            otrosi_fecha_ipc = get_ultimo_otrosi_que_modifico_campo_hasta_fecha(
+                contrato, 'nueva_fecha_aumento_ipc', fecha_referencia
+            )
+            fecha_por_otrosi = _proxima_fecha_por_otrosi_posterior_al_calculo(
+                otrosi_fecha_ipc, ultimo_calculo, fecha_referencia
+            )
+            if fecha_por_otrosi:
+                return fecha_por_otrosi
+
         # Si hay renovación relevante (posterior al último cálculo y sin modificar IPC),
         # usar su fecha de inicio como base para calcular el próximo ajuste.
         # NOTA: Solo cuando HAY último cálculo. Las renovaciones NO modifican las fechas IPC.
@@ -620,6 +650,13 @@ def calcular_proxima_fecha_aumento(contrato, fecha_referencia=None, _calculos_ca
                 ultimo_calculo = ultimo_salario
 
             if ultimo_calculo:
+                # Un Otro Sí posterior al último cálculo que cambió la fecha
+                # reinicia el ciclo con la nueva fecha pactada.
+                fecha_por_otrosi = _proxima_fecha_por_otrosi_posterior_al_calculo(
+                    otrosi_fecha_ipc, ultimo_calculo, fecha_referencia
+                )
+                if fecha_por_otrosi:
+                    return fecha_por_otrosi
                 f = ultimo_calculo.fecha_aplicacion
                 return date(f.year + 1, f.month, f.day)
 
