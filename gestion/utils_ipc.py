@@ -407,6 +407,42 @@ def obtener_ultimo_calculo_ipc_aplicado(contrato):
     ).order_by('-fecha_aplicacion', '-fecha_calculo').first()
 
 
+def _misma_fecha_en_anio(fecha, anio):
+    """Devuelve fecha con el año cambiado (29-feb cae a 28-feb en años no bisiestos)."""
+    try:
+        return date(anio, fecha.month, fecha.day)
+    except ValueError:
+        return date(anio, fecha.month, 28)
+
+
+def _proxima_fecha_ajuste_sin_calculos(fecha_base, fecha_inicial_contrato, fecha_referencia):
+    """
+    Próxima fecha de ajuste cuando el contrato aún no tiene cálculos IPC/SMLV.
+
+    Regla:
+    - Si fecha_base (fecha_aumento_ipc) es posterior al inicio del contrato, el
+      usuario pactó esa fecha exacta como primer ajuste: se respeta tal cual.
+    - Si fecha_base es igual o anterior al inicio (lo usual cuando se digita la
+      fecha de inicio como "fecha de aumento"), el primer ajuste es la primera
+      ocurrencia de ese día/mes estrictamente posterior al inicio (primer ciclo).
+    - Devuelve la ocurrencia anual más reciente que ya venció (o la próxima si
+      ninguna ha vencido), nunca una anterior al primer ajuste.
+    """
+    if fecha_inicial_contrato and fecha_base <= fecha_inicial_contrato:
+        primer_ajuste = _misma_fecha_en_anio(fecha_base, fecha_inicial_contrato.year)
+        if primer_ajuste <= fecha_inicial_contrato:
+            primer_ajuste = _misma_fecha_en_anio(fecha_base, fecha_inicial_contrato.year + 1)
+    elif fecha_inicial_contrato:
+        primer_ajuste = fecha_base
+    else:
+        primer_ajuste = _misma_fecha_en_anio(fecha_base, fecha_base.year + 1)
+
+    candidato = _misma_fecha_en_anio(fecha_base, fecha_referencia.year)
+    if candidato > fecha_referencia:
+        candidato = _misma_fecha_en_anio(fecha_base, fecha_referencia.year - 1)
+    return candidato if candidato >= primer_ajuste else primer_ajuste
+
+
 def calcular_proxima_fecha_aumento(contrato, fecha_referencia=None, _calculos_cache=None):
     """
     Calcula la próxima fecha de aumento IPC/Salario Mínimo para un contrato.
@@ -536,19 +572,11 @@ def calcular_proxima_fecha_aumento(contrato, fecha_referencia=None, _calculos_ca
             fecha_base = contrato.fecha_aumento_ipc
 
         if fecha_base:
-            # Sin cálculos: la primera fecha de ajuste es fecha_base.
-            # Encontrar la ocurrencia más reciente (pasada o futura) para mostrar en alertas.
-            candidato = date(fecha_referencia.year, fecha_base.month, fecha_base.day)
-            if candidato <= fecha_referencia:
-                # El primer ajuste solo puede ocurrir después de completar el primer ciclo anual.
-                # Si el candidato del año actual aún no supera fecha_base + 1 año,
-                # el contrato está en su primer ciclo → devolver el ajuste del año siguiente.
-                primer_ajuste = date(fecha_base.year + 1, fecha_base.month, fecha_base.day)
-                if candidato < primer_ajuste:
-                    return primer_ajuste
-                return candidato
-            candidato_anterior = date(fecha_referencia.year - 1, fecha_base.month, fecha_base.day)
-            return candidato_anterior if candidato_anterior >= fecha_base else fecha_base
+            # Sin cálculos: ocurrencia más reciente (pasada o futura) respetando
+            # el primer ajuste según la relación con la fecha de inicio del contrato.
+            return _proxima_fecha_ajuste_sin_calculos(
+                fecha_base, contrato.fecha_inicial_contrato, fecha_referencia
+            )
         elif contrato.fecha_inicial_contrato:
             # Calcular fecha_inicial + 1 año
             fecha_inicial = contrato.fecha_inicial_contrato
@@ -595,16 +623,10 @@ def calcular_proxima_fecha_aumento(contrato, fecha_referencia=None, _calculos_ca
                 f = ultimo_calculo.fecha_aplicacion
                 return date(f.year + 1, f.month, f.day)
 
-            # Sin cálculos: misma lógica que ANUAL — ocurrencia más reciente (pasada o futura)
-            candidato = date(fecha_referencia.year, fecha_base.month, fecha_base.day)
-            if candidato <= fecha_referencia:
-                # El primer ajuste solo puede ocurrir después de completar el primer ciclo anual.
-                primer_ajuste = date(fecha_base.year + 1, fecha_base.month, fecha_base.day)
-                if candidato < primer_ajuste:
-                    return primer_ajuste
-                return candidato
-            candidato_anterior = date(fecha_referencia.year - 1, fecha_base.month, fecha_base.day)
-            return candidato_anterior if candidato_anterior >= fecha_base else fecha_base
+            # Sin cálculos: misma lógica que ANUAL
+            return _proxima_fecha_ajuste_sin_calculos(
+                fecha_base, contrato.fecha_inicial_contrato, fecha_referencia
+            )
     
     return None
 
