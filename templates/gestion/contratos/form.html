@@ -9,10 +9,11 @@
 <script src="{% static 'js/format_edit_view.js' %}"></script>
 <script src="{% static 'js/utils_fechas.js' %}?v=2"></script>
 {% if campos_bloqueados %}
+{{ campos_bloqueados_lista|json_script:"campos-bloqueados-contrato" }}
 <script>
 // ── Efecto Cadena: deshabilitar campos bloqueados ─────────────────────────
 document.addEventListener('DOMContentLoaded', function () {
-    const bloqueados = {{ campos_bloqueados_json }};
+    const bloqueados = JSON.parse(document.getElementById('campos-bloqueados-contrato').textContent);
 
     bloqueados.forEach(function (campo) {
         // Busca input, select o textarea con name=campo

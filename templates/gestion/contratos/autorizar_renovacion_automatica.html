@@ -926,6 +926,7 @@
 <script src="{% static 'js/formatMiles.js' %}"></script>
 <script src="{% static 'js/auto_format_new.js' %}"></script>
 <script src="{% static 'js/utils_fechas.js' %}"></script>
+{{ valores_iniciales_polizas|json_script:"valores-iniciales-polizas" }}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Configurar formateo automático para campos de dinero
@@ -993,7 +994,7 @@ document.addEventListener('DOMContentLoaded', function() {
     toggleMesesPersonalizados();
     
     // Valores iniciales de pólizas desde el backend
-    const valoresInicialesPolizas = {{ valores_iniciales_polizas_json|safe }};
+    const valoresInicialesPolizas = JSON.parse(document.getElementById('valores-iniciales-polizas').textContent);
     
     console.log('[RenovacionAutomatica] valoresInicialesPolizas recibidos:', valoresInicialesPolizas);
     console.log('[RenovacionAutomatica] valoresInicialesPolizas.cumplimiento:', valoresInicialesPolizas.cumplimiento);

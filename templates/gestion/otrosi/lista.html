@@ -223,9 +223,10 @@
     </div>
 </div>
 
+{{ otrosis_data|json_script:"otrosis-data" }}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const otrosisData = {{ otrosis_data_json|safe }};
+    const otrosisData = JSON.parse(document.getElementById('otrosis-data').textContent);
     const detallesContainer = document.getElementById('otrosi-detalles-container');
     const detallesDiv = document.getElementById('otrosi-detalles');
     const filas = document.querySelectorAll('.otrosi-row');

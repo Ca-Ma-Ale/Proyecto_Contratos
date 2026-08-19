@@ -240,7 +240,7 @@ def editar_contrato(request, contrato_id):
         # ── Efecto Cadena ─────────────────────────────────────────────────────
         'bloqueos_cadena': bloqueos,                          # dict campo → lista bloqueadores
         'campos_bloqueados': campos_bloqueados,               # set Python (para lógica en template)
-        'campos_bloqueados_json': json.dumps(list(campos_bloqueados)),  # JSON para JS
+        'campos_bloqueados_lista': list(campos_bloqueados),  # se serializa con json_script
     }
     return render(request, 'gestion/contratos/form.html', context)
 
@@ -2224,10 +2224,6 @@ def autorizar_renovacion_automatica(request, contrato_id):
     dias_restantes = (fecha_final_actual - fecha_actual).days if fecha_final_actual >= fecha_actual else (fecha_actual - fecha_final_actual).days * -1
     dias_abs = abs(dias_restantes) if dias_restantes < 0 else dias_restantes
     
-    # Convertir valores_iniciales_polizas a JSON para evitar problemas con True/False de Python
-    import json
-    valores_iniciales_polizas_json = json.dumps(valores_iniciales_polizas)
-    
     context = {
         'contrato': contrato,
         'form': form,
@@ -2238,7 +2234,6 @@ def autorizar_renovacion_automatica(request, contrato_id):
         'otrosi_activador_prorroga': estado_prorroga['otrosi_activador'],
         'fecha_inicio_prorroga': estado_prorroga['fecha_inicio_prorroga'],
         'valores_iniciales_polizas': valores_iniciales_polizas,
-        'valores_iniciales_polizas_json': valores_iniciales_polizas_json,
     }
     return render(request, 'gestion/contratos/autorizar_renovacion_automatica.html', context)
 

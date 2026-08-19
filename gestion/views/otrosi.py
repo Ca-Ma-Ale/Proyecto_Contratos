@@ -59,7 +59,7 @@ def lista_otrosi(request, contrato_id):
         'contrato': contrato,
         'otrosis': otrosis_lista,
         'otrosi_vigente': otrosi_vigente,
-        'otrosis_data_json': json.dumps(otrosis_data),
+        'otrosis_data': otrosis_data,
         'titulo': f'Otro Sí - Contrato {contrato.num_contrato}'
     }
     return render(request, 'gestion/otrosi/lista.html', context)
@@ -372,10 +372,10 @@ def nuevo_otrosi(request, contrato_id):
         'condiciones_para_template': condiciones_para_template,
         'otrosi_vigente_actual': otrosi_vigente_actual,
         'fuente_condiciones': fuente_condiciones,
-        'valores_iniciales_polizas': json.dumps(valores_iniciales_polizas),
+        'valores_iniciales_polizas': valores_iniciales_polizas,
         'modalidad_actual': modalidad_actual,
         'titulo': f'Nuevo Otro Sí - Contrato {contrato.num_contrato}',
-        'campos_bloqueados_json': '[]',
+        'campos_bloqueados_lista': [],
         'canon_bloqueado_por_cadena': False,
         'canon_minimo_bloqueado_por_cadena': False,
         'modalidad_bloqueada_por_cadena': False,
@@ -740,13 +740,13 @@ def editar_otrosi(request, otrosi_id):
         'condiciones_para_template': condiciones_para_template,
         'otrosi_vigente_actual': otrosi_vigente_actual,
         'fuente_condiciones': fuente_condiciones,
-        'valores_iniciales_polizas': json.dumps(valores_iniciales_polizas),
+        'valores_iniciales_polizas': valores_iniciales_polizas,
         'modalidad_actual': modalidad_actual,
         'titulo': f'Editar Otro Sí - {otrosi.numero_otrosi}',
         # ── Efecto Cadena ─────────────────────────────────────────────────────
         'bloqueos_cadena': bloqueos_otrosi,
         'campos_bloqueados': campos_bloqueados_otrosi,
-        'campos_bloqueados_json': _json.dumps(list(campos_bloqueados_otrosi)),
+        'campos_bloqueados_lista': list(campos_bloqueados_otrosi),
         'canon_bloqueado_por_cadena': 'nuevo_valor_canon' in campos_bloqueados_otrosi,
         'canon_minimo_bloqueado_por_cadena': 'nuevo_canon_minimo_garantizado' in campos_bloqueados_otrosi,
         'modalidad_bloqueada_por_cadena': 'nueva_modalidad_pago' in campos_bloqueados_otrosi,

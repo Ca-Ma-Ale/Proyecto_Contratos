@@ -9,6 +9,8 @@
 <script src="{% static 'js/auto_format_new.js' %}"></script>
 <script src="{% static 'js/format_edit_view.js' %}"></script>
 <script src="{% static 'js/utils_fechas.js' %}"></script>
+{{ valores_iniciales_polizas|json_script:"valores-iniciales-polizas" }}
+{{ campos_bloqueados_lista|default_if_none:""|json_script:"campos-bloqueados-otrosi" }}
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -700,7 +702,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Valores iniciales de pólizas desde el backend
-    const valoresInicialesPolizas = {{ valores_iniciales_polizas|safe }};
+    const valoresInicialesPolizas = JSON.parse(document.getElementById('valores-iniciales-polizas').textContent);
     
     // Configurar cálculo automático de fechas para pólizas
     const configuracionesPolizas = [
@@ -2747,7 +2749,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // ── Efecto Cadena: aplicar bloqueo visual y MutationObserver ───────────
-    let camposBloqueadosOtrosi = {{ campos_bloqueados_json|default:"[]"|safe }};
+    let camposBloqueadosOtrosi = JSON.parse(document.getElementById('campos-bloqueados-otrosi').textContent);
     if (!Array.isArray(camposBloqueadosOtrosi)) camposBloqueadosOtrosi = [];
     if (camposBloqueadosOtrosi.includes('nuevo_plazo_meses')) {
         if (!camposBloqueadosOtrosi.includes('effective_from')) camposBloqueadosOtrosi.push('effective_from');
