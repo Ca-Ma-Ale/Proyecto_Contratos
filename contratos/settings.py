@@ -201,6 +201,10 @@ CSRF_COOKIE_SECURE = not DEBUG
 
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 SECURE_SSL_REDIRECT = env_bool('SECURE_SSL_REDIRECT', False)
+# La redireccion HTTP->HTTPS la hace Caddy (proxy inverso); web:8000 no se
+# publica en el host. security.W008 se silencia solo en ese caso para que
+# `check --deploy --fail-level WARNING` no detenga el despliegue.
+SILENCED_SYSTEM_CHECKS = ['security.W008'] if not SECURE_SSL_REDIRECT else []
 SECURE_HSTS_SECONDS = 0 if DEBUG else 31536000
 SECURE_HSTS_INCLUDE_SUBDOMAINS = not DEBUG
 SECURE_HSTS_PRELOAD = not DEBUG
