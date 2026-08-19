@@ -15,15 +15,17 @@ Notas sobre la política actual:
 class ContentSecurityPolicyMiddleware:
     """Agrega la cabecera Content-Security-Policy a todas las respuestas HTTP."""
 
-    # Bootstrap JS/CSS: cdn.jsdelivr.net
-    # Font Awesome CSS + webfonts: cdnjs.cloudflare.com
+    # Bootstrap y Font Awesome se sirven desde static/vendor (sin CDN).
     POLICY = (
         "default-src 'self'; "
-        "script-src 'self' 'unsafe-inline' cdn.jsdelivr.net; "
-        "style-src 'self' 'unsafe-inline' cdn.jsdelivr.net cdnjs.cloudflare.com; "
+        "script-src 'self' 'unsafe-inline'; "
+        "style-src 'self' 'unsafe-inline'; "
         "img-src 'self' data:; "
-        "font-src 'self' cdnjs.cloudflare.com data:; "
+        "font-src 'self' data:; "
         "connect-src 'self'; "
+        "object-src 'none'; "
+        "base-uri 'self'; "
+        "form-action 'self'; "
         "frame-ancestors 'none';"
     )
 
