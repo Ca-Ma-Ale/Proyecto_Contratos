@@ -205,6 +205,54 @@ SECURE_HSTS_SECONDS = 0 if DEBUG else 31536000
 SECURE_HSTS_INCLUDE_SUBDOMAINS = not DEBUG
 SECURE_HSTS_PRELOAD = not DEBUG
 SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = 'DENY'
+SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'
+
+# ── Logging ──────────────────────────────────────────────────────────────────
+# Sin esta configuracion, en produccion (DEBUG=False) los logger.warning/error
+# de la aplicacion y de django-axes no se emitian a ningun lado (el handler
+# por defecto de Django exige DEBUG=True). Se escribe a stdout (docker logs) y
+# a un archivo rotativo en logs/ (volumen deploy_data/logs en el VPS).
+LOGS_DIR = BASE_DIR / 'logs'
+os.makedirs(LOGS_DIR, exist_ok=True)
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {name} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'level': 'INFO',
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+        'archivo': {
+            'level': 'WARNING',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': LOGS_DIR / 'app.log',
+            'maxBytes': 5 * 1024 * 1024,
+            'backupCount': 5,
+            'encoding': 'utf-8',
+            'formatter': 'verbose',
+        },
+    },
+    'root': {
+        'handlers': ['console', 'archivo'],
+        'level': 'WARNING',
+    },
+    'loggers': {
+        'django': {'handlers': ['console', 'archivo'], 'level': 'WARNING', 'propagate': False},
+        'django.security': {'handlers': ['console', 'archivo'], 'level': 'WARNING', 'propagate': False},
+        'gestion': {'handlers': ['console', 'archivo'], 'level': 'INFO', 'propagate': False},
+        # Intentos fallidos y bloqueos de cuenta
+        'axes': {'handlers': ['console', 'archivo'], 'level': 'WARNING', 'propagate': False},
+    },
+}
 
 AXES_ENABLED = True
 AXES_FAILURE_LIMIT = 5
