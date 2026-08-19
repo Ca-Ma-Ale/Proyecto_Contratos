@@ -40,9 +40,24 @@ class URLFlexibleField(forms.CharField):
         kwargs.setdefault('max_length', 500)
         super().__init__(*args, **kwargs)
 
+    # Esquemas que el navegador ejecuta como codigo al hacer clic en el enlace
+    # (el valor se renderiza en href): nunca deben aceptarse (CWE-79).
+    ESQUEMAS_PROHIBIDOS = ('javascript', 'data', 'vbscript')
+
     def to_python(self, value):
         value = super().to_python(value)
         return value.strip() if value else value
+
+    def validate(self, value):
+        super().validate(value)
+        if not value:
+            return
+        # Normalizar: sin espacios/controles intercalados ni mayusculas
+        # (ej. "java	script:" o "JavaScript:").
+        normalizado = ''.join(ch for ch in value if not ch.isspace() and ord(ch) >= 32).lower()
+        esquema = normalizado.split(':', 1)[0] if ':' in normalizado else ''
+        if esquema in self.ESQUEMAS_PROHIBIDOS:
+            raise forms.ValidationError('El enlace usa un esquema no permitido (%s:).' % esquema)
 
 
 def sanitizar_texto(texto):

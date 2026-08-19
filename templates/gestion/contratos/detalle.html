@@ -161,7 +161,7 @@
                                     <td><strong>URL Archivo:</strong></td>
                                     <td>
                                         {% if contrato.url_archivo %}
-                                            <a href="{{ contrato.url_archivo }}" target="_blank" class="text-primary" title="Abrir archivo en nueva pestaña">
+                                            <a href="{{ contrato.url_archivo }}" target="_blank" rel="noopener noreferrer" class="text-primary" title="Abrir archivo en nueva pestaña">
                                                 <i class="fas fa-external-link-alt"></i> Ver Archivo Digital
                                             </a>
                                         {% else %}
@@ -1277,7 +1277,7 @@
                                     <td>{{ otrosi_item.effective_from }}</td>
                                     <td>
                                         {% if otrosi_item.url_archivo %}
-                                            <a href="{{ otrosi_item.url_archivo }}" target="_blank" class="btn btn-sm btn-outline-primary" title="Abrir archivo en nueva pestaña">
+                                            <a href="{{ otrosi_item.url_archivo }}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-primary" title="Abrir archivo en nueva pestaña">
                                                 <i class="fas fa-external-link-alt"></i>
                                             </a>
                                         {% else %}

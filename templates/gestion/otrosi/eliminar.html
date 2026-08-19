@@ -62,7 +62,7 @@
                                 {% for b in bloqueadores_eliminacion %}
                                     <li class="mb-1">
                                         {% if b.url %}
-                                        <a href="{{ b.url }}" target="_blank" class="fw-semibold text-decoration-none">
+                                        <a href="{{ b.url }}" target="_blank" rel="noopener noreferrer" class="fw-semibold text-decoration-none">
                                             {{ b.descripcion }}
                                             <i class="fas fa-external-link-alt ms-1" style="font-size:10px;"></i>
                                         </a>
