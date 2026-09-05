@@ -47,6 +47,8 @@ from .utils import (
     _construir_requisitos_poliza,
     _obtener_fecha_final_contrato,
     _es_contrato_vencido,
+    _es_contrato_terminado,
+    obtener_modalidad_pago_vigente,
     _respuesta_archivo_excel,
     obtener_canon_vigente,
 )
@@ -234,6 +236,9 @@ def editar_contrato(request, contrato_id):
         'form': form,
         'titulo': f'Editar Contrato {contrato.num_contrato}',
         'contrato': contrato,
+        # Modalidad vigente contando Otros Sí: la pantalla no debe bloquear
+        # "Reporta Ventas" cuando un Otro Sí pasó el contrato a Variable/Híbrido.
+        'modalidad_pago_vigente': obtener_modalidad_pago_vigente(contrato),
         'requerimientos_poliza': requerimientos_poliza,
         'polizas': polizas,
         'seguimientos_contrato': contrato.seguimientos.all().order_by('-fecha_registro'),
@@ -1260,9 +1265,12 @@ def exportar_contratos(request):
                 contratos_filtrados = []
                 for contrato in contratos_lista:
                     es_vencido = _es_contrato_vencido(contrato, fecha_actual)
-                    if estado == 'vigentes' and not es_vencido:
+                    es_terminado = _es_contrato_terminado(contrato, fecha_actual)
+                    if estado == 'vigentes' and not es_vencido and not es_terminado:
                         contratos_filtrados.append(contrato)
-                    elif estado == 'vencidos' and es_vencido:
+                    elif estado == 'vencidos' and es_vencido and not es_terminado:
+                        contratos_filtrados.append(contrato)
+                    elif estado == 'terminados' and es_terminado:
                         contratos_filtrados.append(contrato)
                 contratos_lista = contratos_filtrados
             
@@ -1447,7 +1455,10 @@ def exportar_contratos(request):
             for contrato in contratos_lista:
                 fecha_final = _obtener_fecha_final_contrato(contrato, fecha_actual)
                 es_vencido = _es_contrato_vencido(contrato, fecha_actual)
-                estado_texto = 'Vencido' if es_vencido else 'Vigente'
+                if _es_contrato_terminado(contrato, fecha_actual):
+                    estado_texto = 'Terminado'
+                else:
+                    estado_texto = 'Vencido' if es_vencido else 'Vigente'
                 
                 # Usar efecto cadena para obtener fecha final vigente hasta fecha_actual
                 otrosi_modificador = get_ultimo_otrosi_que_modifico_campo_hasta_fecha(

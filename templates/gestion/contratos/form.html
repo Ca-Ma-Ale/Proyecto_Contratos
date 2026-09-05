@@ -10,6 +10,7 @@
 <script src="{% static 'js/utils_fechas.js' %}?v=2"></script>
 {% if campos_bloqueados %}
 {{ campos_bloqueados_lista|json_script:"campos-bloqueados-contrato" }}
+{{ modalidad_pago_vigente|default:""|json_script:"modalidad-pago-vigente" }}
 <script>
 // ── Efecto Cadena: deshabilitar campos bloqueados ─────────────────────────
 document.addEventListener('DOMContentLoaded', function () {
@@ -2333,7 +2334,16 @@ document.addEventListener('DOMContentLoaded', function() {
     const diaLimiteReporteField = document.getElementById('{{ form.dia_limite_reporte_ventas.id_for_label }}');
     function actualizarReportaVentasPorModalidad() {
         if (!modalidadPagoSelect) return;
-        const modalidad = modalidadPagoSelect.value;
+        let modalidad = modalidadPagoSelect.value;
+        // Si un Otro Sí aprobado cambió la modalidad, rige esa (efecto cadena):
+        // el select queda bloqueado en el valor base y no refleja la vigente.
+        const nodoModalidadVigente = document.getElementById('modalidad-pago-vigente');
+        if (modalidadPagoSelect.disabled && nodoModalidadVigente) {
+            try {
+                const vigente = JSON.parse(nodoModalidadVigente.textContent);
+                if (vigente) modalidad = vigente;
+            } catch (e) {}
+        }
         const camposCliente = document.getElementById('campos-opciones-cliente');
         const esFijoYCliente = modalidad === 'Fijo' && camposCliente && camposCliente.offsetParent !== null;
         if (esFijoYCliente) {

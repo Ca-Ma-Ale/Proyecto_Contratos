@@ -653,6 +653,13 @@ class ContratoForm(BaseModelForm):
         # Validar: reporta_ventas, porcentaje_ventas y dia_limite no aplican si modalidad es Fijo
         if tipo_contrato_val == 'CLIENTE':
             modalidad = cleaned_data.get('modalidad_pago')
+            # Si un Otro Sí aprobado cambió la modalidad, esa es la que rige:
+            # un contrato base "Fijo" pasado a Híbrido por Otro Sí sí reporta ventas.
+            if self.instance and self.instance.pk:
+                from gestion.views.utils import obtener_modalidad_pago_vigente
+                modalidad_vigente = obtener_modalidad_pago_vigente(self.instance)
+                if modalidad_vigente and modalidad_vigente != modalidad:
+                    modalidad = modalidad_vigente
             reporta_ventas = cleaned_data.get('reporta_ventas')
             if modalidad == 'Fijo':
                 if reporta_ventas:
@@ -1286,6 +1293,7 @@ class FiltroExportacionContratosForm(BaseForm):
         ('', 'Todos'),
         ('vigentes', 'Solo Vigentes'),
         ('vencidos', 'Solo Vencidos'),
+        ('terminados', 'Solo Terminados'),
     ]
     
     estado = forms.ChoiceField(
@@ -1811,6 +1819,29 @@ class CalculoFacturacionVentasForm(BaseForm):
             return valor_limpio
         return Decimal('0')
     
+    @staticmethod
+    def _validar_vigencia_periodo(contrato, mes, año):
+        """Explica con la fecha real por qué un periodo queda fuera de vigencia
+        (contratos históricos cuyo Otro Sí vigente arranca después del periodo)."""
+        from calendar import monthrange
+        from gestion.views.utils import _obtener_fecha_final_contrato
+        fecha_corte = date(año, mes, monthrange(año, mes)[1])
+        if not es_fecha_fuera_vigencia_contrato(contrato, fecha_corte):
+            return
+        inicio = getattr(contrato, 'fecha_inicial_contrato', None)
+        if inicio and fecha_corte < inicio:
+            detalle = 'la fecha inicial registrada es ' + inicio.strftime('%d/%m/%Y')
+        else:
+            fecha_final = _obtener_fecha_final_contrato(contrato, fecha_corte)
+            if fecha_final:
+                detalle = 'la fecha final registrada para ese periodo es ' + fecha_final.strftime('%d/%m/%Y')
+            else:
+                detalle = 'no hay una fecha final registrada'
+        raise ValidationError(
+            f'El contrato no estaba vigente en {mes:02d}/{año}: {detalle}. '
+            'Registre el Otro Sí o la renovación que cubre ese periodo, o actualice la fecha final del contrato.'
+        )
+
     def clean(self):
         """Validaciones adicionales"""
         cleaned_data = super().clean()
@@ -1836,6 +1867,7 @@ class CalculoFacturacionVentasForm(BaseForm):
             if isinstance(ventas_totales, Decimal) and devoluciones > ventas_totales:
                 raise ValidationError('Las devoluciones no pueden ser mayores que las ventas totales.')
 
+            self._validar_vigencia_periodo(contrato, int(mes), int(año))
             valores_vigentes = obtener_valores_vigentes_facturacion_ventas(
                 contrato,
                 int(mes),
@@ -1843,7 +1875,7 @@ class CalculoFacturacionVentasForm(BaseForm):
             )
             if not valores_vigentes:
                 raise ValidationError(
-                    'El contrato no tiene modalidad Variable Puro o HÃ­brido con porcentaje de ventas vigente para este periodo.'
+                    'El contrato no tiene modalidad Variable Puro o Híbrido con porcentaje de ventas vigente para este periodo.'
                 )
         
         return cleaned_data

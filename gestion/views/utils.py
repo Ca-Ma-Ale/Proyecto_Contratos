@@ -682,6 +682,16 @@ def _obtener_fecha_final_contrato(contrato, fecha_referencia=None):
     if fecha_referencia is None:
         fecha_referencia = date.today()
 
+    # Un contrato terminado formalmente termina en la fecha de su acta de
+    # finalización, sin importar lo que digan Otros Sí o renovaciones.
+    if getattr(contrato, 'finalizado', False):
+        try:
+            fecha_fin = contrato.finalizacion.fecha_finalizacion
+        except Exception:
+            fecha_fin = None
+        if fecha_fin:
+            return fecha_fin
+
     # Filtrado en memoria usando prefetch cuando disponible (evita queries por contrato)
     _renov_key = lambda r: (r.effective_from, getattr(r, 'version', 0) or 0)
 
@@ -747,6 +757,37 @@ def _es_contrato_vencido(contrato, fecha_referencia=None):
     return fecha_final < fecha_referencia
 
 
+def _es_contrato_terminado(contrato, fecha_referencia=None):
+    """True si el contrato fue terminado formalmente y la fecha del acta ya llegó."""
+    if fecha_referencia is None:
+        fecha_referencia = date.today()
+    if not getattr(contrato, 'finalizado', False):
+        return False
+    try:
+        return contrato.finalizacion.fecha_finalizacion <= fecha_referencia
+    except Exception:
+        return True
+
+
+def obtener_modalidad_pago_vigente(contrato, fecha_referencia=None):
+    """
+    Modalidad de pago vigente aplicando efecto cadena: el último Otro Sí aprobado
+    que modificó la modalidad manda sobre la del contrato base.
+    """
+    from gestion.utils_otrosi import get_ultimo_otrosi_que_modifico_campo_hasta_fecha
+
+    if fecha_referencia is None:
+        fecha_referencia = date.today()
+    if not getattr(contrato, 'pk', None):
+        return contrato.modalidad_pago
+    otrosi = get_ultimo_otrosi_que_modifico_campo_hasta_fecha(
+        contrato, 'nueva_modalidad_pago', fecha_referencia
+    )
+    if otrosi and otrosi.nueva_modalidad_pago:
+        return otrosi.nueva_modalidad_pago
+    return contrato.modalidad_pago
+
+
 def obtener_canon_vigente_con_fuente(contrato, fecha_referencia=None, forzar_campo=None):
     """
     Igual que obtener_canon_vigente, pero además identifica de dónde viene el
@@ -797,12 +838,16 @@ def obtener_canon_vigente_con_fuente(contrato, fecha_referencia=None, forzar_cam
             # Sin OtroSí, o el OtroSí detectado no tiene un valor real de canon (ej: 0.00)
             aplicar_calculo = True
         else:
-            fecha_aprobacion = getattr(otrosi_canon, 'fecha_aprobacion', None)
-            if fecha_aprobacion:
+            # Se compara contra la vigencia contractual del Otro Sí (effective_from),
+            # no contra la fecha en que fue aprobado en la plataforma: los Otros Sí
+            # históricos se cargan y aprueban mucho después de su vigencia real y,
+            # con fecha_aprobacion, "ganaban" a un IPC aplicado antes de esa carga
+            # (caso Crepes & Waffles / Amor Perfecto, Avenida Chile 2026-09).
+            fecha_os = getattr(otrosi_canon, 'effective_from', None)
+            if fecha_os is None:
+                fecha_aprobacion = getattr(otrosi_canon, 'fecha_aprobacion', None)
                 fecha_os = fecha_aprobacion.date() if hasattr(fecha_aprobacion, 'date') else fecha_aprobacion
-                aplicar_calculo = ultimo_calculo.fecha_aplicacion >= fecha_os
-            else:
-                aplicar_calculo = True
+            aplicar_calculo = fecha_os is None or ultimo_calculo.fecha_aplicacion > fecha_os
         if aplicar_calculo:
             es_ipc = hasattr(ultimo_calculo, 'ipc_historico')
             fecha_str = ultimo_calculo.fecha_aplicacion.strftime('%d/%m/%Y')
