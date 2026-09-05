@@ -54,8 +54,9 @@ class Command(BaseCommand):
         self.stdout.write(f'  fecha_final_inicial: {contrato.fecha_final_inicial}')
         self.stdout.write('')
 
-        if not contrato.reporta_ventas:
-            self.stdout.write(self.style.ERROR('CAUSA: reporta_ventas=False. El contrato no reporta ventas.'))
+        from gestion.utils_ventas import contrato_reporta_ventas
+        if not contrato_reporta_ventas(contrato, mes, año):
+            self.stdout.write(self.style.ERROR('CAUSA: el contrato no reporta ventas en ese periodo (ni casilla ni Otro Si con porcentaje).'))
             return
 
         fuera_vigencia = es_fecha_fuera_vigencia_contrato(contrato, fecha_corte)

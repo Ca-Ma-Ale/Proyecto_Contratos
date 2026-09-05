@@ -15,10 +15,11 @@ from openpyxl import load_workbook
 
 from gestion.forms import CalculoFacturacionVentasForm, ContratoForm
 from gestion.models import (
-    CalculoIPC, Contrato, FinalizacionContrato, IPCHistorico, Local, OtroSi,
+    CalculoIPC, Contrato, FinalizacionContrato, InformeVentas, IPCHistorico, Local, OtroSi,
     Tercero, TipoContrato,
 )
 from gestion.utils_otrosi import obtener_valores_vigentes_facturacion_ventas
+from gestion.utils_ventas import contrato_reporta_ventas
 from gestion.views.utils import _obtener_fecha_final_contrato, obtener_canon_vigente_con_fuente
 
 
@@ -115,6 +116,13 @@ class MinimoGarantizadoIPCSobreOtroSiTest(TestCase):
         self.assertEqual(info['valor'], Decimal('12000000'))
 
 
+@override_settings(
+    ALLOWED_HOSTS=['*'],
+    STORAGES={
+        'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
+        'staticfiles': {'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage'},
+    },
+)
 class ReportaVentasConModalidadPorOtroSiTest(TestCase):
     """Caso Perfumery / Presto: el contrato base es Fijo pero un Otro Si lo
     paso a Hibrido; el formulario no dejaba marcar 'Reporta Ventas'."""
@@ -185,6 +193,30 @@ class ReportaVentasConModalidadPorOtroSiTest(TestCase):
         form = ContratoForm(data=self._datos(), instance=self.contrato, user=self.user)
         form.is_valid()
         self.assertIn('reporta_ventas', form.errors)
+
+    def test_reporta_ventas_es_automatico_cuando_el_otrosi_trae_porcentaje(self):
+        """Sin marcar la casilla del contrato base, el Otro Si ya lo hace reportar ventas."""
+        self.assertFalse(self.contrato.reporta_ventas)
+        self.assertTrue(contrato_reporta_ventas(self.contrato, 7, 2026))
+        # Antes de la vigencia del Otro Si (mayo 2026) sigue sin reportar
+        self.assertFalse(contrato_reporta_ventas(self.contrato, 5, 2026))
+
+    def test_informe_permite_calcular_sin_tocar_el_contrato_base(self):
+        informe = InformeVentas.objects.create(contrato=self.contrato, mes=7, año=2026)
+        self.client.force_login(self.user)
+        with patch('django.test.client.copy', lambda ctx: ctx):
+            response = self.client.get(f'/informes-ventas/{informe.pk}/marcar-entregado/')
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.context['puede_calcular'])
+
+    def test_exportacion_muestra_reporta_ventas_si(self):
+        self.client.force_login(self.user)
+        with patch('gestion.views.contratos.timezone.now', return_value=timezone.make_aware(timezone.datetime(2026, 8, 20, 10, 0))):
+            response = self.client.post('/exportaciones/contratos/', {'estado': '', 'tipo_contrato_cliente_proveedor': ''})
+        self.assertEqual(response.status_code, 200)
+        hoja = load_workbook(BytesIO(response.content))['Clientes']
+        datos = dict(zip([c.value for c in hoja[1]], [c.value for c in hoja[2]]))
+        self.assertEqual(datos['Reporta Ventas'], 'Sí')
 
     def test_vista_editar_expone_modalidad_vigente_para_el_javascript(self):
         self.client.force_login(self.user)

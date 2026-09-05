@@ -41,6 +41,7 @@ from gestion.utils_otrosi import (
 )
 from gestion.utils_ipc import obtener_ultimo_calculo_ipc_aplicado, obtener_ultimo_calculo_aplicado_hasta_fecha
 from gestion.utils_red import obtener_ip_cliente
+from gestion.utils_ventas import contrato_reporta_ventas
 from .utils import (
     obtener_configuracion_empresa,
     registrar_seguimientos_contrato_desde_formulario,
@@ -1573,7 +1574,7 @@ def exportar_contratos(request):
                     float(canon_vigente_valor) if (canon_vigente_valor and not es_proveedor) else None,
                     float(canon_vigente_valor) if (canon_vigente_valor and es_proveedor) else None,
                     float(porcentaje_ventas_val) if porcentaje_ventas_val else None,
-                    'Sí' if contrato.reporta_ventas else 'No',
+                    'Sí' if contrato_reporta_ventas(contrato, fecha_actual.month, fecha_actual.year) else 'No',
                     contrato.dia_limite_reporte_ventas or None,
                     'Sí' if contrato.cobra_servicios_publicos_aparte else 'No',
                     'Sí' if contrato.tiene_clausula_sarlaft else 'No',

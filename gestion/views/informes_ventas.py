@@ -16,7 +16,7 @@ from gestion.utils_otrosi import (
     obtener_valores_vigentes_facturacion_ventas,
     es_fecha_fuera_vigencia_contrato,
 )
-from gestion.utils_ventas import contratos_con_configuracion_ventas_queryset
+from gestion.utils_ventas import contratos_con_configuracion_ventas_queryset, contrato_reporta_ventas
 from gestion.services.exportes import generar_pdf_calculo_facturacion, generar_excel_calculo_facturacion, generar_excel_informes_ventas
 from gestion.views.utils import obtener_configuracion_empresa, _obtener_fecha_final_contrato
 from gestion.utils_red import obtener_ip_cliente
@@ -183,7 +183,7 @@ def marcar_entregado_informe(request, informe_id):
         messages.success(request, f'Informe de ventas marcado como entregado para {informe.contrato.num_contrato} - {informe.get_mes_display()}/{informe.año}')
         
         # Si se solicita calcular desde marcar, redirigir al formulario de cálculo
-        if calcular_desde_marcar and informe.contrato.reporta_ventas:
+        if calcular_desde_marcar and contrato_reporta_ventas(informe.contrato, informe.mes, informe.año):
             from django.urls import reverse
             return redirect(reverse('gestion:calcular_facturacion') + f'?informe_id={informe.id}')
         
@@ -191,7 +191,7 @@ def marcar_entregado_informe(request, informe_id):
     
     context = {
         'informe': informe,
-        'puede_calcular': informe.contrato.reporta_ventas,
+        'puede_calcular': contrato_reporta_ventas(informe.contrato, informe.mes, informe.año),
     }
     
     return render(request, 'gestion/informes/ventas/marcar_entregado.html', context)
